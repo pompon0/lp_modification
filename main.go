@@ -53,7 +53,7 @@ type Result struct {
 func worker(
   ctx context.Context,
   timeout time.Duration,
-  proverPath string,
+  proverArgv []string,
   problems <-chan Problem,
   results chan<- Result,
 ) error {
@@ -70,7 +70,7 @@ func worker(
         if err:=file.Close(); err!=nil { return fmt.Errorf("file.Close(): %v",err) }
         cmdCtx,cancel := context.WithTimeout(ctx,timeout)
         defer cancel()
-        output,err := exec.CommandContext(cmdCtx,proverPath,proverPath,file.Name()).Output()
+        output,err := exec.CommandContext(cmdCtx,proverArgv[0],append(proverArgv,file.Name())...).Output()
         results <- Result{p.name,output,err}
         return nil
       }(); err!=nil { return err }
@@ -79,9 +79,9 @@ func worker(
 }
 
 func run(ctx context.Context, timeout time.Duration, cores int) error {
-  if len(os.Args)!=2 { return fmt.Errorf("usage: %s <path to prover binary>",os.Args[0]) }
-  proverPath := os.Args[1]
-  log.Printf("using %q as a prover",proverPath)
+  if len(os.Args)<2 { return fmt.Errorf("usage: %s <path to prover binary> <flags>...",os.Args[0]) }
+  proverArgv := os.Args[1:]
+  log.Printf("using %v as a prover",proverArgv)
 
   problems,err := getProblems(ctx)
   if err!=nil { return fmt.Errorf("getProblems(): %v",err) }
@@ -102,7 +102,7 @@ func run(ctx context.Context, timeout time.Duration, cores int) error {
   })
 
   for i:=0; i<cores; i++ { group.Go(func() error {
-    return worker(gCtx,timeout,proverPath,problemsChan,resultsChan)
+    return worker(gCtx,timeout,proverArgv,problemsChan,resultsChan)
   })}
 
   group.Go(func() error {

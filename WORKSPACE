@@ -12,6 +12,16 @@ http_archive(
     sha256 = "3c681998538231a2d24d0c07ed5a7658cb72bfb5fd4bf9911157c0e9ac6a2687",
 )
 
+http_archive(
+    name = "eprover",
+    urls = [
+      "http://wwwlehre.dhbw-stuttgart.de/~sschulz/WORK/E_DOWNLOAD/V_2.3/E.tgz",
+      "https://storage.googleapis.com/tptp/eprover_2_3.tgz"
+    ],
+    sha256 = "5366d2de77e6856250e26a967642389e81a6f823caedccaf5022a09242aceb96",
+    build_file = "eprover.BUILD",
+)
+
 load("@io_bazel_rules_go//go:deps.bzl", "go_rules_dependencies", "go_register_toolchains")
 
 go_rules_dependencies()

@@ -2,42 +2,18 @@ package main
 
 import (
   "fmt"
+  "bytes"
   "os"
   "os/exec"
   "time"
   "log"
   "context"
-  "net/http"
-  "io"
   "io/ioutil"
-  "compress/gzip"
-  "archive/tar"
   "strings"
 
   "golang.org/x/sync/errgroup"
+  "github.com/pompon0/tptp_benchmark_go/problems"
 )
-
-const problemsUrl = "https://storage.googleapis.com/tptp/tptp_sample.tgz";
-
-func getProblems(ctx context.Context) (map[string][]byte,error) {
-  req,err := http.NewRequest("GET",problemsUrl,nil)
-  if err!=nil { return nil,fmt.Errorf("http.NewReuqest(): %v",err) }
-  resp,err := http.DefaultClient.Do(req.WithContext(ctx))
-  defer resp.Body.Close()
-
-  gzipReader,err := gzip.NewReader(resp.Body)
-  if err!=nil { return nil,fmt.Errorf("gzip.NewReader(): %v",err) }
-  tarReader := tar.NewReader(gzipReader)
-  problems := map[string][]byte{}
-  for {
-    h,err := tarReader.Next()
-    if err==io.EOF { break }
-    if err!=nil { return nil,fmt.Errorf("tarReader.Next(): %v",err) }
-    problems[h.Name],err = ioutil.ReadAll(tarReader)
-    if err!=nil { return nil,fmt.Errorf("ioutil.ReadAll(): %v",err) }
-  }
-  return problems,nil
-}
 
 type Problem struct {
   name string
@@ -70,8 +46,12 @@ func worker(
         if err:=file.Close(); err!=nil { return fmt.Errorf("file.Close(): %v",err) }
         cmdCtx,cancel := context.WithTimeout(ctx,timeout)
         defer cancel()
-        output,err := exec.CommandContext(cmdCtx,proverArgv[0],append(proverArgv,file.Name())...).Output()
-        results <- Result{p.name,output,err}
+        var outBuf,errBuf bytes.Buffer
+        cmd := exec.CommandContext(cmdCtx,proverArgv[0],append(proverArgv[1:],file.Name())...)
+        cmd.Stdout = &outBuf
+        cmd.Stderr = &errBuf
+        err = cmd.Run()
+        results <- Result{p.name,outBuf.Bytes(),err}
         return nil
       }(); err!=nil { return err }
     }
@@ -83,7 +63,7 @@ func run(ctx context.Context, timeout time.Duration, cores int) error {
   proverArgv := os.Args[1:]
   log.Printf("using %v as a prover",proverArgv)
 
-  problems,err := getProblems(ctx)
+  problems,err := problems.GetProblems(ctx)
   if err!=nil { return fmt.Errorf("getProblems(): %v",err) }
 
   problemsChan := make(chan Problem,5)
@@ -112,7 +92,10 @@ func run(ctx context.Context, timeout time.Duration, cores int) error {
       select {
       case <-gCtx.Done(): return nil
       case r := <-resultsChan:
-        if r.err!=nil { errCount++ } else {
+        if r.err!=nil {
+          errCount++
+          //log.Printf("error = %q",r.err)
+        } else {
           lines := strings.Split(strings.TrimSpace(string(r.output)),"\n")
           last := lines[len(lines)-1]
           okCount[last]++

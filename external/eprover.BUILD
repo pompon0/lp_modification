@@ -74,4 +74,5 @@ cc_binary(
   srcs = ["E/PROVER/eprover.c"],
 	copts = COPTS,
 	deps = [":libs"],
+  visibility = ["//visibility:public"],
 )

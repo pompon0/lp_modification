@@ -10,7 +10,10 @@ go_library(
 
 go_binary(
     name = "cnf",
-    data = ["@eprover//:prover_bin"],
+    data = [
+      "@eprover//:prover_bin",
+      "@tptp_parser//:checker",
+    ],
     embed = [":go_default_library"],
     visibility = ["//visibility:public"],
 )

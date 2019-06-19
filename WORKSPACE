@@ -7,6 +7,15 @@ http_archive(
 )
 
 http_archive(
+  name = "lazyparam_prover",
+  strip_prefix = "lazyparam_prover-master",
+  urls = ["https://github.com/pompon0/lazyparam_prover/archive/master.zip"],
+)
+
+load("@lazyparam_prover//:deps.bzl","rules_dependencies")
+rules_dependencies()
+
+http_archive(
     name = "io_bazel_rules_go",
     urls = ["https://github.com/bazelbuild/rules_go/releases/download/0.18.1/rules_go-0.18.1.tar.gz"],
     sha256 = "77dfd303492f2634de7a660445ee2d3de2960cbd52f97d8c0dffa9362d3ddef9",

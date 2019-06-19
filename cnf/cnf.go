@@ -9,6 +9,7 @@ import (
   "strings"
 
   "github.com/pompon0/tptp_benchmark_go/problems"
+  "github.com/pompon0/tptp_benchmark_go/utils"
 )
 
 const eprover_bin_path = "external/eprover/prover_bin"
@@ -24,7 +25,7 @@ func toCNF(ctx context.Context, before map[string][]byte) (map[string][]byte,err
     if _,err := inBuf.Write(v); err!=nil {
       return nil,fmt.Errorf("inBuf(): %v",err)
     }
-    cmd := exec.CommandContext(ctx,eprover_bin_path,"--cnf","-s")
+    cmd := exec.CommandContext(ctx,utils.Runfile(eprover_bin_path),"--cnf","-s")
     cmd.Stdin = &inBuf
     cmd.Stdout = &outBuf
     cmd.Stderr = &errBuf

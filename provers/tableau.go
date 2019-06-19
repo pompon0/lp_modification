@@ -25,6 +25,7 @@ func Tableau(ctx context.Context, cnfProblem *tpb.File) (*tpb.File,error) {
   if err := cmd.Run(); err!=nil {
     return nil,fmt.Errorf("cmd.Run(): %v",err)
   }
+
   cnfProof := &tpb.File{}
   if err:=proto.UnmarshalText(outBuf.String(),cnfProof); err!=nil {
     return nil,fmt.Errorf("proto.UnmarshalText(): %v",err)

@@ -19,6 +19,8 @@ func TestTableau(t *testing.T) {
     if err!=nil { t.Errorf("Tableau(%q): %v",k,err) }
     valid,err := tool.ValidateProof(ctx,cnf,proof)
     if err!=nil { t.Errorf("tool.Validate(%q): %v",k,err) }
-    if !valid { t.Errorf("tool.Validate(%q) = %v",k,valid) }
+    if !valid {
+      t.Errorf("tool.Validate(%q) = %v",k,valid)
+    }
   }
 }

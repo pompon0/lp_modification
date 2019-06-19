@@ -1,11 +1,22 @@
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
+"""
+local_repository(
+  name = "tptp_parser",
+  path = "/home/pompon/github/tptp_parser"
+)
+"""
 http_archive(
   name = "tptp_parser",
   strip_prefix = "tptp_parser-master",
   urls = ["https://github.com/pompon0/tptp_parser/archive/master.zip"],
 )
-
+"""
+local_repository(
+  name = "lazyparam_prover",
+  path = "/home/pompon/github/lazyparam_prover"
+)
+"""
 http_archive(
   name = "lazyparam_prover",
   strip_prefix = "lazyparam_prover-master",

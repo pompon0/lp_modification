@@ -76,6 +76,8 @@ func ValidateProof(ctx context.Context, cnfProblem *tpb.File, cnfProof *tpb.File
   cmd := exec.CommandContext(ctx,utils.Runfile(tool_bin_path),"validate",tmpProblem,tmpProof)
   cmd.Stdout = &outBuf
   cmd.Stderr = &errBuf
-  if err = cmd.Run(); err!=nil { return false,fmt.Errorf("cmd.Run(): %v",err) }
+  if err = cmd.Run(); err!=nil {
+    return false,fmt.Errorf("cmd.Run(): [%v]\n%v",err,errBuf.String())
+  }
   return true,nil
 }

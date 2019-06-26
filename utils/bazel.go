@@ -21,7 +21,7 @@ func RunfilesRoot() string {
   if dir := os.Getenv("RUNFILES_DIR"); dir!="" { return dir }
   wd,err := os.Getwd()
   if err!=nil { log.Fatalf("os.Getwd(): %v",err) }
-  return wd
+  return filepath.Dir(wd)
 }
 
 func ShowRunfiles() {

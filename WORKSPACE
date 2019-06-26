@@ -11,19 +11,8 @@ http_archive(
   strip_prefix = "tptp_parser-master",
   urls = ["https://github.com/pompon0/tptp_parser/archive/master.zip"],
 )
-"""
-local_repository(
-  name = "lazyparam_prover",
-  path = "/home/pompon/github/lazyparam_prover"
-)
-"""
-http_archive(
-  name = "lazyparam_prover",
-  strip_prefix = "lazyparam_prover-master",
-  urls = ["https://github.com/pompon0/lazyparam_prover/archive/master.zip"],
-)
 
-load("@lazyparam_prover//:deps.bzl","rules_dependencies")
+load("//:deps.bzl","rules_dependencies")
 rules_dependencies()
 
 http_archive(
@@ -42,10 +31,16 @@ http_archive(
     name = "eprover",
     urls = [
       "http://wwwlehre.dhbw-stuttgart.de/~sschulz/WORK/E_DOWNLOAD/V_2.3/E.tgz",
-      "https://storage.googleapis.com/tptp/eprover_2_3.tgz"
+      "https://storage.googleapis.com/tptp/eprover_2_3.tgz",
     ],
     sha256 = "5366d2de77e6856250e26a967642389e81a6f823caedccaf5022a09242aceb96",
     build_file = "eprover.BUILD",
+)
+
+http_archive(
+    name = "tptp_sample",
+    urls = ["https://storage.googleapis.com/tptp/tptp_sample.tgz"],
+    build_file = "tptp_sample.BUILD",
 )
 
 load("@io_bazel_rules_go//go:deps.bzl", "go_rules_dependencies", "go_register_toolchains")

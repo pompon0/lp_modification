@@ -12,7 +12,7 @@ import (
   "github.com/pompon0/tptp_benchmark_go/utils"
 )
 
-const eprover_bin_path = "external/eprover/prover_bin"
+const eprover_bin_path = "eprover/prover_bin"
 const output_path = "/tmp/cnf_problem_set.tgz"
 const sample_output_path = "/tmp/cnf_sample.tgz"
 

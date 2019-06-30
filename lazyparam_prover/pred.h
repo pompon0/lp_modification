@@ -54,6 +54,12 @@ public:
     return Term((u64*)term.ptr[ARGS+i],term.var_offset);
   }
   
+  static Fun slow_make(u64 fun, const vec<Term> &args) {
+    Builder b(fun,args.size());
+    for(size_t i=0; i<args.size(); ++i) b.set_arg(i,args[i]);
+    return b.build();
+  }
+
   struct Builder {
   private:
     u64 *ptr;
@@ -70,19 +76,6 @@ public:
     Fun build(){ return Fun(Term(ptr,0)); }
   };
 };
-
-inline bool has_var(Term t, u64 v) {
-  switch(t.type()) {
-  case Term::VAR: return Var(t).id()==v;
-  case Term::FUN: {
-    Fun f(t);
-    for(auto i=f.arg_count(); i--;)
-      if(has_var(f.arg(i),v)) return 1;
-    return 0;
-  }
-  }
-  error("has_var(<type=%>,v",t.type());
-}
 
 struct Atom {
 private:

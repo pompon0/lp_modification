@@ -4,7 +4,7 @@ import (
   "fmt"
   "bytes"
   "os/exec"
-  "os"
+  //"os"
   "context"
 
   "github.com/pompon0/tptp_benchmark_go/utils"
@@ -12,18 +12,18 @@ import (
   "github.com/golang/protobuf/proto"
 )
 
-const tableau_bin_path = "lazyparam_prover/main"
+const tableau_bin_path = "__main__/lazyparam_prover/main"
 
 func Tableau(ctx context.Context, cnfProblem *tpb.File) (*tpb.File,error) {
-  var inBuf,outBuf bytes.Buffer
+  var inBuf,outBuf,errBuf bytes.Buffer
   if _,err := inBuf.WriteString(cnfProblem.String()); err!=nil {
     return nil,fmt.Errorf("inBuf.Write(): %v",err)
   }
   cmd := exec.CommandContext(ctx,utils.Runfile(tableau_bin_path))
   cmd.Stdin = &inBuf
   cmd.Stdout = &outBuf
-  cmd.Stderr = os.Stderr
-  //cmd.Stderr = &errBuf
+  //cmd.Stderr = os.Stderr
+  cmd.Stderr = &errBuf
   if err := cmd.Run(); err!=nil {
     return nil,fmt.Errorf("cmd.Run(): %v",err)
   }

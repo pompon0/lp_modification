@@ -58,7 +58,7 @@ struct SearchState {
   int nodes_limit;
   vec<TabState> tabs;
 
-  void start() {
+  void start() { FRAME("start()");
     for(auto cla : form.or_clauses) {
       // start will all-negative clauses
       bool ok = 1;
@@ -75,7 +75,7 @@ struct SearchState {
     }
   }
 
-  void expand(TabState tab){
+  void expand(TabState tab) { FRAME("expand()");
     if(++tab.nodes_used>nodes_limit) return;
     for(auto cla : form.or_clauses) {
       // allocate vars
@@ -100,7 +100,7 @@ struct SearchState {
     }
   }
 
-  void weak_pred(TabState tab_initial) {
+  void weak_pred(TabState tab_initial) { FRAME("weak_pred()");
     auto b1 = tab_initial.buds.head().branch;
     tab_initial.buds = tab_initial.buds.tail();
     for(auto b2 = b1.tail(); !b2.empty(); b2 = b2.tail()) {
@@ -111,7 +111,8 @@ struct SearchState {
     }
   }
 
-  ptr<Proof> step(){ FRAME("step");
+  ptr<Proof> step(){ FRAME("step()");
+    DEBUG info("step(): tabs.size() = %",tabs.size());
     // pop first tab
     auto tab = tabs.back(); tabs.pop_back();
     // if all branches are closed, then we found a proof
@@ -132,8 +133,7 @@ struct SearchState {
   }
 };
 
-ptr<Proof> prove(OrForm form, size_t limit) {
-  form = append_eq_axioms(form);
+ptr<Proof> prove(OrForm form, size_t limit) { FRAME("prove()");
   SearchState s(form,limit);
   s.start();
   for(size_t steps = 0; s.tabs.size(); steps++) {
@@ -143,7 +143,8 @@ ptr<Proof> prove(OrForm form, size_t limit) {
   return 0;
 }
 
-ptr<Proof> prove_loop(const OrForm &form, size_t limit) {
+ptr<Proof> prove_loop(OrForm form, size_t limit) { FRAME("prove_loop()");
+  form = append_eq_axioms(form);
   for(size_t i=1; i<=limit; ++i) {
     DEBUG info("limit = %",i);
     if(auto proof = prove(form,i)) {

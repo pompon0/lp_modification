@@ -1,4 +1,4 @@
-package provers
+package tableau
 
 import (
   "testing"

@@ -39,8 +39,8 @@ private:
 public:
   Maybe() : present(0) {}
   Maybe(const T &v) : present(1) { new(data)T(v); }
-  explicit operator bool(){ return present; } 
-  T get() {
+  explicit operator bool() const { return present; } 
+  T get() const {
     DEBUG if(!present) error("Maybe::get(): not present");
     return *(T*)data;
   }

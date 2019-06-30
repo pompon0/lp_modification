@@ -117,7 +117,7 @@ func run(ctx context.Context, timeout time.Duration, cores int) error {
 }
 
 func main() {
-  if err := run(context.Background(),10*time.Second,4); err!=nil {
+  if err := run(context.Background(),2*time.Second,4); err!=nil {
     log.Fatalf("%v",err)
   }
 }

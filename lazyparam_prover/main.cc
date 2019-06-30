@@ -1,4 +1,5 @@
-#define DEBUG if(1)
+#define DEBUG if(0)
+//#define VERBOSE 1
 
 #include <iostream>
 #include "lazyparam_prover/tableau.h"

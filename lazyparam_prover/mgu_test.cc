@@ -3,7 +3,7 @@
 #include "lazyparam_prover/mgu.h"
 #include "lazyparam_prover/util/log.h"
 
-TEST(MGU,loop) {
+TEST(MGU,flat_loop) {
   Valuation V;
   auto var0 = Term(Var::make(0));
   auto var1 = Term(Var::make(1));
@@ -15,3 +15,11 @@ TEST(MGU,loop) {
   ASSERT_EQ(V.val[1].get(),var0);
 }
 
+TEST(MGU,nonflat_loop) {
+  Valuation V; V.val.resize(2);
+  Term v0(Var::make(0));
+  Term v1(Var::make(1));
+  u64 f = 0;
+  ASSERT_TRUE(V.mgu(v0,Term(Fun::slow_make(f,{v1}))));
+  ASSERT_FALSE(V.mgu(v1,Term(Fun::slow_make(f,{v0}))));
+}

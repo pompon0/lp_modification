@@ -45,13 +45,23 @@ namespace util
   /** RAII of a stack frame */
   struct Frame
   {
-    template<typename ...Arg> Frame(str format_str, Arg ...arg)
+    bool verbose;
+    str msg;
+    template<typename ...Arg> Frame(bool _verbose, str format_str, Arg ...arg)
     {
-      auto msg = fmt(format_str,arg...); 
-      for(auto *l : Logger::L()) l->log(Logger::PUSH_FRAME,msg);
+      verbose = _verbose;
+      msg = fmt(format_str,arg...); 
+      for(auto *l : Logger::L()) {
+        if(verbose) l->log(Logger::INFO,fmt("% BEGIN",msg));
+        l->log(Logger::PUSH_FRAME,msg);
+      }
     }
-    ~Frame()
-    { for(auto *l : Logger::L()) l->log(Logger::POP_FRAME,""); }
+    ~Frame() {
+      for(auto *l : Logger::L()) {
+        if(verbose) l->log(Logger::INFO,fmt("% END",msg));
+        l->log(Logger::POP_FRAME,"");
+      }
+    }
   };
 
   ///////////////////////////////////////////////////////////////////////

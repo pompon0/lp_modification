@@ -1,4 +1,4 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "go_default_library",
@@ -12,5 +12,17 @@ go_library(
         "//:tptp_go_proto",
         "//utils:go_default_library",
         "@com_github_golang_protobuf//proto:go_default_library",
+    ],
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = ["tableau_test.go"],
+    embed = [":go_default_library"],
+    data = ["@tptp_sample//:problems"],
+    deps = [
+        "//problems:go_default_library",
+        "//tool:go_default_library",
+        "//utils:go_default_library",
     ],
 )

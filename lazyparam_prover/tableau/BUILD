@@ -19,10 +19,8 @@ go_test(
     name = "go_default_test",
     srcs = ["tableau_test.go"],
     embed = [":go_default_library"],
-    data = ["@tptp_sample//:problems"],
     deps = [
         "//problems:go_default_library",
         "//tool:go_default_library",
-        "//utils:go_default_library",
     ],
 )

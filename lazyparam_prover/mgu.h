@@ -10,13 +10,15 @@
 
 struct Valuation {
   // there is NO cycles in valuation, even x -> x
-  vec<Maybe<Term>> val;
+  Array<Maybe<Term>> val;
 
-  OrClause alloc_vars(OrClause cla) {
-    size_t offset = val.size();
-    val.resize(val.size()+cla.var_count);
-    for(auto &a : cla.atoms) a = a.with_offset(offset);
-    return cla;
+  Valuation() : val() {}
+  Valuation(size_t var_count) : val(var_count) {
+    for(size_t i=0; i<var_count; ++i) val[i] = Maybe<Term>();
+  }
+  Valuation(const Valuation &v, size_t var_count) : val(var_count) {
+    size_t x = v.val.size();
+    for(size_t i=0; i<var_count; ++i) val[i] = i<x ? v.val[i] : Maybe<Term>();
   }
 
   inline bool has_var(Term t, u64 v) { FRAME("has_var(%,%)",show(t),v);
@@ -52,12 +54,13 @@ struct Valuation {
         return 1;
       }
     }
-    error("MGU::assign(v,<type=%>)",t.type());
+    error("Valuation::assign(v,<type=%>)",t.type());
     return 0;
   }
 
   // unifies opposite atoms
   inline bool opposite(Atom x, Atom y) { FRAME("opposite()");
+    SCOPE("Valuation::opposite");
     if(x.sign()==y.sign()) return 0;
     if(x.pred()!=y.pred()) return 0;
     DEBUG if(x.arg_count()!=y.arg_count()) error("arg_count() mismatch: %, %",show(x),show(y));
@@ -101,7 +104,7 @@ struct Valuation {
         for(size_t i=0; i<ac; ++i) b.set_arg(i,eval(tf.arg(i)));
         return Term(b.build());
       }
-      default: DEBUG error("unhandled t.type() = %",t.type());
+      default: error("unhandled t.type() = %",t.type());
     }
   }
 

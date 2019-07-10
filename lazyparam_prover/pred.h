@@ -30,6 +30,7 @@ public:
   u64 id(){ return term.ptr[ID]+term.var_offset; }
   
   static Var make(u64 id) {
+    COUNTER("Var::make");
     auto ptr = alloc(SIZE);
     ptr[Term::TYPE] = Term::VAR;
     ptr[ID] = id;
@@ -65,6 +66,7 @@ public:
     u64 *ptr;
   public:
     Builder(u64 _fun, u64 _arg_count) : ptr(alloc(ARGS+_arg_count)) {
+      COUNTER("Fun::Builder");
       ptr[Term::TYPE] = FUN;
       ptr[FUN] = _fun;
       ptr[ARG_COUNT] = _arg_count;
@@ -103,6 +105,7 @@ public:
     u64 *ptr;
   public:
     Builder(bool _sign, u64 _pred, u64 _arg_count, u64 _var_offset) : ptr(alloc(ARGS+_arg_count)) {
+      COUNTER("Atom::Builder");
       ptr[SIGN] = _sign;
       ptr[PRED] = _pred;
       ptr[ARG_COUNT] = _arg_count;
@@ -193,6 +196,11 @@ struct OrClause {
   size_t var_count;
   vec<Atom> atoms;
   AndClause neg() const;
+
+  void shift(size_t offset) {
+    for(auto &a : atoms) a = a.with_offset(offset);
+    var_count += offset;
+  }
 
   bool operator==(const OrClause &cla) const { return atoms==cla.atoms; }
   bool operator!=(const OrClause &cla) const { return !(*this==cla); }

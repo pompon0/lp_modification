@@ -13,7 +13,7 @@ import (
   tpb "github.com/pompon0/tptp_parser/proto/tptp_go_proto"
 )
 
-type Prover func(ctx context.Context, cnfProblem *tpb.File) (cnfProof *tpb.File, err error)
+type Prover func(ctx context.Context, cnfProblem *tpb.File, streamStdErr bool) (cnfProof *tpb.File, err error)
 
 type Problem struct {
   name string
@@ -41,7 +41,7 @@ func worker(
         proverCtx,cancel := context.WithTimeout(ctx,timeout)
         defer cancel()
         err := func() error {
-          cnfProof,err := prover(proverCtx,p.cnfProblem)
+          cnfProof,err := prover(proverCtx,p.cnfProblem,false)
           if err!=nil { return err }
           if _,err := tool.ValidateProof(ctx,p.cnfProblem,cnfProof); err!=nil { return err }
           return nil
@@ -53,22 +53,44 @@ func worker(
   }
 }
 
+func convProblems(ctx context.Context, problems map[string][]byte) (map[string]*tpb.File,error) {
+  cnfProblems := map[string]*tpb.File{}
+  group,gCtx := errgroup.WithContext(ctx)
+  problemsChan := make(chan Problem,5)
+  for name,tptp := range problems {
+    name,tptp := name,tptp
+    group.Go(func() error {
+      fof,err := tool.TptpToProto(ctx,tool.FOF,tptp)
+      if err!=nil { return fmt.Errorf("tool.TptpToProto(%q): %v",name,err) }
+      cnf,err := tool.FOFToCNF(ctx,fof)
+      if err!=nil { return fmt.Errorf("tool.FOFTOCNF(%q): %v",name,err) }
+      problemsChan <- Problem{name,cnf}
+      return nil
+    })
+  }
+  group.Go(func() error {
+    for _,_ = range problems {
+      select {
+      case <-gCtx.Done(): return nil
+      case p := <-problemsChan: cnfProblems[p.name] = p.cnfProblem
+      }
+    }
+    close(problemsChan)
+    return nil
+  })
+  if err := group.Wait(); err!=nil {
+    return nil,fmt.Errorf("group.Wait(); %v",err)
+  }
+  return cnfProblems,nil
+}
+
 func run(ctx context.Context, timeout time.Duration, cores int) error {
   problems,err := problems.GetProblems(ctx)
   if err!=nil { return fmt.Errorf("getProblems(): %v",err) }
   log.Printf("problems downloaded")
 
-  count := 0
-  cnfProblems := map[string]*tpb.File{}
-  for name,tptp := range problems {
-    count++
-    if count==100 { break }
-    fof,err := tool.TptpToProto(ctx,tool.FOF,tptp)
-    if err!=nil { return fmt.Errorf("tool.TptpToProto(%q): %v",name,err) }
-    cnf,err := tool.FOFToCNF(ctx,fof)
-    if err!=nil { return fmt.Errorf("tool.FOFTOCNF(%q): %v",name,err) }
-    cnfProblems[name] = cnf
-  }
+  cnfProblems,err := convProblems(ctx,problems)
+  if err!=nil { return fmt.Errorf("convProblems(): %v",err) }
   log.Printf("problems converted")
 
   problemsChan := make(chan Problem,5)
@@ -117,7 +139,7 @@ func run(ctx context.Context, timeout time.Duration, cores int) error {
 }
 
 func main() {
-  if err := run(context.Background(),2*time.Second,4); err!=nil {
+  if err := run(context.Background(),4*time.Second,4); err!=nil {
     log.Fatalf("%v",err)
   }
 }

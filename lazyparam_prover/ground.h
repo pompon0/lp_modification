@@ -16,7 +16,7 @@ inline Term ground(Term t) {
       for(size_t i=0; i<ac; ++i) b.set_arg(i,ground(tf.arg(i)));
       return Term(b.build());
     }
-    default: DEBUG error("unhandled t.type() = %",t.type());
+    default: error("unhandled t.type() = %",t.type());
   }
 }
 

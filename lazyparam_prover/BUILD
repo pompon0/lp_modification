@@ -4,23 +4,37 @@ cc_proto_library(
 )
 
 cc_library(
+    name = "types",
+    hdrs = ["types.h"],
+)
+
+cc_library(
+    name = "log",
+    hdrs = ["log.h"],
+    srcs = ["log.cc"],
+    deps = [
+        ":types",
+        "//lazyparam_prover/util:util",
+    ],
+)
+
+cc_library(
     name = "prover",
     hdrs = [
         "mgu.h",
         "ground.h",
-        "types.h",
         "alloc.h",
         "pred.h",
         "pred_format.h",
-        "log.h",
         "kbo.h",
-        "stack.h",
         "parse.h",
         "tableau.h",
         "eq_axioms.h",
     ],
     deps = [
         ":tptp_cc_proto",
+        ":log",
+        ":types",
         "//lazyparam_prover/util:util",
         "@com_google_protobuf//:protobuf",
     ],

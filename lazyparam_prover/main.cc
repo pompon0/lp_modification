@@ -1,5 +1,6 @@
-#define DEBUG if(0)
-//#define VERBOSE 1
+//#define DEBUG
+//#define VERBOSE
+#define PROFILE
 
 #include <iostream>
 #include "lazyparam_prover/tableau.h"
@@ -8,7 +9,7 @@
 #include "absl/flags/flag.h"
 #include "absl/flags/parse.h"
 
-ABSL_FLAG(uint64_t,proof_size_limit,200,"maximal size of a proof to search for");
+ABSL_FLAG(uint64_t,proof_size_limit,30,"maximal size of a proof to search for");
 
 StreamLogger _(std::cerr);
 int main(int argc, char **argv) {
@@ -19,6 +20,7 @@ int main(int argc, char **argv) {
   OrForm f(ctx.parse_notAndForm(file_raw));
 
   auto proof = prove_loop(f,absl::GetFlag(FLAGS_proof_size_limit));
+  std::cerr << profile.show(); 
   if(!proof) return 1;
   ProtoCtx pctx(ctx);
   std::cout << pctx.proto_notAndForm(NotAndForm(*proof)).DebugString() << std::endl;

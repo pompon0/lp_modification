@@ -4,11 +4,10 @@
 #include "lazyparam_prover/util/log.h"
 
 TEST(MGU,flat_loop) {
-  Valuation V;
   auto var0 = Term(Var::make(0));
   auto var1 = Term(Var::make(1));
   OrClause cla(2); cla.atoms.push_back(Atom::eq(1,var0,var1));
-  cla = V.alloc_vars(cla);
+  Valuation V(2);
   ASSERT_TRUE(V.mgu(var1,var0));
   ASSERT_TRUE(V.mgu(var0,var1));
   ASSERT_TRUE(!V.val[0]);
@@ -16,7 +15,7 @@ TEST(MGU,flat_loop) {
 }
 
 TEST(MGU,nonflat_loop) {
-  Valuation V; V.val.resize(2);
+  Valuation V(2);
   Term v0(Var::make(0));
   Term v1(Var::make(1));
   u64 f = 0;

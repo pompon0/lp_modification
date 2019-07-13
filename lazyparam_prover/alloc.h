@@ -14,7 +14,7 @@ Snapshot stack{0,0,0};
 
 inline u8* alloc_bytes(size_t s) {
   COUNTER("alloc_bytes");
-  enum { BLOCK = 1<<20 };
+  enum { BLOCK = 1<<22 };
   DEBUG if(s>BLOCK) error("% = s > BLOCK = %",s,BLOCK);
   static vec<u8*> blocks;
   if(stack.begin+s>stack.end){

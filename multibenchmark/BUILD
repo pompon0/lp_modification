@@ -2,20 +2,19 @@ load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
 
 go_library(
     name = "go_default_library",
-    srcs = ["cnf.go"],
-    importpath = "github.com/pompon0/tptp_benchmark_go/cnf",
+    srcs = ["benchmark.go"],
+    importpath = "github.com/pompon0/tptp_benchmark_go/multibenchmark",
     visibility = ["//visibility:private"],
     deps = [
+        "//eprover:go_default_library",
+        "//lazyparam_prover/tableau:go_default_library",
         "//problems:go_default_library",
-        "//utils:go_default_library",
+        "@org_golang_x_sync//errgroup:go_default_library",
     ],
 )
 
 go_binary(
-    name = "cnf",
-    data = [
-        "@eprover//:prover_bin",
-    ],
+    name = "multibenchmark",
     embed = [":go_default_library"],
     visibility = ["//visibility:public"],
 )

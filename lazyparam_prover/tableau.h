@@ -165,6 +165,7 @@ struct SearchState {
       for(size_t i=cla.atom_count(); i--;) {
         // unify strong atom (strong bud)
         TabState tab_strong(tab,clauses_used);
+        COUNTER("expand : clause : strong atom : opposite");
         if(!tab_strong.mgu_state.opposite(branch.head(),cla.atom(i))) continue;
         COUNTER("expand : clause : strong atom : opposite done");
         // Push new weak buds

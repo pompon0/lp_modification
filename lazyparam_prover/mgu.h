@@ -38,13 +38,13 @@ struct Valuation {
 
   inline bool assign(u64 v, Term t) { FRAME("MGU.assign(%,%)",v,show(t));
     DEBUG if(val[v]) error("val[%] is already set",v);
+    // traverse TVar assignments
+    for(Maybe<Term> mtv; t.type()==Term::VAR && (mtv = val[Var(t).id()]); ) t = mtv.get();
     switch(t.type()) {
       case Term::VAR: {
         Var tv(t);
         // break on trivial assignment
         if(tv.id()==v) return 1;
-        // traverse TVar assignments
-        if(auto mtv = val[tv.id()]) return assign(v,mtv.get());
         val[v] = t;
         return 1;
       }
@@ -84,6 +84,7 @@ struct Valuation {
     if(x.type()==Term::VAR) {
       Var xv(x);
       if(auto mx = val[xv.id()]) return mgu(mx.get(),y);
+      SCOPE("Valuation::assign");
       return assign(xv.id(),y);
     }
     error("unhandled case (type %, type %)",x.type(),y.type());

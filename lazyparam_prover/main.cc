@@ -1,6 +1,6 @@
 //#define DEBUG
 //#define VERBOSE
-#define PROFILE
+//#define PROFILE
 
 #include <iostream>
 #include "lazyparam_prover/tableau.h"
@@ -9,7 +9,7 @@
 #include "absl/flags/flag.h"
 #include "absl/flags/parse.h"
 
-ABSL_FLAG(uint64_t,proof_size_limit,34,"maximal size of a proof to search for");
+ABSL_FLAG(uint64_t,proof_size_limit,400,"maximal size of a proof to search for");
 
 StreamLogger _(std::cerr);
 int main(int argc, char **argv) {

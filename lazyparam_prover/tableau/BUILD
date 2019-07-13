@@ -10,6 +10,7 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//:tptp_go_proto",
+        "//tool:go_default_library",
         "//utils:go_default_library",
         "@com_github_golang_protobuf//proto:go_default_library",
     ],

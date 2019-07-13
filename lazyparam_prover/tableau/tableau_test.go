@@ -16,9 +16,9 @@ func TestTableau(t *testing.T) {
     cnf,err := tool.FOFToCNF(ctx,fof)
     if err!=nil { t.Fatalf("tool.FOFToCNF(%q): %v",k,err) }
     proof,err := Tableau(ctx,cnf,true)
-    if err!=nil { t.Errorf("Tableau(%q): %v",k,err) }
+    if err!=nil { t.Fatalf("Tableau(%q): %v",k,err) }
     valid,err := tool.ValidateProof(ctx,cnf,proof)
-    if err!=nil { t.Errorf("tool.Validate(%q): %v",k,err) }
+    if err!=nil { t.Fatalf("tool.Validate(%q): %v",k,err) }
     if !valid {
       t.Errorf("tool.Validate(%q) = %v",k,valid)
     }

@@ -111,15 +111,17 @@ struct Valuation {
   // clears offset
   inline Atom eval(Atom a) { FRAME("eval(%)",show(a));
     size_t ac = a.arg_count();
-    Atom::Builder b(a.sign(),a.pred(),ac,0);
+    Atom::Builder b(a.sign(),a.pred(),ac);
     for(size_t i=ac; i--;) b.set_arg(i,eval(a.arg(i)));
     return b.build();
   }
 
   // clears offset
+  // FIXME: var_count gets invalidated due to evaluation
   inline OrClause eval(OrClause cla) { FRAME("eval(%)",show(cla));
-    for(auto &a : cla.atoms) a = eval(a);
-    return cla;
+    OrClause::Builder b(cla.atom_count(),cla.var_count());
+    for(size_t i=cla.atom_count(); i--;) b.set_atom(i,eval(cla.atom(i)));
+    return b.build();
   }
 
   str DebugString() const {

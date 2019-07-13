@@ -4,9 +4,8 @@
 #include "lazyparam_prover/util/log.h"
 
 TEST(MGU,flat_loop) {
-  auto var0 = Term(Var::make(0));
-  auto var1 = Term(Var::make(1));
-  OrClause cla(2); cla.atoms.push_back(Atom::eq(1,var0,var1));
+  Term var0(Var::make(0));
+  Term var1(Var::make(1));
   Valuation V(2);
   ASSERT_TRUE(V.mgu(var1,var0));
   ASSERT_TRUE(V.mgu(var0,var1));

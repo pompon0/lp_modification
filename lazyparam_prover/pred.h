@@ -81,20 +81,21 @@ public:
 
 struct Atom {
 private:
-  enum { SIGN, PRED, VAR_OFFSET, ARG_COUNT, ARGS };
+  friend struct OrClause;
+  enum { SIGN, PRED, ARG_COUNT, ARGS };
   u64 *ptr;
-  explicit Atom(u64 *_ptr) : ptr(_ptr) {}
+  u64 var_offset;
+  explicit Atom(u64 *_ptr, u64 _var_offset) : ptr(_ptr), var_offset(_var_offset) {}
 public:
   enum { EQ = u64(-1) };
 
   inline bool sign(){ return ptr[SIGN]; }
-  inline u64 pred(){ return ptr[PRED]; }
-  inline u64 arg_count(){ return ptr[ARG_COUNT]; }
-  inline Term arg(size_t i){ return Term((u64*)ptr[ARGS+i],ptr[VAR_OFFSET]); }
-  inline u64 var_offset(){ return ptr[VAR_OFFSET]; }
+  inline u64 pred() const { return ptr[PRED]; }
+  inline u64 arg_count() const { return ptr[ARG_COUNT]; }
+  inline Term arg(size_t i) const { return Term((u64*)ptr[ARGS+i],var_offset); }
 
   static inline Atom eq(bool sign, Term l, Term r) {
-    Builder b(sign,EQ,2,0);
+    Builder b(sign,EQ,2);
     b.set_arg(0,l);
     b.set_arg(1,r);
     return b.build();
@@ -104,46 +105,31 @@ public:
   private:
     u64 *ptr;
   public:
-    Builder(bool _sign, u64 _pred, u64 _arg_count, u64 _var_offset) : ptr(alloc(ARGS+_arg_count)) {
+    Builder(bool _sign, u64 _pred, u64 _arg_count) : ptr(alloc(ARGS+_arg_count)) {
       COUNTER("Atom::Builder");
       ptr[SIGN] = _sign;
       ptr[PRED] = _pred;
       ptr[ARG_COUNT] = _arg_count;
-      ptr[VAR_OFFSET] = _var_offset;
       DEBUG for(size_t i=0; i<_arg_count; ++i) ptr[ARGS+i] = 0;
     }
     inline void set_arg(size_t i, Term a){
-      DEBUG if(a.var_offset!=ptr[VAR_OFFSET]) error("Atom::set_arg(): var_offset = %, want %",a.var_offset,ptr[VAR_OFFSET]);
+      DEBUG if(a.var_offset!=0) error("Atom::set_arg(): var_offset = %, want %",a.var_offset,0);
       ptr[ARGS+i] = (u64)a.ptr;
     }
     inline Atom build(){
       DEBUG for(size_t i=0; i<ptr[ARG_COUNT]; ++i) if(!ptr[ARGS+i]) error("Atom::build() arg(%) not set",i);
-      return Atom(ptr);
+      return Atom(ptr,0);
     }
   };
 
-  Atom neg() {
+  Atom neg() const {
     u64 *end = ptr+ARGS+arg_count();
     u64 *ptr2 = alloc(end-ptr);
     for(auto x = ptr, y = ptr2; x<end;) *y++ = *x++;
     ptr2[SIGN] = !ptr2[SIGN];
-    return Atom(ptr2);
-  }
-
-  Atom with_offset(size_t offset) {
-    u64 *end = ptr+ARGS+arg_count();
-    u64 *ptr2 = alloc(end-ptr);
-    for(auto x = ptr, y = ptr2; x<end;) *y++ = *x++;
-    ptr2[VAR_OFFSET] = offset;
-    return Atom(ptr2);
+    return Atom(ptr2,var_offset);
   }
 };
-
-static_assert(sizeof(u64*)==sizeof(u64));
-static_assert(sizeof(Term)==2*sizeof(u64));
-static_assert(sizeof(Var)==sizeof(Term));
-static_assert(sizeof(Fun)==sizeof(Term));
-static_assert(sizeof(Atom)==sizeof(u64));
 
 //TODO: replace with hash consing
 inline bool operator==(Term x, Term y) {
@@ -192,29 +178,57 @@ struct AndClause {
 };
 
 struct OrClause {
-  OrClause(size_t _var_count = 0) : var_count(_var_count) {}
-  size_t var_count;
-  vec<Atom> atoms;
+private:
+  enum { ATOM_COUNT, VAR_COUNT, ATOMS };
+  u64 *ptr;
+  u64 var_offset;
+  OrClause(u64 *_ptr, u64 _var_offset) : ptr(_ptr), var_offset(_var_offset) {}
+public:
+  size_t var_count() const { return var_offset+ptr[VAR_COUNT]; }
+  size_t atom_count() const { return ptr[ATOM_COUNT]; } 
+  Atom atom(size_t i) const {
+    DEBUG if(i>=atom_count()) error("<atom_count=%>.arg(%)",atom_count(),i);
+    return Atom((u64*)ptr[ATOMS+i],var_offset);
+  }
   AndClause neg() const;
 
-  void shift(size_t offset) {
-    for(auto &a : atoms) a = a.with_offset(offset);
-    var_count += offset;
+  OrClause shift(size_t offset) { FRAME("OrClause::shift()");
+    DEBUG if(var_offset!=0) error("var_offset = %, want %",var_offset,0);
+    return OrClause(ptr,offset);
   }
 
-  bool operator==(const OrClause &cla) const { return atoms==cla.atoms; }
+  struct Builder {
+  private:
+    u64 *ptr;
+  public:
+    Builder(u64 _atom_count, u64 _var_count) : ptr(alloc(ATOMS+_atom_count)) {
+      ptr[VAR_COUNT] = _var_count;
+      ptr[ATOM_COUNT] = _atom_count;
+    }
+    void set_atom(size_t i, Atom a) { FRAME("OrClause.Builder.set_atom()");
+      DEBUG if(a.var_offset) error("a.var_offset = %, want %",a.var_offset,0);
+      ptr[ATOMS+i] = (u64)a.ptr;
+    }
+    OrClause build(){ return OrClause(ptr,0); }
+  };
+
+  bool operator==(const OrClause &cla) const {
+    if(cla.atom_count()!=atom_count()) return 0;
+    for(size_t i=ptr[ATOM_COUNT]; i--;) if(cla.atom(i)!=atom(i)) return 0;
+    return 1;
+  }
   bool operator!=(const OrClause &cla) const { return !(*this==cla); }
 };
 
 inline OrClause AndClause::neg() const {
-  OrClause d(var_count);
-  for(auto a : atoms) d.atoms.push_back(a.neg());
-  return d;
+  OrClause::Builder b(atoms.size(),var_count);
+  for(size_t i=atoms.size(); i--;) b.set_atom(i,atoms[i].neg());
+  return b.build();
 }
 
 inline AndClause OrClause::neg() const {
-  AndClause d(var_count);
-  for(auto a : atoms) d.atoms.push_back(a.neg());
+  AndClause d(var_count());
+  for(size_t i=0; i<atom_count(); ++i) d.atoms.push_back(atom(i).neg());
   return d;
 }
 
@@ -239,5 +253,12 @@ inline OrForm::OrForm(const NotAndForm &f) {
 }
 
 using Proof = OrForm;
+
+static_assert(sizeof(u64*)==sizeof(u64));
+static_assert(sizeof(Term)==2*sizeof(u64));
+static_assert(sizeof(Var)==sizeof(Term));
+static_assert(sizeof(Fun)==sizeof(Term));
+static_assert(sizeof(Atom)==sizeof(Term));
+static_assert(sizeof(OrClause)==sizeof(Term));
 
 #endif // PRED_H_

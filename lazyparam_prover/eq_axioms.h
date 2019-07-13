@@ -10,59 +10,67 @@
 namespace {
 
 OrClause refl_axiom() {
-  OrClause c;
-  Term x(Var::make(c.var_count++));
-  c.atoms = {Atom::eq(true,x,x)};
-  return c;
+  size_t var_count = 0;
+  Term x(Var::make(var_count++));
+  OrClause::Builder b(1,var_count);
+  b.set_atom(0,Atom::eq(true,x,x));
+  return b.build();
 }
 
 OrClause symm_axiom() {
-  OrClause c;
-  Term x(Var::make(c.var_count++));
-  Term y(Var::make(c.var_count++));
-  c.atoms = {Atom::eq(false,x,y),Atom::eq(true,y,x)};
-  return c;
+  size_t var_count = 0;
+  Term x(Var::make(var_count++));
+  Term y(Var::make(var_count++));
+  OrClause::Builder b(2,var_count);
+  b.set_atom(0,Atom::eq(false,x,y));
+  b.set_atom(1,Atom::eq(true,y,x));
+  return b.build();
 }
 
 OrClause trans_axiom() {
-  OrClause c;
-  Term x(Var::make(c.var_count++));
-  Term y(Var::make(c.var_count++));
-  Term z(Var::make(c.var_count++));
-  c.atoms = {Atom::eq(false,x,y),Atom::eq(false,y,z),Atom::eq(true,x,z)};
-  return c;
+  size_t var_count = 0;
+  Term x(Var::make(var_count++));
+  Term y(Var::make(var_count++));
+  Term z(Var::make(var_count++));
+  OrClause::Builder b(3,var_count);
+  b.set_atom(0,Atom::eq(false,x,y));
+  b.set_atom(1,Atom::eq(false,y,z));
+  b.set_atom(2,Atom::eq(true,x,z));
+  return b.build();
 }
 
 
 OrClause cong_pred_axiom(u64 pred_name, u64 arg_count) {
-  OrClause c;
-  Atom::Builder lb(false,pred_name,arg_count,0);
-  Atom::Builder rb(true,pred_name,arg_count,0);
+  size_t var_count = 2*arg_count;
+  Atom::Builder lb(false,pred_name,arg_count);
+  Atom::Builder rb(true,pred_name,arg_count);
+  OrClause::Builder cb(arg_count+2,var_count);
   for(size_t i=0; i<arg_count; ++i) {
-    Term la(Var::make(c.var_count++));
-    Term ra(Var::make(c.var_count++));
-    c.atoms.push_back(Atom::eq(false,la,ra));
+    Term la(Var::make(2*i));
+    Term ra(Var::make(2*i+1));
+    cb.set_atom(i,Atom::eq(false,la,ra));
     lb.set_arg(i,la);
     rb.set_arg(i,ra);
   }
-  c.atoms.push_back(lb.build()); 
-  c.atoms.push_back(rb.build());
-  return c;
+  cb.set_atom(arg_count,lb.build()); 
+  cb.set_atom(arg_count+1,rb.build());
+  return cb.build();
 }
 
 OrClause cong_fun_axiom(u64 fun_name, u64 arg_count) {
-  OrClause c;
+  size_t var_count = 2*arg_count;
   Fun::Builder lb(fun_name,arg_count);
   Fun::Builder rb(fun_name,arg_count);
+  OrClause::Builder cb(arg_count+1,var_count);
   for(size_t i=0; i<arg_count; ++i) {
-    Term la(Var::make(c.var_count++));
-    Term ra(Var::make(c.var_count++));
-    c.atoms.push_back(Atom::eq(false,la,ra));
+    Term la(Var::make(2*i));
+    Term ra(Var::make(2*i+1));
+    cb.set_atom(i,Atom::eq(false,la,ra));
     lb.set_arg(i,la);
     rb.set_arg(i,ra);
   }
-  c.atoms.push_back(Atom::eq(true,Term(lb.build()),Term(rb.build()))); 
-  return c;
+  cb.set_atom(arg_count,Atom::eq(true,Term(lb.build()),Term(rb.build()))); 
+  return cb.build();
 }
 
 struct ArityCtx {
@@ -94,7 +102,7 @@ struct ArityCtx {
     return;
   }
 
-  void traverse(const OrClause &c) { for(auto a : c.atoms) traverse(a); }
+  void traverse(const OrClause &c) { for(size_t i=c.atom_count(); i--;) traverse(c.atom(i)); }
   void traverse(const NotAndForm &f) { for(const auto &c : f.or_clauses) traverse(c); }
 };
 

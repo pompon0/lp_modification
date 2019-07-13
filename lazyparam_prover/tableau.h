@@ -57,14 +57,14 @@ struct TabState {
 
   TabState(const OrClause &cla) :
     snapshot(stack),
-    mgu_state(cla.var_count),
+    mgu_state(cla.var_count()),
     clauses_used(List<OrClause>(cla)),
     nodes_used(1),
     bud_sets(List<BudSet>()) {}
 
   TabState(const TabState &tab, List<OrClause> _clauses_used) :
     snapshot(stack),
-    mgu_state(tab.mgu_state,_clauses_used.head().var_count),
+    mgu_state(tab.mgu_state,_clauses_used.head().var_count()),
     clauses_used(_clauses_used),
     nodes_used(tab.nodes_used),
     bud_sets(tab.bud_sets) {}
@@ -96,12 +96,12 @@ struct SearchState {
     for(auto cla : form.or_clauses) {
       // start will all-negative clauses
       bool ok = 1;
-      for(auto a : cla.atoms) ok &= !a.sign();
+      for(size_t i=cla.atom_count(); i--;) ok &= !cla.atom(i).sign();
       if(!ok) continue;
 
       // allocate vars and push initial buds
       TabState tab(cla);
-      all(tab,Bud{nodes_limit,Branch()},cla.atoms);
+      all(tab,Bud{nodes_limit,Branch()},cla,-1);
     }
   }
 
@@ -132,12 +132,13 @@ struct SearchState {
     return ht;
   }
 
-  void all(const TabState &tab0, Bud bud, const vec<Atom> &atoms) {
+  void all(const TabState &tab0, Bud bud, OrClause cla, ssize_t avoid) {
     tabs.emplace_back(tab0);
-    if(atoms.size()) {
+    size_t branch_count = cla.atom_count()-(avoid>=0);
+    if(branch_count) {
       List<Branch> branches;
-      for(auto &a : atoms) branches += a + bud.branch;
-      tabs.back().bud_sets += BudSet(bud.nodes_limit,atoms.size(),branches);
+      for(ssize_t i=cla.atom_count(); i--;) if(i!=avoid) branches += cla.atom(i) + bud.branch;
+      tabs.back().bud_sets += BudSet(bud.nodes_limit,branch_count,branches);
     }
     tabs.back().snapshot = stack;
   }
@@ -157,18 +158,17 @@ struct SearchState {
     auto branch = bud.branch;
     for(auto cla : form.or_clauses) {
       SCOPE("expand : clause");
-      cla.shift(tab.mgu_state.val.size());
+      cla = cla.shift(tab.mgu_state.val.size());
       auto clauses_used = cla + tab.clauses_used;
       { SCOPE("expand : clause : strong atom");
       // each iteration generates an alternative
-      for(size_t i=0; i<cla.atoms.size(); ++i) {
+      for(size_t i=cla.atom_count(); i--;) {
         // unify strong atom (strong bud)
         TabState tab_strong(tab,clauses_used);
-        if(!tab_strong.mgu_state.opposite(branch.head(),cla.atoms[i])) continue;
+        if(!tab_strong.mgu_state.opposite(branch.head(),cla.atom(i))) continue;
         COUNTER("expand : clause : strong atom : opposite done");
         // Push new weak buds
-        vec<Atom> atoms; for(size_t j=0; j<cla.atoms.size(); ++j) if(j!=i) atoms.push_back(cla.atoms[j]);
-        all(tab_strong,bud,atoms);
+        all(tab_strong,bud,cla,i);
       }
       }
     }

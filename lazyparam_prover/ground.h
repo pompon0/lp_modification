@@ -23,15 +23,16 @@ inline Term ground(Term t) {
 // clears offset
 inline Atom ground(Atom a) {
   size_t ac = a.arg_count();
-  Atom::Builder b(a.sign(),a.pred(),ac,0);
+  Atom::Builder b(a.sign(),a.pred(),ac);
   for(size_t i=ac; i--;) b.set_arg(i,ground(a.arg(i)));
   return b.build();
 }
 
 // clears offset
 inline OrClause ground(OrClause cla) {
-  for(auto &a : cla.atoms) a = ground(a);
-  return cla;
+  OrClause::Builder b(cla.atom_count(),0);
+  for(size_t i=cla.atom_count(); i--;) b.set_atom(i,ground(cla.atom(i)));
+  return b.build();
 }
 
 }

@@ -60,7 +60,7 @@ struct ParseCtx {
       switch(f.pred().type()) {
       case tptp::Formula::Pred::CUSTOM: {
         size_t ac = f.pred().args().size();
-        Atom::Builder b(true,pred_names(f.pred().name()),ac,0);
+        Atom::Builder b(true,pred_names(f.pred().name()),ac);
         for(size_t i=0; i<ac; ++i)
           b.set_arg(i,parse_term(f.pred().args()[i]));
         return b.build();
@@ -82,32 +82,33 @@ struct ParseCtx {
   OrClause parse_orClause(const tptp::Formula &f) {
     FRAME("parse_orClause(%)",f.DebugString());
     var_names.clear();
-    OrClause clause;
+    vec<Atom> atoms;
     switch(f.formula_case()) {
     case tptp::Formula::kOp: {
       switch(f.op().type()) {
         case tptp::Formula::Operator::OR: {
           for(const auto &a : f.op().args())
-            clause.atoms.push_back(parse_atom(a));
+            atoms.push_back(parse_atom(a));
           break;
         }
         case tptp::Formula::Operator::FALSE: break;
         default: {
-          clause.atoms.push_back(parse_atom(f));
+          atoms.push_back(parse_atom(f));
           break;
         }
       }
       break;
     }
     case tptp::Formula::kPred: {
-      clause.atoms.push_back(parse_atom(f));
+      atoms.push_back(parse_atom(f));
       break;
     }
     default:
       error("unexpected f.formula_case() = %",f.formula_case());
     }
-    clause.var_count = var_names.size();
-    return clause;
+    OrClause::Builder b(atoms.size(),var_names.size());
+    for(size_t i=0; i<atoms.size(); ++i) b.set_atom(i,atoms[i]);
+    return b.build();
   }
 
   NotAndForm parse_notAndForm(const tptp::File &file) {
@@ -188,7 +189,7 @@ struct ProtoCtx {
   tptp::Formula proto_orClause(const OrClause &cla) const {
     tptp::Formula f;
     f.mutable_op()->set_type(tptp::Formula::Operator::OR);
-    for(auto a : cla.atoms) *(f.mutable_op()->add_args()) = proto_atom(a);
+    for(size_t i=0; i<cla.atom_count(); ++i) *(f.mutable_op()->add_args()) = proto_atom(cla.atom(i));
     return f;
   }
 

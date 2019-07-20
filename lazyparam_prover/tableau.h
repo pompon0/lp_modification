@@ -150,6 +150,10 @@ struct SearchState {
     tab.snapshot = stack;
   }*/
 
+  //TODO: implement reversible & extendable array
+  //TODO: branch immediately to use a single global valuation
+  //TODO: index clauses by strong atom predicate
+  //TODO: implement custom brand modification
   void expand(TabState tab) { FRAME("expand()");
     // pop first branch
     auto bud = tab.pop_bud();

@@ -113,6 +113,7 @@ OrForm append_eq_axioms(OrForm _f) {
   f.or_clauses.push_back(refl_axiom());
   f.or_clauses.push_back(symm_axiom());
   f.or_clauses.push_back(trans_axiom());
+  //TODO: do not add axioms for funs and pres without args
   for(auto pa : ctx.pred_arity) if(pa.first!=Atom::EQ && pa.second) f.or_clauses.push_back(cong_pred_axiom(pa.first,pa.second));
   for(auto fa : ctx.fun_arity) if(fa.second) f.or_clauses.push_back(cong_fun_axiom(fa.first,fa.second));
   info("f + axioms = \n%",show(OrForm(f)));

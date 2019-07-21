@@ -192,7 +192,7 @@ public:
   }
   AndClause neg() const;
 
-  OrClause shift(size_t offset) { FRAME("OrClause::shift()");
+  OrClause shift(size_t offset) const { FRAME("OrClause::shift()");
     DEBUG if(var_offset!=0) error("var_offset = %, want %",var_offset,0);
     return OrClause(ptr,offset);
   }

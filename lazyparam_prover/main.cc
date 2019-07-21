@@ -1,6 +1,6 @@
 //#define DEBUG
 //#define VERBOSE
-//#define PROFILE
+#define PROFILE
 
 #include <iostream>
 #include "lazyparam_prover/tableau.h"

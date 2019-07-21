@@ -9,17 +9,19 @@
 #include "lazyparam_prover/util/string.h"
 
 struct Valuation {
+private:
   // there is NO cycles in valuation, even x -> x
-  Array<Maybe<Term>> val;
-
-  Valuation() : val() {}
-  Valuation(size_t var_count) : val(var_count) {
-    for(size_t i=0; i<var_count; ++i) val[i] = Maybe<Term>();
+  RewindArray<Term> val;
+public:
+  using Snapshot = RewindArray<Term>::Snapshot;
+  void resize(size_t n){ val.resize(n); }
+  size_t size() const { return val.size(); }
+  Snapshot snapshot(){ return val.snapshot(); }
+  void rewind(Snapshot s){ 
+    val.rewind(s);
+    FRAME("Valuation::rewind(): %",DebugString());
   }
-  Valuation(const Valuation &v, size_t var_count) : val(var_count) {
-    size_t x = v.val.size();
-    for(size_t i=0; i<var_count; ++i) val[i] = i<x ? v.val[i] : Maybe<Term>();
-  }
+  Maybe<Term> operator[](size_t i){ return val[i]; }
 
   inline bool has_var(Term t, u64 v) { FRAME("has_var(%,%)",show(t),v);
     switch(t.type()) {
@@ -45,12 +47,12 @@ struct Valuation {
         Var tv(t);
         // break on trivial assignment
         if(tv.id()==v) return 1;
-        val[v] = t;
+        val.set(v,t);
         return 1;
       }
       case Term::FUN: {
         if(has_var(t,v)) return 0;
-        val[v] = t;
+        val.set(v,t);
         return 1;
       }
     }
@@ -64,8 +66,9 @@ struct Valuation {
     if(x.sign()==y.sign()) return 0;
     if(x.pred()!=y.pred()) return 0;
     DEBUG if(x.arg_count()!=y.arg_count()) error("arg_count() mismatch: %, %",show(x),show(y));
+    auto s = snapshot();
     for(size_t i=x.arg_count(); i--;)
-      if(!mgu(x.arg(i),y.arg(i))) return 0;
+      if(!mgu(x.arg(i),y.arg(i))){ rewind(s); return 0; }
     return 1;
   }
 

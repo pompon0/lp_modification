@@ -10,22 +10,9 @@
 #include "lazyparam_prover/log.h"
 #include "lazyparam_prover/parse.h"
 #include "lazyparam_prover/eq_axioms.h"
+#include "lazyparam_prover/alt.h"
 
 using Branch = List<Atom>;
-
-struct Bud {
-  size_t nodes_limit;
-  Branch branch;
-};
-
-struct BudSet {
-  BudSet(size_t _nodes_limit, size_t _branches_count, List<Branch> _branches) : nodes_limit(_nodes_limit), branches_count(_branches_count), branches(_branches) {
-    //DEBUG if(branches_count!=branches.size()) error("branches_count = %, brances.size() = %",branches_count,branches.size());
-  }
-  size_t nodes_limit;
-  size_t branches_count;
-  List<Branch> branches;
-};
 
 inline str show(Branch b) {
   vec<str> atoms;
@@ -33,7 +20,7 @@ inline str show(Branch b) {
   return util::fmt("[%]",util::join(", ",atoms));
 }
 
-inline str show(List<Bud> buds) {
+/*inline str show(List<Bud> buds) {
   vec<str> branches;
   for(; !buds.empty(); buds = buds.tail()) branches.push_back(show(buds.head().branch)+"\n");
   return util::join("",branches);
@@ -42,191 +29,206 @@ inline str show(List<Bud> buds) {
 inline str show(BudSet bs) {
   vec<str> branches; for(auto b = bs.branches; !b.empty(); b = b.tail()) branches.push_back(show(b.head()));
   return util::fmt("{nodes_limit = %, branches_count = %, branches = [%]",bs.nodes_limit,bs.branches_count,util::join(",",branches));
-}
+}*/
 
 //////////////////////////////////////////
-
-struct Ineq { Term l,r; };
-
-struct TabState {
-  Snapshot snapshot;
-  Valuation mgu_state;
-  List<OrClause> clauses_used;
-  size_t nodes_used = 0;
-  List<BudSet> bud_sets;
-
-  TabState(const OrClause &cla) :
-    snapshot(stack),
-    mgu_state(cla.var_count()),
-    clauses_used(List<OrClause>(cla)),
-    nodes_used(1),
-    bud_sets(List<BudSet>()) {}
-
-  TabState(const TabState &tab, List<OrClause> _clauses_used) :
-    snapshot(stack),
-    mgu_state(tab.mgu_state,_clauses_used.head().var_count()),
-    clauses_used(_clauses_used),
-    nodes_used(tab.nodes_used),
-    bud_sets(tab.bud_sets) {}
-
-  Bud pop_bud() { FRAME("pop_bud()");
-    auto bs = bud_sets.head();
-    DEBUG if(bs.branches_count!=1) error("branches_count = % want %",bs.branches_count,1);
-    bud_sets = bud_sets.tail();
-    return Bud{bs.nodes_limit,bs.branches.head()};
-  }
-};
-
-inline str show(const TabState &tab) {
-  vec<str> bss;
-  for(auto bs = tab.bud_sets; !bs.empty(); bs = bs.tail()) {
-    bss.push_back(util::to_str(bs.head().branches_count));
-  }
-  if(bss.size()) bss[0] = show(tab.bud_sets.head());
-  return util::fmt("{ bud_sets = [%] }", util::join(",",bss));
-}
 
 struct SearchState {
   SearchState(OrForm _form) : form(_form) {}
   
   const NotAndForm form;
-  vec<TabState> tabs;
+  Valuation val;
+  size_t nodes_used = 0;
+  List<OrClause> clauses_used;
 
-  void start(size_t nodes_limit) { FRAME("start()");
-    for(auto cla : form.or_clauses) {
+  ptr<Proof> get_proof() {
+    ptr<Proof> proof(new Proof);
+    for(auto l=clauses_used; !l.empty(); l = l.tail()) {
+      proof->and_clauses.push_back(ground(val.eval(l.head())).neg());
+    }
+    return proof;
+  }
+
+  struct Snapshot {
+    Valuation::Snapshot val;
+    ::Snapshot stack;
+    size_t nodes_used;
+    List<OrClause> clauses_used;
+  };
+
+  void rewind(Snapshot s) {
+    val.rewind(s.val);
+    stack = s.stack;
+    nodes_used = s.nodes_used;
+    clauses_used = s.clauses_used;
+  }
+
+  Snapshot snapshot(){
+    return {val.snapshot(),stack,nodes_used,clauses_used};
+  }
+};
+
+struct Cont { 
+  using State = SearchState;
+ 
+  struct _StartFrame;
+  struct _StrongFrame;
+  struct _WeakSetFrame;
+  struct _WeakFrame;
+  struct _WeakUnifyFrame;
+
+  struct Frame {
+  public:
+    enum Type { START, STRONG, WEAK_SET, WEAK, WEAK_UNIFY };
+    Type type() const { return Type(*LType::at(ptr)); }
+  private:
+    using LType = Lens<size_t,0>;
+    enum { SIZE = LType::END };
+    uint8_t *ptr;
+    explicit Frame(uint8_t *_ptr) : ptr(_ptr) {}
+
+    friend Variant<Frame,START,_StartFrame>;
+    friend Variant<Frame,STRONG,_StrongFrame>;
+    friend Variant<Frame,WEAK_SET,_WeakSetFrame>;
+    friend Variant<Frame,WEAK,_WeakFrame>;
+    friend Variant<Frame,WEAK_UNIFY,_WeakUnifyFrame>;
+  };
+  
+  List<Frame> frames;
+  bool done(){ return frames.empty(); }
+
+  template<typename Alts> void run(State &state, Alts alts) const { FRAME("run");
+    DEBUG if(frames.empty()) error("frames.empty()");
+    auto f = frames.head();
+    switch(f.type()) {
+      case Frame::START: start(state,StartFrame(f),alts); break;
+      case Frame::STRONG: strong(state,StrongFrame(f),alts); break;
+      case Frame::WEAK_SET: weak_set(state,WeakSetFrame(f),alts); break;
+      case Frame::WEAK: weak(state,WeakFrame(f),alts); break;
+      case Frame::WEAK_UNIFY: weak_unify(state,WeakUnifyFrame(f),alts); break;
+      default: error("f.type() = %",f.type());
+    }
+  }
+
+  struct _StartFrame { size_t nodes_limit; };
+  using StartFrame = Variant<Frame,Frame::START,_StartFrame>;
+
+  template<typename Alts> void start(State &state, StartFrame f, Alts alts) const { FRAME("start");
+    for(auto cla : state.form.or_clauses) {
       // start will all-negative clauses
       bool ok = 1;
       for(size_t i=cla.atom_count(); i--;) ok &= !cla.atom(i).sign();
       if(!ok) continue;
-
-      // allocate vars and push initial buds
-      TabState tab(cla);
-      all(tab,Bud{nodes_limit,Branch()},cla,-1);
+      StrongFrame::Builder b;
+      b->nodes_limit = f->nodes_limit;
+      b->branch = Branch();
+      b->cla = cla;
+      b->strong_id = -1;
+      alts(Cont{List<Frame>(Frame(b.build()))});
     }
   }
+  
+  struct _StrongFrame {
+    size_t nodes_limit;
+    Branch branch;
+    OrClause cla;
+    ssize_t strong_id;
+  };
+  using StrongFrame = Variant<Frame,Frame::STRONG,_StrongFrame>;
 
-  TabState pop_tab() { FRAME("pop_tab()");
-    DEBUG if(!tabs.size()) error("!tab.size()");
-    TabState ht = tabs.back();
-    stack = ht.snapshot;
-    if(ht.bud_sets.empty()) return ht;
-    DEBUG if(ht.bud_sets.head().branches_count<1) error("branches_count<1");
-    if(ht.bud_sets.head().branches_count==1){ tabs.pop_back(); return ht; }
-    // if there is more than one branch in the top bud set, we need to break it
-    TabState &tt = tabs.back();
+  template<typename Alts> void strong(State &state, StrongFrame f, Alts alts) const { FRAME("strong(%,%)",show(f->cla),f->strong_id);
+    auto cla = f->cla.shift(state.val.size());
+    // do not use f->cla from now on
+    state.val.resize(cla.var_count());
+    if(f->strong_id>=0 && !state.val.opposite(f->branch.head(),cla.atom(f->strong_id))) return;
+    state.clauses_used = cla + state.clauses_used;
+    size_t branch_count = cla.atom_count()-(f->strong_id>=0);
+    if(!branch_count){ alts(Cont{frames.tail()}); return; }
+    List<Branch> branches;
+    for(ssize_t i=cla.atom_count(); i--;) if(i!=f->strong_id) branches += cla.atom(i) + f->branch;
+    WeakSetFrame::Builder b;
+    b->nodes_limit = f->nodes_limit;
+    b->branch_count = branch_count;
+    b->branches = branches;
+    alts(Cont{Frame(b.build()) + frames.tail()});
+  }
+
+  struct _WeakSetFrame {
+    size_t nodes_limit;
+    size_t branch_count;
+    List<Branch> branches;
+  };
+  using WeakSetFrame = Variant<Frame,Frame::WEAK_SET,_WeakSetFrame>;
+
+  template<typename Alts> void weak_set(State &state, WeakSetFrame f, Alts alts) const { FRAME("weak_set");
+    DEBUG if(!f->branch_count) error("f->branch_count = 0");
+    if(f->branch_count==1){
+      WeakFrame::Builder b;
+      b->nodes_limit = f->nodes_limit;
+      b->branch = f->branches.head();
+      weak(state,b.build(),alts);
+      return;
+    }
     
-    auto bs = ht.bud_sets.head();
-    size_t per_bud = (bs.nodes_limit-ht.nodes_used)/bs.branches_count;
-    if(bs.nodes_limit>ht.nodes_used) { // if there is budget to allocate.
-      tt.bud_sets = 
-          BudSet(bs.nodes_limit-(per_bud+1),bs.branches_count-1,bs.branches.tail())
-        + (BudSet(bs.nodes_limit,1,List<Branch>(bs.branches.head())) + tt.bud_sets.tail());
-      tt.snapshot = stack;
-    } else { // otherwise there is only one option
-      tabs.pop_back();
+    size_t per_bud = (f->nodes_limit-state.nodes_used)/f->branch_count;
+    if(f->nodes_limit>state.nodes_used) { // if there is budget to allocate.
+      WeakSetFrame::Builder wsb;
+      wsb->nodes_limit = f->nodes_limit-(per_bud+1);
+      wsb->branch_count = f->branch_count-1;
+      wsb->branches = f->branches.tail();
+      WeakFrame::Builder wb;
+      wb->nodes_limit = f->nodes_limit;
+      wb->branch = f->branches.head();
+      alts(Cont{Frame(wsb.build()) + (Frame(wb.build()) + frames.tail())});
     }
-    ht.bud_sets =
-        BudSet(ht.nodes_used+per_bud,1,List<Branch>(bs.branches.head()))
-      + (BudSet(bs.nodes_limit,bs.branches_count-1,bs.branches.tail()) + ht.bud_sets.tail());
-    ht.snapshot = stack;
-    return ht;
+    WeakFrame::Builder wb;
+    wb->nodes_limit = state.nodes_used + per_bud;
+    wb->branch = f->branches.head();
+    WeakSetFrame::Builder wsb;
+    wsb->nodes_limit = f->nodes_limit;
+    wsb->branch_count = f->branch_count-1;
+    wsb->branches = f->branches.tail();
+    alts(Cont{Frame(wb.build()) + (Frame(wsb.build()) + frames.tail())});
   }
 
-  void all(const TabState &tab0, Bud bud, OrClause cla, ssize_t avoid) {
-    tabs.emplace_back(tab0);
-    size_t branch_count = cla.atom_count()-(avoid>=0);
-    if(branch_count) {
-      List<Branch> branches;
-      for(ssize_t i=cla.atom_count(); i--;) if(i!=avoid) branches += cla.atom(i) + bud.branch;
-      tabs.back().bud_sets += BudSet(bud.nodes_limit,branch_count,branches);
+  struct _WeakFrame { size_t nodes_limit; Branch branch; };
+  using WeakFrame = Variant<Frame,Frame::WEAK,_WeakFrame>;
+
+  template<typename Alts> void weak(State &state, WeakFrame f, Alts alts) const { FRAME("weak(%)",show(f->branch.head())); 
+    if(state.nodes_used<f->nodes_limit) {
+      state.nodes_used++;
+      for(auto cla : state.form.or_clauses)
+        for(size_t i=cla.atom_count(); i--;) {
+          StrongFrame::Builder b;
+          b->nodes_limit = f->nodes_limit;
+          b->branch = f->branch;
+          b->cla = cla;
+          b->strong_id = i;
+          alts(Cont{Frame(b.build()) + frames.tail()});
+        }
     }
-    tabs.back().snapshot = stack;
-  }
-
-  /*void all(const TabState &tab0, Bud bud, const vec<Atom> &atoms) {
-    tabs.emplace_back(tab0);
-    auto &tab = tabs.back();
-    for(size_t j=0; j<atoms.size(); ++j) tab.buds += Bud{bud.nodes_limit,atoms[j]+bud.branch};
-    tab.snapshot = stack;
-  }*/
-
-  //TODO: implement reversible & extendable array
-  //TODO: branch immediately to use a single global valuation
-  //TODO: index clauses by strong atom predicate
-  //TODO: implement custom brand modification
-  void expand(TabState tab) { FRAME("expand()");
-    // pop first branch
-    auto bud = tab.pop_bud();
-    if(++tab.nodes_used>bud.nodes_limit) return;
-    SCOPE("expand");
-    auto branch = bud.branch;
-    for(auto cla : form.or_clauses) {
-      SCOPE("expand : clause");
-      cla = cla.shift(tab.mgu_state.val.size());
-      auto clauses_used = cla + tab.clauses_used;
-      { SCOPE("expand : clause : strong atom");
-      // each iteration generates an alternative
-      for(size_t i=cla.atom_count(); i--;) {
-        // unify strong atom (strong bud)
-        TabState tab_strong(tab,clauses_used);
-        COUNTER("expand : clause : strong atom : opposite");
-        if(!tab_strong.mgu_state.opposite(branch.head(),cla.atom(i))) continue;
-        COUNTER("expand : clause : strong atom : opposite done");
-        // Push new weak buds
-        all(tab_strong,bud,cla,i);
-      }
-      }
+    for(auto b2 = f->branch.tail(); !b2.empty(); b2 = b2.tail()) {
+      WeakUnifyFrame::Builder b;
+      b->a1 = f->branch.head();
+      b->a2 = b2.head();
+      alts(Cont{Frame(b.build())+frames.tail()});
     }
   }
-
-  void weak_pred(TabState tab_initial) { FRAME("weak_pred()");
-    SCOPE("weak_pred");
-    auto b1 = tab_initial.pop_bud().branch;
-    for(auto b2 = b1.tail(); !b2.empty(); b2 = b2.tail()) {
-      COUNTER("weak_pred::loop: opposite()");
-      auto tab = tab_initial;
-      if(!tab.mgu_state.opposite(b1.head(),b2.head())) continue;
-      tab.snapshot = stack;
-      tabs.push_back(tab);
-    }
-  }
-
-  ptr<Proof> step(){ FRAME("step()");
-    SCOPE("step");
-    //DEBUG info("step(): tabs.size() = %",tabs.size());
-    // pop first tab
-    // DEBUG info("tabs.back() = %",show(tabs.back()));
-    auto tab = pop_tab();
-    //DEBUG info("tab = %",show(tab));
-    // if all branches are closed, then we found a proof
-    if(tab.bud_sets.empty()){
-      ptr<Proof> proof(new Proof);
-      for(auto cl = tab.clauses_used; !cl.empty(); cl = cl.tail())
-        proof->and_clauses.push_back(ground(tab.mgu_state.eval(cl.head())).neg());
-      return proof;
-    }
-    {
-      SCOPE("step : expand");
-      expand(tab);
-    }
-      // try weak closing after expanding, so that the closed variant will be processed first.
-      // weak_pred will work fine with just 1 elem in the branch:
-      // it will just have nothing to match against
-    {
-      SCOPE("step : weak_pred");
-      weak_pred(tab);
-    }
-    return 0;
-  }
+  
+  struct _WeakUnifyFrame { Atom a1,a2; };
+  using WeakUnifyFrame = Variant<Frame,Frame::WEAK_UNIFY,_WeakUnifyFrame>;
+  template<typename Alts> void weak_unify(State &state, WeakUnifyFrame f, Alts &alts) const { FRAME("weak_unify");
+    if(state.val.opposite(f->a1,f->a2)) alts(Cont{frames.tail()}); 
+  }  
 };
 
 ptr<Proof> prove(OrForm form, size_t limit) { FRAME("prove()");
   SCOPE("prove");
   SearchState s(form);
-  s.start(limit);
-  for(size_t steps = 0; s.tabs.size(); steps++) {
-    DEBUG if(steps%1000==0) info("steps = %",steps);
-    if(auto proof = s.step()) return proof;
+  Cont::StartFrame::Builder b;
+  b->nodes_limit = limit;
+  if(alt::search(s,Cont{List<Cont::Frame>(Cont::Frame(b.build()))})) {
+    return s.get_proof();
   }
   return 0;
 }

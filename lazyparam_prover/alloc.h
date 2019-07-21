@@ -44,11 +44,14 @@ private:
   bool present;
 public:
   Maybe() : present(0) {}
-  Maybe(const T &v) : present(1) { new(data)T(v); }
+  explicit Maybe(const T &v) : present(1) { new(data)T(v); }
   explicit operator bool() const { return present; } 
   T get() const {
     DEBUG if(!present) error("Maybe::get(): not present");
     return *(T*)data;
+  }
+  bool operator==(Maybe<T> m) const {
+    return present == m.present && (!present || get()==m.get());
   }
 };
 
@@ -79,6 +82,7 @@ public:
 };
 
 template<typename E> struct Array {
+private:
   size_t size_;
   E *ptr;
   void validate_idx(size_t i) const { if(i>=size_) error("[0..%) [%]",size_,i); }
@@ -89,5 +93,62 @@ public:
   E & operator[](size_t i){ DEBUG validate_idx(i); return ptr[i]; }
   const E & operator[](size_t i) const { DEBUG validate_idx(i); return ptr[i]; }
 };
+
+template<typename E> struct RewindArray {
+private:
+  vec<Maybe<E>> data;
+  vec<size_t> diffs;
+  void validate_idx(size_t i) const { if(i>=data.size()) error("[0..%) [%]",data.size(),i); }
+public:
+  const Maybe<E> operator[](size_t i) const { DEBUG validate_idx(i); return data[i]; }
+  void resize(size_t n){ FRAME("resize(%)",n);
+    DEBUG if(n<data.size()) error("only expanding the array is supported");
+    // downsizing can be supported if we use non-downsizable non-relocable storage.
+    data.resize(n);
+  }
+  size_t size() const { return data.size(); }
+  void set(size_t i, E e){
+    DEBUG validate_idx(i);
+    DEBUG if(data[i]) error("data[%] already set",i);
+    data[i] = Maybe<E>(e);
+    diffs.push_back(i);
+  }
+
+  struct Snapshot { size_t data_size, diffs_size; };
+  Snapshot snapshot(){ return {data.size(),diffs.size()}; }
+  void rewind(Snapshot s){ FRAME("rewind(diffs_size = %, data_size = %)",s.diffs_size,s.data_size);
+    DEBUG if(s.diffs_size>diffs.size()) error("s.diffs_size = % > diffs.size() = %",s.diffs_size,diffs.size());
+    DEBUG if(s.data_size>data.size()) error("s.data_size = % > data.size() = %",s.data_size,data.size());
+    while(diffs.size()>s.diffs_size){ data[diffs.back()] = Maybe<E>(); diffs.pop_back(); }
+    data.resize(s.data_size);
+  }
+};
+
+template<typename T, size_t OFFSET> struct Lens {
+  enum { BEGIN = OFFSET, END = BEGIN+sizeof(T) };
+  static T* at(uint8_t *ptr){ return (T*)(ptr+BEGIN); }
+};
+
+template<typename Sum, size_t V, typename T> struct Variant {
+private:
+  Sum sum;
+  using LValue = Lens<T,Sum::SIZE>;
+  enum { SIZE = LValue::END };
+public:
+  explicit Variant(Sum _sum) : sum(_sum) {
+    DEBUG if(sum.type()!=V) error("type() = %, want %",sum.type(),V);
+  }
+  const T* operator->() const { return LValue::at(sum.ptr); }
+  explicit operator Sum() const { return sum; }
+
+
+  struct Builder {
+    uint8_t *ptr;
+    Builder() : ptr(alloc_bytes(SIZE)) { *Sum::LType::at(ptr) = V; }
+    T* operator->(){ return LValue::at(ptr); }
+    Variant build(){ return Variant(Sum(ptr)); }
+  };
+};
+
 
 #endif // ALLOC_H_

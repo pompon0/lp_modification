@@ -21,6 +21,7 @@ cc_library(
 cc_library(
     name = "prover",
     hdrs = [
+        "alt.h",
         "mgu.h",
         "ground.h",
         "alloc.h",
@@ -37,6 +38,16 @@ cc_library(
         ":types",
         "//lazyparam_prover/util:util",
         "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "alloc_test",
+    srcs = ["alloc_test.cc"],
+    deps = [
+        ":prover",
+        "//lazyparam_prover/util:util",
+        "@gtest//:gtest_main",
     ],
 )
 

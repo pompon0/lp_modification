@@ -14,6 +14,7 @@ struct ExampleCont {
 };
 
 template<typename Cont> bool search(typename Cont::State &state, Cont c) {
+  SCOPE("alt::search");
   struct Alt { Cont cont; typename Cont::State::Snapshot snapshot; };
   List<Alt> alts({c,state.snapshot()});
   for(size_t steps = 0; !alts.empty(); steps++) {

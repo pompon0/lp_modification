@@ -4,7 +4,7 @@ go_library(
     name = "go_default_library",
     srcs = ["tool.go"],
     data = [
-        "@tptp_parser//:checker",
+        "@tptp_parser_bin//:tools",
     ],
     importpath = "github.com/pompon0/tptp_benchmark_go/tool",
     visibility = ["//visibility:public"],

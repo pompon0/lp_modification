@@ -13,6 +13,12 @@ http_archive(
 )
 
 http_archive(
+  name = "tptp_parser_bin",
+  urls = ["https://storage.googleapis.com/tptp/tools.tgz"],
+  build_file = "//:third_party/tptp_parser_bin.BUILD",
+)
+
+http_archive(
   name = "eprover",
   urls = [
     "http://wwwlehre.dhbw-stuttgart.de/~sschulz/WORK/E_DOWNLOAD/V_2.3/E.tgz",

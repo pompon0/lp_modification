@@ -19,7 +19,6 @@ public:
   Snapshot snapshot(){ return val.snapshot(); }
   void rewind(Snapshot s){ 
     val.rewind(s);
-    FRAME("Valuation::rewind(): %",DebugString());
   }
   Maybe<Term> operator[](size_t i){ return val[i]; }
 
@@ -63,12 +62,13 @@ public:
   // unifies opposite atoms
   inline bool opposite(Atom x, Atom y) { FRAME("opposite()");
     SCOPE("Valuation::opposite");
+    //std::cerr << show(eval(x)) << " = " << show(eval(y)) << std::endl;
     if(x.sign()==y.sign()) return 0;
     if(x.pred()!=y.pred()) return 0;
     DEBUG if(x.arg_count()!=y.arg_count()) error("arg_count() mismatch: %, %",show(x),show(y));
-    auto s = snapshot();
     for(size_t i=x.arg_count(); i--;)
-      if(!mgu(x.arg(i),y.arg(i))){ rewind(s); return 0; }
+      if(!mgu(x.arg(i),y.arg(i))) return 0;
+    COUNTER("opposite: ok");
     return 1;
   }
 

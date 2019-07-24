@@ -14,6 +14,7 @@ Snapshot stack{0,0,0};
 
 inline u8* alloc_bytes(size_t s) {
   COUNTER("alloc_bytes");
+  return new u8[s];
   enum { BLOCK = 1<<22 };
   DEBUG if(s>BLOCK) error("% = s > BLOCK = %",s,BLOCK);
   static vec<u8*> blocks;
@@ -97,6 +98,20 @@ public:
 template<typename E> struct RewindArray {
 private:
   vec<Maybe<E>> data;
+public:
+  void validate_idx(size_t i) const { if(i>=data.size()) error("[0..%) [%]",data.size(),i); }
+  const Maybe<E> operator[](size_t i) const { DEBUG validate_idx(i); return data[i]; }
+  void resize(size_t n){ data.resize(n); }
+  size_t size() const { return data.size(); }
+  void set(size_t i, E e){ data[i] = Maybe<E>(e); }
+  struct Snapshot { vec<Maybe<E>> data; };
+  Snapshot snapshot(){ return {data}; }
+  void rewind(const Snapshot &s){ data = s.data; }
+};
+
+/*template<typename E> struct RewindArray {
+private:
+  vec<Maybe<E>> data;
   vec<size_t> diffs;
   void validate_idx(size_t i) const { if(i>=data.size()) error("[0..%) [%]",data.size(),i); }
 public:
@@ -122,7 +137,7 @@ public:
     while(diffs.size()>s.diffs_size){ data[diffs.back()] = Maybe<E>(); diffs.pop_back(); }
     data.resize(s.data_size);
   }
-};
+};*/
 
 template<typename T, size_t OFFSET> struct Lens {
   enum { BEGIN = OFFSET, END = BEGIN+sizeof(T) };

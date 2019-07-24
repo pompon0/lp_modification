@@ -9,6 +9,7 @@ import (
   "github.com/pompon0/tptp_benchmark_go/tool"
   "github.com/pompon0/tptp_benchmark_go/lazyparam_prover/tableau"
   "github.com/pompon0/tptp_benchmark_go/utils"
+  //"github.com/pompon0/tptp_benchmark_go/problems"
 )
 
 func run(ctx context.Context) error {
@@ -16,6 +17,7 @@ func run(ctx context.Context) error {
   k := "tptp_sample/f/t32_funct_1"
   tptp,err := ioutil.ReadFile(utils.Runfile(k))
   if err!=nil { return fmt.Errorf("ioutil.ReadFile(): %v",err) }
+  //tptp := problems.SampleProblems["pelletier24"]
   fof,err := tool.TptpToProto(ctx,tool.FOF,tptp)
   if err!=nil { return fmt.Errorf("tool.TptpToProto(%q): %v",k,err) }
   cnf,err := tool.FOFToCNF(ctx,fof)

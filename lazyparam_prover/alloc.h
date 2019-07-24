@@ -88,6 +88,7 @@ private:
   void validate_idx(size_t i) const { if(i>=size_) error("[0..%) [%]",size_,i); }
 public:
   Array() : size_(0) {}
+  Array(const Array &a) : Array(a.size_) { for(size_t i=0; i<size_; ++i) ptr[i] = a.ptr[i]; }
   Array(size_t _size) : size_(_size), ptr((E*)alloc_bytes(size_*sizeof(E))) {}
   size_t size() const { return size_; }
   E & operator[](size_t i){ DEBUG validate_idx(i); return ptr[i]; }

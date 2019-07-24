@@ -196,6 +196,7 @@ struct Cont {
 
   template<typename Alts> void weak(State &state, WeakFrame f, Alts alts) const { FRAME("weak(%)",show(f->branch.head())); 
     if(state.nodes_used<f->nodes_limit) {
+      COUNTER("expand");
       state.nodes_used++;
       for(auto cla : state.form.or_clauses)
         for(size_t i=cla.atom_count(); i--;) {
@@ -206,6 +207,8 @@ struct Cont {
           b->strong_id = i;
           alts(Cont{Frame(b.build()) + frames.tail()});
         }
+      // WARNING: we are manually rewinding the state here:
+      state.nodes_used--;
     }
     for(auto b2 = f->branch.tail(); !b2.empty(); b2 = b2.tail()) {
       WeakUnifyFrame::Builder b;

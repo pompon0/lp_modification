@@ -24,3 +24,13 @@ TEST(RewindArray,simple) {
   ASSERT_EQ(a[1],Maybe<int>(5));
   ASSERT_EQ(a[2],Maybe<int>());
 }
+
+TEST(Array,copy_constructor) {
+  StreamLogger _(std::cerr);
+  Array<int> a(3);
+  a[1] = 7;
+  auto b = a;
+  b[1] = 9;
+  ASSERT_EQ(a[1],7);
+  ASSERT_EQ(b[1],9);
+}

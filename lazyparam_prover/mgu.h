@@ -45,12 +45,12 @@ struct Valuation {
         Var tv(t);
         // break on trivial assignment
         if(tv.id()==v) return 1;
-        val[v] = t;
+        val[v] = Maybe<Term>(t);
         return 1;
       }
       case Term::FUN: {
         if(has_var(t,v)) return 0;
-        val[v] = t;
+        val[v] = Maybe<Term>(t);
         return 1;
       }
     }

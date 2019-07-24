@@ -41,6 +41,16 @@ cc_library(
 )
 
 cc_test(
+    name = "alloc_test",
+    srcs = ["alloc_test.cc"],
+    deps = [
+        ":prover",
+        "//lazyparam_prover/util:util",
+        "@gtest//:gtest_main",
+    ],
+)
+
+cc_test(
     name = "mgu_test",
     srcs = ["mgu_test.cc"],
     deps = [

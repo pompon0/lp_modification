@@ -8,88 +8,104 @@
 #include "lazyparam_prover/pred_format.h"
 #include "lazyparam_prover/util/string.h"
 
+
 struct Valuation {
+private:
   // there is NO cycles in valuation, even x -> x
   Array<Maybe<Term>> val;
-
+  Valuation(Array<Maybe<Term>> _val) : val(_val) {}
+public:
   Valuation() : val() {}
-  Valuation(size_t var_count) : val(var_count) {
-    for(size_t i=0; i<var_count; ++i) val[i] = Maybe<Term>();
+  Valuation(size_t var_count) {
+    Array<Maybe<Term>>::Builder b(var_count);
+    for(size_t i=0; i<var_count; ++i) b[i] = Maybe<Term>();
+    val = b.build();
   }
-  Valuation(const Valuation &v, size_t var_count) : val(var_count) {
-    size_t x = v.val.size();
-    for(size_t i=0; i<var_count; ++i) val[i] = i<x ? v.val[i] : Maybe<Term>();
-  }
+  size_t size() const { return val.size(); }
 
-  inline bool has_var(Term t, u64 v) { FRAME("has_var(%,%)",show(t),v);
-    switch(t.type()) {
-      case Term::VAR: 
-        if(auto mx = val[Var(t).id()]) return has_var(mx.get(),v);
-        return Var(t).id()==v;
-      case Term::FUN: {
-        Fun f(t);
-        for(auto i=f.arg_count(); i--;)
-          if(has_var(f.arg(i),v)) return 1;
-        return 0;
-      }
+  struct Builder {
+  private:
+    Array<Maybe<Term>>::Builder val;
+  public:
+    Builder(const Valuation &v) : Builder(v,v.size()) {}
+    Builder(const Valuation &v, size_t var_count) : val(var_count) {
+      size_t x = v.size();
+      for(size_t i=0; i<var_count; ++i) val[i] = i<x ? v.val[i] : Maybe<Term>();
     }
-    error("has_var(<type=%>,v",t.type());
-  }
+    Valuation build(){ return Valuation(val.build()); }
 
-  inline bool assign(u64 v, Term t) { FRAME("MGU.assign(%,%)",v,show(t));
-    DEBUG if(val[v]) error("val[%] is already set",v);
-    // traverse TVar assignments
-    for(Maybe<Term> mtv; t.type()==Term::VAR && (mtv = val[Var(t).id()]); ) t = mtv.get();
-    switch(t.type()) {
-      case Term::VAR: {
-        Var tv(t);
-        // break on trivial assignment
-        if(tv.id()==v) return 1;
-        val[v] = Maybe<Term>(t);
-        return 1;
+    Maybe<Term> operator[](size_t i){ return val[i]; }
+
+    inline bool has_var(Term t, u64 v) { FRAME("has_var(%,%)",show(t),v);
+      switch(t.type()) {
+        case Term::VAR: 
+          if(auto mx = val[Var(t).id()]) return has_var(mx.get(),v);
+          return Var(t).id()==v;
+        case Term::FUN: {
+          Fun f(t);
+          for(auto i=f.arg_count(); i--;)
+            if(has_var(f.arg(i),v)) return 1;
+          return 0;
+        }
       }
-      case Term::FUN: {
-        if(has_var(t,v)) return 0;
-        val[v] = Maybe<Term>(t);
-        return 1;
-      }
+      error("has_var(<type=%>,v",t.type());
     }
-    error("Valuation::assign(v,<type=%>)",t.type());
-    return 0;
-  }
 
-  // unifies opposite atoms
-  inline bool opposite(Atom x, Atom y) { FRAME("opposite()");
-    SCOPE("Valuation::opposite");
-    if(x.sign()==y.sign()) return 0;
-    if(x.pred()!=y.pred()) return 0;
-    DEBUG if(x.arg_count()!=y.arg_count()) error("arg_count() mismatch: %, %",show(x),show(y));
-    for(size_t i=x.arg_count(); i--;)
-      if(!mgu(x.arg(i),y.arg(i))) return 0;
-    return 1;
-  }
+    inline bool assign(u64 v, Term t) { FRAME("MGU.assign(%,%)",v,show(t));
+      DEBUG if(val[v]) error("val[%] is already set",v);
+      // traverse TVar assignments
+      for(Maybe<Term> mtv; t.type()==Term::VAR && (mtv = val[Var(t).id()]); ) t = mtv.get();
+      switch(t.type()) {
+        case Term::VAR: {
+          Var tv(t);
+          // break on trivial assignment
+          if(tv.id()==v) return 1;
+          val[v] = Maybe<Term>(t);
+          return 1;
+        }
+        case Term::FUN: {
+          if(has_var(t,v)) return 0;
+          val[v] = Maybe<Term>(t);
+          return 1;
+        }
+      }
+      error("Valuation::assign(v,<type=%>)",t.type());
+      return 0;
+    }
 
-  inline bool mgu(Term x, Term y) { FRAME("mgu(%,%) %",show(x),show(y),DebugString());
-    // TODO: add this iff hash consing is implemented
-    // if(t1==t2) return 1;
-    if(x.type()==Term::FUN && y.type()==Term::FUN) {
-      Fun xf(x), yf(y);
-      if(xf.fun()!=yf.fun()) return 0;
-      auto ac = xf.arg_count();
-      for(size_t i=0; i<ac; ++i)
-        if(!mgu(xf.arg(i),yf.arg(i))) return 0;
+    // unifies opposite atoms
+    inline bool opposite(Atom x, Atom y) { FRAME("opposite()");
+      SCOPE("Valuation::opposite");
+      if(x.sign()==y.sign()) return 0;
+      if(x.pred()!=y.pred()) return 0;
+      DEBUG if(x.arg_count()!=y.arg_count()) error("arg_count() mismatch: %, %",show(x),show(y));
+      for(size_t i=x.arg_count(); i--;)
+        if(!mgu(x.arg(i),y.arg(i))) return 0;
       return 1;
     }
-    if(x.type()!=Term::VAR && y.type()==Term::VAR) swap(x,y);
-    if(x.type()==Term::VAR) {
-      Var xv(x);
-      if(auto mx = val[xv.id()]) return mgu(mx.get(),y);
-      SCOPE("Valuation::assign");
-      return assign(xv.id(),y);
+
+    inline bool mgu(Term x, Term y) { FRAME("mgu(%,%) %",show(x),show(y),build().DebugString());
+      // TODO: add this iff hash consing is implemented
+      // if(t1==t2) return 1;
+      if(x.type()==Term::FUN && y.type()==Term::FUN) {
+        Fun xf(x), yf(y);
+        if(xf.fun()!=yf.fun()) return 0;
+        auto ac = xf.arg_count();
+        for(size_t i=0; i<ac; ++i)
+          if(!mgu(xf.arg(i),yf.arg(i))) return 0;
+        return 1;
+      }
+      if(x.type()!=Term::VAR && y.type()==Term::VAR) swap(x,y);
+      if(x.type()==Term::VAR) {
+        Var xv(x);
+        if(auto mx = val[xv.id()]) return mgu(mx.get(),y);
+        SCOPE("Valuation::assign");
+        return assign(xv.id(),y);
+      }
+      error("unhandled case (type %, type %)",x.type(),y.type());
+      return 0;
     }
-    error("unhandled case (type %, type %)",x.type(),y.type());
-    return 0;
-  }
+  };
 
   // clears offset
   inline Term eval(Term t) { FRAME("eval(%)",show(t));

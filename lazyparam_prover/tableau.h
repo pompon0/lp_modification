@@ -49,40 +49,74 @@ inline str show(BudSet bs) {
 struct Ineq { Term l,r; };
 
 struct TabState {
+private:
+  Valuation valuation_;
+  List<OrClause> clauses_used_;
+  size_t nodes_used_;
+  List<BudSet> bud_sets_;
   Snapshot snapshot;
-  Valuation mgu_state;
-  List<OrClause> clauses_used;
-  size_t nodes_used = 0;
-  List<BudSet> bud_sets;
+public:
+  TabState(OrClause cla) : valuation_(cla.var_count()) {
+    clauses_used_ = List<OrClause>(cla);
+    nodes_used_ = 1;
+    snapshot = stack;
+  }
 
-  TabState(const OrClause &cla) :
-    snapshot(stack),
-    mgu_state(cla.var_count()),
-    clauses_used(List<OrClause>(cla)),
-    nodes_used(1),
-    bud_sets(List<BudSet>()) {}
+  void rewind() const { stack = snapshot; }
 
-  TabState(const TabState &tab, List<OrClause> _clauses_used) :
-    snapshot(stack),
-    mgu_state(tab.mgu_state,_clauses_used.head().var_count()),
-    clauses_used(_clauses_used),
-    nodes_used(tab.nodes_used),
-    bud_sets(tab.bud_sets) {}
+  Valuation valuation() const { return valuation_; }
+  List<OrClause> clauses_used() const { return clauses_used_; }
+  size_t nodes_used() const { return nodes_used_; }
+  List<BudSet> bud_sets() const { return bud_sets_; }
 
-  Bud pop_bud() { FRAME("pop_bud()");
-    auto bs = bud_sets.head();
+  TabState push_clause(OrClause cla) const {
+    TabState t = *this;
+    t.clauses_used_ = cla + clauses_used_;
+    t.nodes_used_ = nodes_used_+1;
+    t.snapshot = stack;
+    return t;
+  }
+
+  TabState push_bud_set(BudSet bs) const {
+    TabState t = *this;
+    t.bud_sets_ += bs;
+    t.snapshot = stack;
+    return t;
+  }
+
+  TabState pop_bud_set() const {
+    TabState t = *this;
+    t.bud_sets_ = t.bud_sets_.tail();
+    return t;
+  }
+
+  TabState set_valuation(Valuation _valuation) const {
+    TabState t = *this;
+    t.valuation_ = _valuation;
+    t.snapshot = stack;
+    return t;
+  }
+
+  Bud top_bud() const {
+    auto bs = bud_sets_.head();
     DEBUG if(bs.branches_count!=1) error("branches_count = % want %",bs.branches_count,1);
-    bud_sets = bud_sets.tail();
     return Bud{bs.nodes_limit,bs.branches.head()};
+  }
+
+  TabState pop_bud() const { FRAME("pop_bud()");
+    top_bud(); // ensure that top bud_set has only one bud
+    TabState t = *this; 
+    t.bud_sets_ = t.bud_sets_.tail();
+    return t;
   }
 };
 
-inline str show(const TabState &tab) {
+inline str show(TabState tab) {
   vec<str> bss;
-  for(auto bs = tab.bud_sets; !bs.empty(); bs = bs.tail()) {
+  for(auto bs = tab.bud_sets(); !bs.empty(); bs = bs.tail()) {
     bss.push_back(util::to_str(bs.head().branches_count));
   }
-  if(bss.size()) bss[0] = show(tab.bud_sets.head());
+  if(bss.size()) bss[0] = show(tab.bud_sets().head());
   return util::fmt("{ bud_sets = [%] }", util::join(",",bss));
 }
 
@@ -100,47 +134,41 @@ struct SearchState {
       if(!ok) continue;
 
       // allocate vars and push initial buds
-      TabState tab(cla);
-      all(tab,Bud{nodes_limit,Branch()},cla,-1);
+      all(TabState(cla),Bud{nodes_limit,Branch()},cla,-1);
     }
   }
 
   TabState pop_tab() { FRAME("pop_tab()");
     DEBUG if(!tabs.size()) error("!tab.size()");
-    TabState ht = tabs.back();
-    stack = ht.snapshot;
-    if(ht.bud_sets.empty()) return ht;
-    DEBUG if(ht.bud_sets.head().branches_count<1) error("branches_count<1");
-    if(ht.bud_sets.head().branches_count==1){ tabs.pop_back(); return ht; }
+    TabState tab = tabs.back(); tabs.pop_back();
+    tab.rewind();
+    if(tab.bud_sets().empty()) return tab;
+    DEBUG if(tab.bud_sets().head().branches_count<1) error("branches_count<1");
+    if(tab.bud_sets().head().branches_count==1) return tab;
     // if there is more than one branch in the top bud set, we need to break it
-    TabState &tt = tabs.back();
+    auto bs = tab.bud_sets().head(); 
+    tab = tab.pop_bud_set();
     
-    auto bs = ht.bud_sets.head();
-    size_t per_bud = (bs.nodes_limit-ht.nodes_used)/bs.branches_count;
-    if(bs.nodes_limit>ht.nodes_used) { // if there is budget to allocate.
-      tt.bud_sets = 
-          BudSet(bs.nodes_limit-(per_bud+1),bs.branches_count-1,bs.branches.tail())
-        + (BudSet(bs.nodes_limit,1,List<Branch>(bs.branches.head())) + tt.bud_sets.tail());
-      tt.snapshot = stack;
-    } else { // otherwise there is only one option
-      tabs.pop_back();
-    }
-    ht.bud_sets =
-        BudSet(ht.nodes_used+per_bud,1,List<Branch>(bs.branches.head()))
-      + (BudSet(bs.nodes_limit,bs.branches_count-1,bs.branches.tail()) + ht.bud_sets.tail());
-    ht.snapshot = stack;
-    return ht;
+    size_t per_bud = (bs.nodes_limit-tab.nodes_used())/bs.branches_count;
+    if(bs.nodes_limit>tab.nodes_used()) { // if there is budget to allocate.
+      tabs.push_back(tab
+        .push_bud_set(BudSet(bs.nodes_limit,1,List<Branch>(bs.branches.head())))
+        .push_bud_set(BudSet(bs.nodes_limit-(per_bud+1),bs.branches_count-1,bs.branches.tail())));
+    } 
+    // otherwise there is only one option
+    return tab
+        .push_bud_set(BudSet(bs.nodes_limit,bs.branches_count-1,bs.branches.tail()))
+        .push_bud_set(BudSet(tab.nodes_used()+per_bud,1,List<Branch>(bs.branches.head())));
   }
 
-  void all(const TabState &tab0, Bud bud, OrClause cla, ssize_t avoid) {
-    tabs.emplace_back(tab0);
+  void all(TabState tab, Bud bud, OrClause cla, ssize_t avoid) {
     size_t branch_count = cla.atom_count()-(avoid>=0);
     if(branch_count) {
       List<Branch> branches;
       for(ssize_t i=cla.atom_count(); i--;) if(i!=avoid) branches += cla.atom(i) + bud.branch;
-      tabs.back().bud_sets += BudSet(bud.nodes_limit,branch_count,branches);
+      tab = tab.push_bud_set(BudSet(bud.nodes_limit,branch_count,branches));
     }
-    tabs.back().snapshot = stack;
+    tabs.push_back(tab);
   }
 
   /*void all(const TabState &tab0, Bud bud, const vec<Atom> &atoms) {
@@ -156,38 +184,37 @@ struct SearchState {
   //TODO: implement custom brand modification
   void expand(TabState tab) { FRAME("expand()");
     // pop first branch
-    auto bud = tab.pop_bud();
-    if(++tab.nodes_used>bud.nodes_limit) return;
+    auto bud = tab.top_bud(); tab = tab.pop_bud();
+    if(tab.nodes_used()>=bud.nodes_limit) return;
     SCOPE("expand");
     auto branch = bud.branch;
     for(auto cla : form.or_clauses) {
       SCOPE("expand : clause");
-      cla = cla.shift(tab.mgu_state.val.size());
-      auto clauses_used = cla + tab.clauses_used;
+      cla = cla.shift(tab.valuation().size());
       { SCOPE("expand : clause : strong atom");
       // each iteration generates an alternative
       for(size_t i=cla.atom_count(); i--;) {
         // unify strong atom (strong bud)
-        TabState tab_strong(tab,clauses_used);
+        Valuation::Builder b(tab.valuation(),cla.var_count());
         COUNTER("expand : clause : strong atom : opposite");
-        if(!tab_strong.mgu_state.opposite(branch.head(),cla.atom(i))) continue;
+        if(!b.opposite(branch.head(),cla.atom(i))) continue;
         COUNTER("expand : clause : strong atom : opposite done");
         // Push new weak buds
-        all(tab_strong,bud,cla,i);
+        all(tab.push_clause(cla).set_valuation(b.build()),bud,cla,i);
       }
       }
     }
   }
 
-  void weak_pred(TabState tab_initial) { FRAME("weak_pred()");
+  void weak_pred(TabState tab) { FRAME("weak_pred()");
     SCOPE("weak_pred");
-    auto b1 = tab_initial.pop_bud().branch;
+    auto b1 = tab.top_bud().branch;
+    tab = tab.pop_bud();
     for(auto b2 = b1.tail(); !b2.empty(); b2 = b2.tail()) {
       COUNTER("weak_pred::loop: opposite()");
-      auto tab = tab_initial;
-      if(!tab.mgu_state.opposite(b1.head(),b2.head())) continue;
-      tab.snapshot = stack;
-      tabs.push_back(tab);
+      Valuation::Builder b(tab.valuation());
+      if(!b.opposite(b1.head(),b2.head())) continue;
+      tabs.push_back(tab.set_valuation(b.build()));
     }
   }
 
@@ -199,10 +226,10 @@ struct SearchState {
     auto tab = pop_tab();
     //DEBUG info("tab = %",show(tab));
     // if all branches are closed, then we found a proof
-    if(tab.bud_sets.empty()){
+    if(tab.bud_sets().empty()){
       ptr<Proof> proof(new Proof);
-      for(auto cl = tab.clauses_used; !cl.empty(); cl = cl.tail())
-        proof->and_clauses.push_back(ground(tab.mgu_state.eval(cl.head())).neg());
+      for(auto cl = tab.clauses_used(); !cl.empty(); cl = cl.tail())
+        proof->and_clauses.push_back(ground(tab.valuation().eval(cl.head())).neg());
       return proof;
     }
     {

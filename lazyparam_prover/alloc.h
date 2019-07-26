@@ -88,12 +88,19 @@ private:
   E *ptr;
   void validate_idx(size_t i) const { if(i>=size_) error("[0..%) [%]",size_,i); }
 public:
-  Array() : size_(0) {}
-  Array(const Array &a) : Array(a.size_) { for(size_t i=0; i<size_; ++i) ptr[i] = a.ptr[i]; }
-  Array(size_t _size) : size_(_size), ptr((E*)alloc_bytes(size_*sizeof(E))) {}
   size_t size() const { return size_; }
-  E & operator[](size_t i){ DEBUG validate_idx(i); return ptr[i]; }
   const E & operator[](size_t i) const { DEBUG validate_idx(i); return ptr[i]; }
+
+  struct Builder {
+    Array a;
+    Builder(size_t size) {
+      a.size_ = size;
+      a.ptr = (E*)alloc_bytes(size*sizeof(E));
+    }
+    E & operator[](size_t i){ DEBUG a.validate_idx(i); return a.ptr[i]; }
+    size_t size() { return a.size(); }
+    Array build() { return a; }
+  };
 };
 
 template<typename E> struct RewindArray {

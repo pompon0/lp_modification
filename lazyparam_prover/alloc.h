@@ -4,27 +4,22 @@
 #include "lazyparam_prover/types.h"
 #include "lazyparam_prover/log.h"
 
+enum { BLOCK = 1<<22 };
+
+u8 block[BLOCK];
+
 struct Snapshot {
-  size_t blocks_used;
-  u8 *begin,*end;
+  //size_t blocks_used;
+  u8 *begin = block; //,*end;
 };
 
 //TODO: zero the memory, when rewinding stack in DEBUG mode.
-Snapshot stack{0,0,0};
+Snapshot stack{};//,0,0};
 
 inline u8* alloc_bytes(size_t s) {
   COUNTER("alloc_bytes");
-  enum { BLOCK = 1<<22 };
   DEBUG if(s>BLOCK) error("% = s > BLOCK = %",s,BLOCK);
-  static vec<u8*> blocks;
-  if(stack.begin+s>stack.end){
-    if(blocks.size()==stack.blocks_used){
-      COUNTER("allocated_blocks");
-      blocks.push_back(new u8[BLOCK]);
-    }
-    stack.begin = blocks[stack.blocks_used++];
-    stack.end = stack.begin+BLOCK;
-  }
+
   auto ptr = stack.begin; stack.begin += s; return ptr;
 }
 
@@ -96,32 +91,36 @@ public:
 };
 
 template<typename E> struct RewindArray {
+  struct Snapshot { size_t data_size, diffs_size; };
 private:
-  vec<Maybe<E>> data;
-  vec<size_t> diffs;
-  void validate_idx(size_t i) const { if(i>=data.size()) error("[0..%) [%]",data.size(),i); }
+  enum { SIZE = 1<<12 };
+  Snapshot ss{0,0};
+  Maybe<E> data[SIZE] = {};
+  size_t diffs[SIZE];
+  void validate_idx(size_t i) const { if(i>=ss.data_size) error("[0..%) [%]",ss.data_size,i); }
+  RewindArray(const RewindArray&) = delete;
 public:
-  const Maybe<E> operator[](size_t i) const { DEBUG validate_idx(i); return data[i]; }
-  void resize(size_t n){ FRAME("resize(%)",n);
-    DEBUG if(n<data.size()) error("only expanding the array is supported");
+  RewindArray(){}
+  inline const Maybe<E> operator[](size_t i) const { DEBUG validate_idx(i); return data[i]; }
+  inline void resize(size_t n){ FRAME("resize(%)",n);
+    DEBUG if(n<ss.data_size) error("only expanding the array is supported");
     // downsizing can be supported if we use non-downsizable non-relocable storage.
-    data.resize(n);
+    ss.data_size = n;
   }
-  size_t size() const { return data.size(); }
-  void set(size_t i, E e){
+  inline size_t size() const { return ss.data_size; }
+  inline void set(size_t i, E e){
     DEBUG validate_idx(i);
     DEBUG if(data[i]) error("data[%] already set",i);
     data[i] = Maybe<E>(e);
-    diffs.push_back(i);
+    diffs[ss.diffs_size++] = i;
   }
 
-  struct Snapshot { size_t data_size, diffs_size; };
-  Snapshot snapshot(){ return {data.size(),diffs.size()}; }
-  void rewind(Snapshot s){ FRAME("rewind(diffs_size = %, data_size = %)",s.diffs_size,s.data_size);
-    DEBUG if(s.diffs_size>diffs.size()) error("s.diffs_size = % > diffs.size() = %",s.diffs_size,diffs.size());
-    DEBUG if(s.data_size>data.size()) error("s.data_size = % > data.size() = %",s.data_size,data.size());
-    while(diffs.size()>s.diffs_size){ data[diffs.back()] = Maybe<E>(); diffs.pop_back(); }
-    data.resize(s.data_size);
+  inline Snapshot snapshot(){ return ss; }
+  inline void rewind(Snapshot s){ FRAME("rewind(diffs_size = %, data_size = %)",s.diffs_size,s.data_size);
+    DEBUG if(s.diffs_size>ss.diffs_size) error("s.diffs_size = % > diffs.size() = %",s.diffs_size,ss.diffs_size);
+    DEBUG if(s.data_size>ss.data_size) error("s.data_size = % > data.size() = %",s.data_size,ss.data_size);
+    while(ss.diffs_size>s.diffs_size) data[diffs[--ss.diffs_size]] = Maybe<E>();
+    ss.data_size = s.data_size;
   }
 };
 

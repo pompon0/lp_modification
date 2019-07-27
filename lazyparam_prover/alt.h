@@ -16,15 +16,18 @@ struct ExampleCont {
 template<typename Cont> bool search(typename Cont::State &state, Cont c) {
   SCOPE("alt::search");
   struct Alt { Cont cont; typename Cont::State::Snapshot snapshot; };
-  List<Alt> alts({c,state.snapshot()});
-  for(size_t steps = 0; !alts.empty(); steps++) {
+  List<Alt> stack({c,state.snapshot()});
+  struct AltStack {
+    typename Cont::State &state;
+    List<Alt> &stack;
+    inline void operator()(Cont cont){ stack += Alt{cont,state.snapshot()}; }
+  };
+  for(size_t steps = 0; !stack.empty(); steps++) {
     DEBUG if(steps%1000==0) info("steps = %",steps);
-    auto a = alts.head(); alts = alts.tail();
+    auto a = stack.head(); stack = stack.tail();
     state.rewind(a.snapshot);
     if(a.cont.done()) return 1;
-    a.cont.run(state,
-      [&alts,&state](Cont cont){ alts = Alt{cont,state.snapshot()} + alts; }
-    );
+    a.cont.run(state,AltStack{state,stack});
   }
   return 0;
 }

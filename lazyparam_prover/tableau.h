@@ -20,17 +20,6 @@ inline str show(Branch b) {
   return util::fmt("[%]",util::join(", ",atoms));
 }
 
-/*inline str show(List<Bud> buds) {
-  vec<str> branches;
-  for(; !buds.empty(); buds = buds.tail()) branches.push_back(show(buds.head().branch)+"\n");
-  return util::join("",branches);
-}
-
-inline str show(BudSet bs) {
-  vec<str> branches; for(auto b = bs.branches; !b.empty(); b = b.tail()) branches.push_back(show(b.head()));
-  return util::fmt("{nodes_limit = %, branches_count = %, branches = [%]",bs.nodes_limit,bs.branches_count,util::join(",",branches));
-}*/
-
 //////////////////////////////////////////
 
 struct SearchState {
@@ -137,6 +126,7 @@ struct Cont {
   using StrongFrame = Variant<Frame,Frame::STRONG,_StrongFrame>;
 
   template<typename Alts> void strong(State &state, StrongFrame f, Alts alts) const { FRAME("strong(%,%)",show(f->cla),f->strong_id);
+    SCOPE("strong");
     auto cla = f->cla.shift(state.val.size());
     // do not use f->cla from now on
     state.val.resize(cla.var_count());
@@ -161,6 +151,7 @@ struct Cont {
   using WeakSetFrame = Variant<Frame,Frame::WEAK_SET,_WeakSetFrame>;
 
   template<typename Alts> void weak_set(State &state, WeakSetFrame f, Alts alts) const { FRAME("weak_set");
+    SCOPE("weak_set");
     DEBUG if(!f->branch_count) error("f->branch_count = 0");
     if(f->branch_count==1){
       WeakFrame::Builder b;
@@ -194,7 +185,8 @@ struct Cont {
   struct _WeakFrame { size_t nodes_limit; Branch branch; };
   using WeakFrame = Variant<Frame,Frame::WEAK,_WeakFrame>;
 
-  template<typename Alts> void weak(State &state, WeakFrame f, Alts alts) const { FRAME("weak(%)",show(f->branch.head())); 
+  template<typename Alts> void weak(State &state, WeakFrame f, Alts alts) const { FRAME("weak(%)",show(f->branch.head()));
+    SCOPE("weak");
     if(state.nodes_used<f->nodes_limit) {
       COUNTER("expand");
       state.nodes_used++;
@@ -214,6 +206,7 @@ struct Cont {
       WeakUnifyFrame::Builder b;
       b->a1 = f->branch.head();
       b->a2 = b2.head();
+      if(b->a1.pred()!=b->a2.pred()) continue; // 16s -> 15s
       alts(Cont{Frame(b.build())+frames.tail()});
     }
   }
@@ -221,6 +214,7 @@ struct Cont {
   struct _WeakUnifyFrame { Atom a1,a2; };
   using WeakUnifyFrame = Variant<Frame,Frame::WEAK_UNIFY,_WeakUnifyFrame>;
   template<typename Alts> void weak_unify(State &state, WeakUnifyFrame f, Alts &alts) const { FRAME("weak_unify");
+    SCOPE("weak_unify");
     if(state.val.opposite(f->a1,f->a2)) alts(Cont{frames.tail()}); 
   }  
 };

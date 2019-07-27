@@ -87,7 +87,7 @@ private:
   u64 var_offset;
   explicit Atom(u64 *_ptr, u64 _var_offset) : ptr(_ptr), var_offset(_var_offset) {}
 public:
-  enum { EQ = u64(-1) };
+  enum { EQ = u64(-1), PRED_MIN = EQ };
 
   inline bool sign(){ return ptr[SIGN]; }
   inline u64 pred() const { return ptr[PRED]; }

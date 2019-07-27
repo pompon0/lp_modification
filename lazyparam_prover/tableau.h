@@ -20,23 +20,13 @@ inline str show(Branch b) {
   return util::fmt("[%]",util::join(", ",atoms));
 }
 
-/*inline str show(List<Bud> buds) {
-  vec<str> branches;
-  for(; !buds.empty(); buds = buds.tail()) branches.push_back(show(buds.head().branch)+"\n");
-  return util::join("",branches);
-}
-
-inline str show(BudSet bs) {
-  vec<str> branches; for(auto b = bs.branches; !b.empty(); b = b.tail()) branches.push_back(show(b.head()));
-  return util::fmt("{nodes_limit = %, branches_count = %, branches = [%]",bs.nodes_limit,bs.branches_count,util::join(",",branches));
-}*/
-
 //////////////////////////////////////////
 
 struct SearchState {
-  SearchState(OrForm _form) : form(_form) {}
-  
-  const NotAndForm form;
+  SearchState(OrForm _form) : form(_form), cla_index(form) {}
+ 
+  NotAndForm form;
+  const Index cla_index;
   Valuation val;
   size_t nodes_used = 0;
   List<OrClause> clauses_used;
@@ -198,19 +188,20 @@ struct Cont {
     if(state.nodes_used<f->nodes_limit) {
       COUNTER("expand");
       state.nodes_used++;
-      for(auto cla : state.form.or_clauses)
-        for(size_t i=cla.atom_count(); i--;) {
-          StrongFrame::Builder b;
-          b->nodes_limit = f->nodes_limit;
-          b->branch = f->branch;
-          b->cla = cla;
-          b->strong_id = i;
-          alts(Cont{Frame(b.build()) + frames.tail()});
-        }
+      for(auto ca : state.cla_index[f->branch.head()]) {
+        StrongFrame::Builder b;
+        b->nodes_limit = f->nodes_limit;
+        b->branch = f->branch;
+        b->cla = ca.cla;
+        b->strong_id = ca.i;
+        alts(Cont{Frame(b.build()) + frames.tail()});
+      }
       // WARNING: we are manually rewinding the state here:
       state.nodes_used--;
     }
+    auto atom_hash = Index::atom_hash(f->branch.head())^1;
     for(auto b2 = f->branch.tail(); !b2.empty(); b2 = b2.tail()) {
+      if(atom_hash!=Index::atom_hash(b2.head())) continue;
       WeakUnifyFrame::Builder b;
       b->a1 = f->branch.head();
       b->a2 = b2.head();

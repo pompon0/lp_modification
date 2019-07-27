@@ -122,4 +122,30 @@ OrForm append_eq_axioms(OrForm _f) {
 
 }
 
+struct Index {
+  struct OrClauseWithAtom { size_t i; OrClause cla; };
+  static size_t atom_hash(Atom a) { return (a.pred()-Atom::PRED_MIN)<<1|a.sign(); }
+private:
+  vec<OrClauseWithAtom> empty;
+  vec<vec<OrClauseWithAtom>> map;
+public:
+  Index(const NotAndForm &f) { FRAME("Index");
+    for(auto cla : f.or_clauses) {
+      DEBUG info("cla.size() = %",cla.atom_count());
+      for(size_t i=0; i<cla.atom_count(); ++i) {
+        DEBUG info("Index i=%",i);
+        auto h = atom_hash(cla.atom(i));
+        if(map.size()<=h) map.resize(h+1);
+        map[h].push_back({i,cla});
+      }
+    }
+  }
+
+  // find all atoms with same pred and opposite sign
+  const vec<OrClauseWithAtom>& operator[](Atom a) const {
+    auto h = atom_hash(a)^1;
+    return h<map.size() ? map[h] : empty;
+  }
+};
+
 #endif  // EQ_AXIOMS_H_

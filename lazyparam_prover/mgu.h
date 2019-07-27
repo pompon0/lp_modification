@@ -60,18 +60,6 @@ public:
     return 0;
   }
 
-  // unifies opposite atoms
-  inline bool opposite(Atom x, Atom y) { FRAME("opposite()");
-    SCOPE("Valuation::opposite");
-    if(x.sign()==y.sign()) return 0;
-    if(x.pred()!=y.pred()) return 0;
-    DEBUG if(x.arg_count()!=y.arg_count()) error("arg_count() mismatch: %, %",show(x),show(y));
-    auto s = snapshot();
-    for(size_t i=x.arg_count(); i--;)
-      if(!mgu(x.arg(i),y.arg(i))){ rewind(s); return 0; }
-    return 1;
-  }
-
   inline bool mgu(Term x, Term y) { FRAME("mgu(%,%) %",show(x),show(y),DebugString());
     // TODO: add this iff hash consing is implemented
     // if(t1==t2) return 1;
@@ -92,6 +80,18 @@ public:
     }
     error("unhandled case (type %, type %)",x.type(),y.type());
     return 0;
+  }
+
+  // unifies opposite atoms
+  inline bool opposite(Atom x, Atom y) { FRAME("opposite()");
+    SCOPE("Valuation::opposite");
+    if(x.sign()==y.sign()) return 0;
+    if(x.pred()!=y.pred()) return 0;
+    DEBUG if(x.arg_count()!=y.arg_count()) error("arg_count() mismatch: %, %",show(x),show(y));
+    auto s = snapshot();
+    for(size_t i=x.arg_count(); i--;)
+      if(!mgu(x.arg(i),y.arg(i))){ rewind(s); return 0; }
+    return 1;
   }
 
   // clears offset

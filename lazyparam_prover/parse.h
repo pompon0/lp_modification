@@ -120,7 +120,8 @@ struct ParseCtx {
       case tptp::Input::AXIOM:
       case tptp::Input::PLAIN:
       case tptp::Input::NEGATED_CONJECTURE: {
-        form.or_clauses.push_back(DerOrClause(parse_orClause(input.formula())));
+        OrClause cla = parse_orClause(input.formula());
+        form.or_clauses.push_back(DerOrClause(cla.atom_count()>1,cla));
         break;
       }
       default:

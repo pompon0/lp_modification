@@ -4,6 +4,7 @@ import (
   "fmt"
   "log"
   "time"
+  "sort"
   "context"
 
   "golang.org/x/sync/errgroup"
@@ -17,7 +18,7 @@ type Prover func(ctx context.Context, cnfProblem *tpb.File, streamStdErr bool) (
 
 type Problem struct {
   name string
-  cnfProblem *tpb.File
+  tptpFOFProblem []byte
 }
 
 type Result struct {
@@ -37,13 +38,15 @@ func worker(
     case <-ctx.Done(): return nil
     case p,ok := <-problems:
       if !ok { return nil }
+      cnfProblem,err := convProblem(ctx,p.tptpFOFProblem)
+      if err!=nil { return fmt.Errorf("convProblem(%q): %v",p.name,err) }
       if err := func() error {
         proverCtx,cancel := context.WithTimeout(ctx,timeout)
         defer cancel()
         err := func() error {
-          cnfProof,err := prover(proverCtx,p.cnfProblem,false)
+          cnfProof,err := prover(proverCtx,cnfProblem,false)
           if err!=nil { return err }
-          if _,err := tool.ValidateProof(ctx,p.cnfProblem,cnfProof); err!=nil { return err }
+          if _,err := tool.ValidateProof(ctx,cnfProblem,cnfProof); err!=nil { return err }
           return nil
         }()
         results <- Result{p.name,err}
@@ -53,55 +56,34 @@ func worker(
   }
 }
 
-func convProblems(ctx context.Context, problems map[string][]byte) (map[string]*tpb.File,error) {
-  cnfProblems := map[string]*tpb.File{}
-  group,gCtx := errgroup.WithContext(ctx)
-  problemsChan := make(chan Problem,5)
-  for name,tptp := range problems {
-    name,tptp := name,tptp
-    group.Go(func() error {
-      fof,err := tool.TptpToProto(ctx,tool.FOF,tptp)
-      if err!=nil { return fmt.Errorf("tool.TptpToProto(%q): %v",name,err) }
-      cnf,err := tool.FOFToCNF(ctx,fof)
-      if err!=nil { return fmt.Errorf("tool.FOFTOCNF(%q): %v",name,err) }
-      problemsChan <- Problem{name,cnf}
-      return nil
-    })
-  }
-  group.Go(func() error {
-    for _,_ = range problems {
-      select {
-      case <-gCtx.Done(): return nil
-      case p := <-problemsChan: cnfProblems[p.name] = p.cnfProblem
-      }
-    }
-    close(problemsChan)
-    return nil
-  })
-  if err := group.Wait(); err!=nil {
-    return nil,fmt.Errorf("group.Wait(); %v",err)
-  }
-  return cnfProblems,nil
+func convProblem(ctx context.Context, tptp []byte) (*tpb.File,error) {
+  fof,err := tool.TptpToProto(ctx,tool.FOF,tptp)
+  if err!=nil { return nil,fmt.Errorf("tool.TptpToProto(): %v",err) }
+  cnf,err := tool.FOFToCNF(ctx,fof)
+  if err!=nil { return nil,fmt.Errorf("tool.FOFTOCNF(): %v",err) }
+  return cnf,nil
 }
 
-func run(ctx context.Context, timeout time.Duration, cores int) error {
+func run(ctx context.Context, timeout time.Duration, cores int, mod int) error {
   problems,err := problems.GetProblems(ctx)
   if err!=nil { return fmt.Errorf("getProblems(): %v",err) }
   log.Printf("problems downloaded")
+  problemsCount := (len(problems)+mod-1)/mod
 
-  cnfProblems,err := convProblems(ctx,problems)
-  if err!=nil { return fmt.Errorf("convProblems(): %v",err) }
-  log.Printf("problems converted")
-
-  problemsChan := make(chan Problem,5)
-  resultsChan := make(chan Result,5)
+  problemsChan := make(chan Problem,16)
+  resultsChan := make(chan Result,16)
   group,gCtx := errgroup.WithContext(ctx)
 
+  var problemNames []string
+  for name,_ := range problems { problemNames = append(problemNames,name) }
+  sort.Strings(problemNames)
+
   group.Go(func() error {
-    for name,cnfProblem := range cnfProblems {
+    for i,name := range problemNames {
+      if i%mod!=0 { continue }
       select {
       case <-gCtx.Done(): return nil
-      case problemsChan <- Problem{name,cnfProblem}:
+      case problemsChan <- Problem{name,problems[name]}:
       }
     }
     close(problemsChan)
@@ -115,7 +97,7 @@ func run(ctx context.Context, timeout time.Duration, cores int) error {
   group.Go(func() error {
     okCount := 0
     errCount := 0
-    for i:=0; i<len(problems); i++ {
+    for i:=0; i<problemsCount; i++ {
       select {
       case <-gCtx.Done(): return nil
       case r := <-resultsChan:
@@ -125,7 +107,7 @@ func run(ctx context.Context, timeout time.Duration, cores int) error {
         } else {
           okCount++
         }
-        log.Printf("done %v/%v err=%v ok=%v",i+1,len(cnfProblems),errCount,okCount)
+        log.Printf("done %v/%v err=%v ok=%v",i+1,problemsCount,errCount,okCount)
       }
     }
     return nil
@@ -139,7 +121,7 @@ func run(ctx context.Context, timeout time.Duration, cores int) error {
 }
 
 func main() {
-  if err := run(context.Background(),4*time.Second,4); err!=nil {
+  if err := run(context.Background(),4*time.Second,4,1); err!=nil {
     log.Fatalf("%v",err)
   }
 }

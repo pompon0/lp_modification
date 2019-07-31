@@ -24,7 +24,7 @@ int main(int argc, char **argv) {
   if(!proof) return 1;
   ProtoCtx pctx(ctx);
   OrForm proof_form;
-  for(auto cla : proof->source) proof_form.and_clauses.push_back(DerAndClause(cla));
+  for(auto cla : proof->source) proof_form.and_clauses.push_back(DerAndClause(1,cla));
   std::cout << pctx.proto_notAndForm(NotAndForm(proof_form)).DebugString() << std::endl;
   return 0;
 }

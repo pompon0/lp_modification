@@ -14,7 +14,7 @@ DerOrClause refl_axiom() {
   Term x(Var::make(var_count++));
   OrClause::Builder b(1,var_count);
   b.set_atom(0,Atom::eq(true,x,x));
-  return DerOrClause(b.build());
+  return DerOrClause(0,b.build());
 }
 
 DerOrClause symm_axiom() {
@@ -24,7 +24,7 @@ DerOrClause symm_axiom() {
   OrClause::Builder b(2,var_count);
   b.set_atom(0,Atom::eq(false,x,y));
   b.set_atom(1,Atom::eq(true,y,x));
-  return DerOrClause(b.build());
+  return DerOrClause(1,b.build());
 }
 
 DerOrClause trans_axiom() {
@@ -36,7 +36,7 @@ DerOrClause trans_axiom() {
   b.set_atom(0,Atom::eq(false,x,y));
   b.set_atom(1,Atom::eq(false,y,z));
   b.set_atom(2,Atom::eq(true,x,z));
-  return DerOrClause(b.build());
+  return DerOrClause(3,b.build());
 }
 
 
@@ -54,7 +54,7 @@ DerOrClause cong_pred_axiom(u64 pred_name, u64 arg_count) {
   }
   cb.set_atom(arg_count,lb.build()); 
   cb.set_atom(arg_count+1,rb.build());
-  return DerOrClause(cb.build());
+  return DerOrClause(3,cb.build());
 }
 
 DerOrClause cong_fun_axiom(u64 fun_name, u64 arg_count) {
@@ -70,7 +70,7 @@ DerOrClause cong_fun_axiom(u64 fun_name, u64 arg_count) {
     rb.set_arg(i,ra);
   }
   cb.set_atom(arg_count,Atom::eq(true,Term(lb.build()),Term(rb.build()))); 
-  return DerOrClause(cb.build());
+  return DerOrClause(3,cb.build());
 }
 
 struct ArityCtx {
@@ -260,7 +260,7 @@ struct Index {
   static size_t atom_hash(Atom a) { return (a.pred()-Atom::PRED_MIN)<<1|a.sign(); }
 private:
   vec<OrClauseWithAtom> empty;
-  vec<vec<OrClauseWithAtom>> map;
+  vec<vec<vec<OrClauseWithAtom>>> map; // atom -> cost -> OrClauseWithAtom
 public:
   Index(const NotAndForm &f) { FRAME("Index");
     for(auto cla : f.or_clauses) {
@@ -268,16 +268,17 @@ public:
       for(size_t i=0; i<cla.derived().atom_count(); ++i) {
         DEBUG info("Index i=%",i);
         auto h = atom_hash(cla.derived().atom(i));
-        if(map.size()<=h) map.resize(h+1);
-        map[h].push_back({i,cla});
+        if(map.size()<=h) map.resize(h+1,{{}});
+        if(map[h].size()<=cla.cost()) map[h].resize(cla.cost()+1,map[h].back());
+        for(size_t cc=cla.cost(); cc<map[h].size(); ++cc) map[h][cc].push_back({i,cla});
       }
     }
   }
 
   // find all atoms with same pred and opposite sign
-  const vec<OrClauseWithAtom>& operator[](Atom a) const {
+  const vec<OrClauseWithAtom>& operator()(Atom a, size_t max_cost) const {
     auto h = atom_hash(a)^1;
-    return h<map.size() ? map[h] : empty;
+    return h>=map.size() ? empty : max_cost<map[h].size() ? map[h][max_cost] : map[h].back();
   }
 };
 

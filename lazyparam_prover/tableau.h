@@ -131,6 +131,7 @@ struct Cont {
 
   template<typename Alts> void strong(State &state, StrongFrame f, Alts alts) const { FRAME("strong(%,%)",show(f->cla),f->strong_id);
     auto dcla = f->dcla.shift(state.val.size());
+    state.nodes_used += dcla.cost();
     auto cla = dcla.derived();
     // do not use f->cla from now on
     state.val.resize(cla.var_count());
@@ -189,23 +190,15 @@ struct Cont {
   using WeakFrame = Variant<Frame,Frame::WEAK,_WeakFrame>;
 
   template<typename Alts> void weak(State &state, WeakFrame f, Alts alts) const { FRAME("weak(%)",show(f->branch.head())); 
-    //if(state.nodes_used<f->nodes_limit) {
-    {
-      bool budget = state.nodes_used<f->nodes_limit;
-      COUNTER("expand");
-      for(auto ca : state.cla_index[f->branch.head()]) {
-        bool single_atom = ca.cla.derived().atom_count()==1;
-        if(!budget && !single_atom) continue;
-        if(!single_atom) state.nodes_used++;
-        StrongFrame::Builder b;
-        b->nodes_limit = f->nodes_limit;
-        b->branch = f->branch;
-        b->dcla = ca.cla;
-        b->strong_id = ca.i;
-        alts(Cont{Frame(b.build()) + frames.tail()});
-        // WARNING: we are manually rewinding the state here:
-        if(!single_atom) state.nodes_used--;
-      }
+    size_t budget = f->nodes_limit - state.nodes_used;
+    COUNTER("expand");
+    for(auto ca : state.cla_index(f->branch.head(),budget)) {
+      StrongFrame::Builder b;
+      b->nodes_limit = f->nodes_limit;
+      b->branch = f->branch;
+      b->dcla = ca.cla;
+      b->strong_id = ca.i;
+      alts(Cont{Frame(b.build()) + frames.tail()});
     }
     auto atom_hash = Index::atom_hash(f->branch.head())^1;
     for(auto b2 = f->branch.tail(); !b2.empty(); b2 = b2.tail()) {

@@ -12,6 +12,7 @@ import (
   "github.com/pompon0/tptp_benchmark_go/problems"
   "github.com/pompon0/tptp_benchmark_go/lazyparam_prover/tableau"
   "github.com/pompon0/tptp_benchmark_go/eprover"
+  "github.com/pompon0/tptp_benchmark_go/leancop"
 )
 
 type Prover func(ctx context.Context, fofProblem []byte) error
@@ -19,6 +20,7 @@ type Prover func(ctx context.Context, fofProblem []byte) error
 var provers = []struct { name string; prover Prover } {
   {"tableau", tableau.Prove},
   {"eprover", eprover.Prove},
+  {"leancop", leancop.Prove},
 }
 
 type Problem struct {

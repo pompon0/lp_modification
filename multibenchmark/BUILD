@@ -8,6 +8,7 @@ go_library(
     deps = [
         "//eprover:go_default_library",
         "//lazyparam_prover/tableau:go_default_library",
+        "//leancop:go_default_library",
         "//problems:go_default_library",
         "@org_golang_x_sync//errgroup:go_default_library",
     ],

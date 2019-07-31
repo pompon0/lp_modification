@@ -14,9 +14,9 @@ import (
 const eproverBinPath = "eprover/prover_bin"
 const resultOk = "# SZS status Theorem"
 
-func Prove(ctx context.Context, cnfProblem []byte) error {
+func Prove(ctx context.Context, tptpFOFProblem []byte) error {
   var inBuf,outBuf,errBuf bytes.Buffer
-  if _,err := inBuf.Write(cnfProblem); err!=nil {
+  if _,err := inBuf.Write(tptpFOFProblem); err!=nil {
     return fmt.Errorf("inBuf.Write(): %v",err)
   }
 

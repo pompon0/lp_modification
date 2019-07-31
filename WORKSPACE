@@ -30,7 +30,7 @@ http_archive(
 
 http_archive(
     name = "leancop",
-    urls = ["https://storage.googleapis.com/tptp/leancop.tgz"],
+    urls = ["https://storage.googleapis.com/tptp/leancop_bin.tgz"],
     build_file = "//:third_party/leancop.BUILD",
 )
 

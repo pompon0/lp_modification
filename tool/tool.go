@@ -20,7 +20,7 @@ type Language string
 const FOF Language = "fof"
 const CNF Language = "cnf"
 
-func writeTmp(data []byte) (path string, cleanup func(), err error) {
+func WriteTmp(data []byte) (path string, cleanup func(), err error) {
   tmpFile,err := ioutil.TempFile("",tmp_prefix)
   if err!=nil { return "",nil,fmt.Errorf("ioutil.TempFile(): %v",err) }
   if _,err := tmpFile.Write(data); err!=nil { return "",nil,fmt.Errorf("tmpFile.WriteString(): %v",err) }
@@ -28,8 +28,8 @@ func writeTmp(data []byte) (path string, cleanup func(), err error) {
 }
 
 func TptpToProto(ctx context.Context, lang Language, tptp []byte) (*tpb.File,error) {
-  tmp,cleanup,err := writeTmp(tptp)
-  if err!=nil { return nil,fmt.Errorf("writeTmp(): %v",err) }
+  tmp,cleanup,err := WriteTmp(tptp)
+  if err!=nil { return nil,fmt.Errorf("WriteTmp(): %v",err) }
   defer cleanup()
 
   var outBuf,errBuf bytes.Buffer
@@ -46,8 +46,8 @@ func TptpToProto(ctx context.Context, lang Language, tptp []byte) (*tpb.File,err
 }
 
 func FOFToCNF(ctx context.Context, fof *tpb.File) (*tpb.File,error) {
-  tmp,cleanup,err := writeTmp([]byte(fof.String()))
-  if err!=nil { return nil,fmt.Errorf("writeTmp(): %v",err) }
+  tmp,cleanup,err := WriteTmp([]byte(fof.String()))
+  if err!=nil { return nil,fmt.Errorf("WriteTmp(): %v",err) }
   defer cleanup()
 
   var outBuf,errBuf bytes.Buffer
@@ -64,12 +64,12 @@ func FOFToCNF(ctx context.Context, fof *tpb.File) (*tpb.File,error) {
 }
 
 func ValidateProof(ctx context.Context, cnfProblem *tpb.File, cnfProof *tpb.File) (bool,error) {
-  tmpProblem,cleanup,err := writeTmp([]byte(cnfProblem.String()))
-  if err!=nil { return false,fmt.Errorf("writeTmp(): %v",err) }
+  tmpProblem,cleanup,err := WriteTmp([]byte(cnfProblem.String()))
+  if err!=nil { return false,fmt.Errorf("WriteTmp(): %v",err) }
   defer cleanup()
 
-  tmpProof,cleanup,err := writeTmp([]byte(cnfProof.String()))
-  if err!=nil { return false,fmt.Errorf("writeTmp(): %v",err) }
+  tmpProof,cleanup,err := WriteTmp([]byte(cnfProof.String()))
+  if err!=nil { return false,fmt.Errorf("WriteTmp(): %v",err) }
   defer cleanup()
 
   var outBuf,errBuf bytes.Buffer

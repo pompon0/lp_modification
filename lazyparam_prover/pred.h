@@ -232,14 +232,60 @@ inline AndClause OrClause::neg() const {
   return d;
 }
 
+struct DerAndClause;
+struct DerOrClause;
+
+struct DerAndClause {
+  DerAndClause(){}
+  explicit DerAndClause(AndClause cla) : derived(cla), source{cla} {}
+  AndClause derived;
+  vec<AndClause> source;
+  DerOrClause neg() const;
+};
+
+struct DerOrClause {
+  explicit DerOrClause(OrClause cla) : DerOrClause(cla,List<OrClause>(cla)) {}
+  DerOrClause(OrClause _derived, List<OrClause> _source) : DerOrClause(0,_derived,_source) {}
+  DerAndClause neg() const;
+  DerOrClause shift(size_t _offset) const {
+    DEBUG if(offset_) error("offset = %, want %",offset_,0);
+    return DerOrClause(_offset,derived_,source_);
+  }
+  OrClause derived() const { return derived_.shift(offset_); }
+  vec<OrClause> source() const {
+    vec<OrClause> s; for(auto l=source_; !l.empty(); l = l.tail()) s.push_back(l.head().shift(offset_));
+    return s;
+  }
+private:
+  DerOrClause(size_t _offset, OrClause _derived, List<OrClause> _source) : offset_(_offset), derived_(_derived), source_(_source) {}
+  size_t offset_;
+  OrClause derived_;
+  List<OrClause> source_;
+};
+
+DerOrClause DerAndClause::neg() const {
+  List<OrClause> source_neg;
+  for(const auto &c : source) source_neg += c.neg();
+  return DerOrClause(derived.neg(),source_neg);
+}
+
+DerAndClause DerOrClause::neg() const {
+  DerAndClause cla;
+  cla.derived = derived().neg();
+  for(auto c : source()) {
+    cla.source.push_back(c.neg());
+  }
+  return cla;
+}
+
 struct OrForm {
-  vec<AndClause> and_clauses;
+  vec<DerAndClause> and_clauses;
   OrForm(){}
   explicit OrForm(const NotAndForm &);
 };
 
 struct NotAndForm {
-  vec<OrClause> or_clauses;
+  vec<DerOrClause> or_clauses;
   NotAndForm(){}
   explicit NotAndForm(const OrForm &);
 };
@@ -252,7 +298,7 @@ inline OrForm::OrForm(const NotAndForm &f) {
   for(const auto &c : f.or_clauses) and_clauses.push_back(c.neg());
 }
 
-using Proof = OrForm;
+using Proof = DerAndClause;
 
 static_assert(sizeof(u64*)==sizeof(u64));
 static_assert(sizeof(Term)==2*sizeof(u64));

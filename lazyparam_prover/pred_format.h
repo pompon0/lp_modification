@@ -41,6 +41,13 @@ str show(const AndClause &andClause) {
   return util::join(" /\\ ",atoms);
 }
 
+str show(const DerAndClause &cla) {
+  vec<str> source;
+  for(auto c : cla.source) source.push_back(show(c));
+  return util::fmt("%   [%]",show(cla.derived),util::join(", ",source));
+}
+str show(const DerOrClause &cla) { return show(cla.derived()); }
+
 str show(const NotAndForm &f) {
   vec<str> clauses;
   for(auto c : f.or_clauses) clauses.push_back(show(c) + "\n");

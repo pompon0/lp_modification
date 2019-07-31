@@ -29,12 +29,14 @@ struct SearchState {
   const Index cla_index;
   Valuation val;
   size_t nodes_used = 0;
-  List<OrClause> clauses_used;
+  List<DerOrClause> clauses_used;
 
   ptr<Proof> get_proof() {
     ptr<Proof> proof(new Proof);
     for(auto l=clauses_used; !l.empty(); l = l.tail()) {
-      proof->and_clauses.push_back(ground(val.eval(l.head())).neg());
+      for(auto cla : l.head().source()) {
+        proof->source.push_back(ground(val.eval(cla)).neg());
+      }
     }
     return proof;
   }
@@ -43,7 +45,7 @@ struct SearchState {
     Valuation::Snapshot val;
     ::Snapshot stack;
     size_t nodes_used;
-    List<OrClause> clauses_used;
+    List<DerOrClause> clauses_used;
   };
 
   void rewind(Snapshot s) {
@@ -104,7 +106,8 @@ struct Cont {
   using StartFrame = Variant<Frame,Frame::START,_StartFrame>;
 
   template<typename Alts> void start(State &state, StartFrame f, Alts alts) const { FRAME("start");
-    for(auto cla : state.form.or_clauses) {
+    for(auto dcla : state.form.or_clauses) {
+      OrClause cla = dcla.derived();
       // start will all-negative clauses
       bool ok = 1;
       for(size_t i=cla.atom_count(); i--;) ok &= !cla.atom(i).sign();
@@ -112,7 +115,7 @@ struct Cont {
       StrongFrame::Builder b;
       b->nodes_limit = f->nodes_limit;
       b->branch = Branch();
-      b->cla = cla;
+      b->dcla = dcla;
       b->strong_id = -1;
       alts(Cont{List<Frame>(Frame(b.build()))});
     }
@@ -121,17 +124,18 @@ struct Cont {
   struct _StrongFrame {
     size_t nodes_limit;
     Branch branch;
-    OrClause cla;
+    DerOrClause dcla;
     ssize_t strong_id;
   };
   using StrongFrame = Variant<Frame,Frame::STRONG,_StrongFrame>;
 
   template<typename Alts> void strong(State &state, StrongFrame f, Alts alts) const { FRAME("strong(%,%)",show(f->cla),f->strong_id);
-    auto cla = f->cla.shift(state.val.size());
+    auto dcla = f->dcla.shift(state.val.size());
+    auto cla = dcla.derived();
     // do not use f->cla from now on
     state.val.resize(cla.var_count());
     if(f->strong_id>=0 && !state.val.opposite(f->branch.head(),cla.atom(f->strong_id))) return;
-    state.clauses_used = cla + state.clauses_used;
+    state.clauses_used += dcla;
     size_t branch_count = cla.atom_count()-(f->strong_id>=0);
     if(!branch_count){ alts(Cont{frames.tail()}); return; }
     List<Branch> branches;
@@ -185,19 +189,23 @@ struct Cont {
   using WeakFrame = Variant<Frame,Frame::WEAK,_WeakFrame>;
 
   template<typename Alts> void weak(State &state, WeakFrame f, Alts alts) const { FRAME("weak(%)",show(f->branch.head())); 
-    if(state.nodes_used<f->nodes_limit) {
+    //if(state.nodes_used<f->nodes_limit) {
+    {
+      bool budget = state.nodes_used<f->nodes_limit;
       COUNTER("expand");
-      state.nodes_used++;
       for(auto ca : state.cla_index[f->branch.head()]) {
+        bool single_atom = ca.cla.derived().atom_count()==1;
+        if(!budget && !single_atom) continue;
+        if(!single_atom) state.nodes_used++;
         StrongFrame::Builder b;
         b->nodes_limit = f->nodes_limit;
         b->branch = f->branch;
-        b->cla = ca.cla;
+        b->dcla = ca.cla;
         b->strong_id = ca.i;
         alts(Cont{Frame(b.build()) + frames.tail()});
+        // WARNING: we are manually rewinding the state here:
+        if(!single_atom) state.nodes_used--;
       }
-      // WARNING: we are manually rewinding the state here:
-      state.nodes_used--;
     }
     auto atom_hash = Index::atom_hash(f->branch.head())^1;
     for(auto b2 = f->branch.tail(); !b2.empty(); b2 = b2.tail()) {
@@ -229,6 +237,7 @@ ptr<Proof> prove(OrForm form, size_t limit) { FRAME("prove()");
 
 ptr<Proof> prove_loop(OrForm form, size_t limit) { FRAME("prove_loop()");
   SCOPE("prove_loop");
+  //form = reduce_monotonicity_and_append_eq_axioms(form);
   form = append_eq_axioms(form);
   for(size_t i=1; i<=limit; ++i) {
     DEBUG info("limit = %",i);

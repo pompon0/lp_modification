@@ -9,7 +9,7 @@
 #include "absl/flags/flag.h"
 #include "absl/flags/parse.h"
 
-ABSL_FLAG(uint64_t,proof_size_limit,33,"maximal size of a proof to search for");
+ABSL_FLAG(uint64_t,proof_size_limit,200,"maximal size of a proof to search for");
 
 StreamLogger _(std::cerr);
 int main(int argc, char **argv) {
@@ -23,6 +23,8 @@ int main(int argc, char **argv) {
   std::cerr << profile.show(); 
   if(!proof) return 1;
   ProtoCtx pctx(ctx);
-  std::cout << pctx.proto_notAndForm(NotAndForm(*proof)).DebugString() << std::endl;
+  OrForm proof_form;
+  for(auto cla : proof->source) proof_form.and_clauses.push_back(DerAndClause(cla));
+  std::cout << pctx.proto_notAndForm(NotAndForm(proof_form)).DebugString() << std::endl;
   return 0;
 }

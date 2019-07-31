@@ -120,7 +120,7 @@ struct ParseCtx {
       case tptp::Input::AXIOM:
       case tptp::Input::PLAIN:
       case tptp::Input::NEGATED_CONJECTURE: {
-        form.or_clauses.push_back(parse_orClause(input.formula()));
+        form.or_clauses.push_back(DerOrClause(parse_orClause(input.formula())));
         break;
       }
       default:
@@ -199,7 +199,7 @@ struct ProtoCtx {
       auto input = file.add_input();
       input->set_role(tptp::Input::PLAIN);
       input->set_language(tptp::Input::CNF);
-      *(input->mutable_formula()) = proto_orClause(cla);
+      *(input->mutable_formula()) = proto_orClause(cla.derived());
     }
     return file;
   }

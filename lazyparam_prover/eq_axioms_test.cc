@@ -22,6 +22,6 @@ TEST(congruence_axioms,all) {
   wantB.set_atom(2,b1.build());
   auto want = wantB.build();
   
-  OrClause got = cong_pred_axiom(pred,1);
+  OrClause got = cong_pred_axiom(pred,1).derived();
   if(got!=want) FAIL() << fmt("cong_pred_axiom() = %, want %",show(got),show(want));
 }

@@ -9,6 +9,7 @@ go_library(
     importpath = "github.com/pompon0/tptp_benchmark_go/tool",
     visibility = ["//visibility:public"],
     deps = [
+        "//:solutions_go_proto",
         "//:tptp_go_proto",
         "//utils:go_default_library",
         "@com_github_golang_protobuf//proto:go_default_library",

@@ -134,8 +134,10 @@ struct FlatClauseBuilder {
   size_t var_count;
   vec<Atom> atoms;
   vec<AndClause> source_clauses;
-  
+  size_t cost;
+
   FlatClauseBuilder(DerAndClause cla) {
+    cost = cla.cost;
     var_count = cla.derived.var_count;
     source_clauses = cla.source;
     for(auto atom : cla.derived.atoms) flatten_Atom(atom);
@@ -235,6 +237,7 @@ struct FlatClauseBuilder {
     DerAndClause dc;
     dc.derived = cla;
     dc.source = source_clauses;
+    dc.cost = cost;
     return dc;
   }
 };
@@ -273,7 +276,9 @@ public:
       for(size_t i=0; i<cla.derived().atom_count(); ++i) {
         DEBUG info("Index i=%",i);
         auto h = atom_hash(cla.derived().atom(i));
+        DEBUG info("h = %",h);
         if(map.size()<=h) map.resize(h+1,{{}});
+        DEBUG info("cla.cost() = %",cla.cost());
         if(map[h].size()<=cla.cost()) map[h].resize(cla.cost()+1,map[h].back());
         for(size_t cc=cla.cost(); cc<map[h].size(); ++cc) map[h][cc].push_back({i,cla});
       }

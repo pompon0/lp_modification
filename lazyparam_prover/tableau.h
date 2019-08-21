@@ -129,7 +129,7 @@ struct Cont {
   };
   using StrongFrame = Variant<Frame,Frame::STRONG,_StrongFrame>;
 
-  template<typename Alts> void strong(State &state, StrongFrame f, Alts alts) const { FRAME("strong(%,%)",show(f->cla),f->strong_id);
+  template<typename Alts> void strong(State &state, StrongFrame f, Alts alts) const { FRAME("strong(%,%)",show(f->dcla),f->strong_id);
     auto dcla = f->dcla.shift(state.val.size());
     state.nodes_used += dcla.cost();
     auto cla = dcla.derived();

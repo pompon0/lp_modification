@@ -28,3 +28,80 @@ func TestFOFToCNF(t *testing.T) {
     }
   }
 }
+
+func pred(name string) *tpb.Formula {
+  return &tpb.Formula{
+    Formula: &tpb.Formula_Pred_{
+      Pred: &tpb.Formula_Pred {
+        Type: tpb.Formula_Pred_CUSTOM,
+        Name: name,
+      },
+    },
+  }
+}
+
+func op(t tpb.Formula_Operator_Type, args []*tpb.Formula) *tpb.Formula {
+  return &tpb.Formula {
+    Formula: &tpb.Formula_Op {
+      Op: &tpb.Formula_Operator { Type: t, Args: args },
+    },
+  }
+}
+
+func neg(f *tpb.Formula) *tpb.Formula {
+  return op(tpb.Formula_Operator_NEG, []*tpb.Formula { f })
+}
+
+func or(disjuncts... *tpb.Formula) *tpb.Formula {
+  return op(tpb.Formula_Operator_OR, disjuncts)
+}
+
+func TestValidateProofOK(t *testing.T) {
+  p := pred("p")
+  clauses := []*tpb.Input{
+    {
+      Language: tpb.Input_CNF,
+      Role: tpb.Input_PLAIN,
+      Formula: p,
+    },
+    {
+      Language: tpb.Input_CNF,
+      Role: tpb.Input_PLAIN,
+      Formula: neg(p),
+    },
+  }
+  cnfProblem := &tpb.File {
+    Input: clauses,
+  }
+  cnfProof := &tpb.File {
+    Input: clauses,
+  }
+  if _,err := ValidateProof(context.Background(),cnfProblem,cnfProof); err!=nil {
+    t.Errorf("ValidateProof(): %v",err)
+  }
+}
+
+func TestValidateProofFail(t *testing.T) {
+  cnfProblem := &tpb.File {
+    Input: []*tpb.Input{
+      {
+        Language: tpb.Input_CNF,
+        Role: tpb.Input_PLAIN,
+        Formula: &tpb.Formula{
+          Formula: &tpb.Formula_Pred_{
+            Pred: &tpb.Formula_Pred {
+              Type: tpb.Formula_Pred_CUSTOM,
+              Name: "p",
+            },
+          },
+        },
+      },
+    },
+  }
+  cnfProof := &tpb.File {
+    Input: []*tpb.Input{},
+  }
+  if stats,err := ValidateProof(context.Background(),cnfProblem,cnfProof); err==nil {
+    t.Errorf("ValidateProof() = %v, want error",stats)
+  }
+}

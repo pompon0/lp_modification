@@ -10,6 +10,7 @@ import (
 
   "github.com/pompon0/tptp_benchmark_go/utils"
   tpb "github.com/pompon0/tptp_parser/proto/tptp_go_proto"
+  spb "github.com/pompon0/tptp_parser/proto/solutions_go_proto"
   "github.com/golang/protobuf/proto"
 )
 
@@ -63,21 +64,22 @@ func FOFToCNF(ctx context.Context, fof *tpb.File) (*tpb.File,error) {
   return cnf,nil
 }
 
-func ValidateProof(ctx context.Context, cnfProblem *tpb.File, cnfProof *tpb.File) (bool,error) {
-  tmpProblem,cleanup,err := WriteTmp([]byte(cnfProblem.String()))
-  if err!=nil { return false,fmt.Errorf("WriteTmp(): %v",err) }
-  defer cleanup()
-
-  tmpProof,cleanup,err := WriteTmp([]byte(cnfProof.String()))
-  if err!=nil { return false,fmt.Errorf("WriteTmp(): %v",err) }
+func ValidateProof(ctx context.Context, cnfProblem *tpb.File, cnfProof *tpb.File) (*spb.Stats,error) {
+  sol := &spb.CNF{Problem:cnfProblem,Proof:cnfProof}
+  tmpSol,cleanup,err := WriteTmp([]byte(sol.String()))
+  if err!=nil { return nil,fmt.Errorf("WriteTmp(): %v",err) }
   defer cleanup()
 
   var outBuf,errBuf bytes.Buffer
-  cmd := exec.CommandContext(ctx,utils.Runfile(tool_bin_path),"validate",tmpProblem,tmpProof)
+  cmd := exec.CommandContext(ctx,utils.Runfile(tool_bin_path),"validate",tmpSol)
   cmd.Stdout = &outBuf
   cmd.Stderr = &errBuf
   if err = cmd.Run(); err!=nil {
-    return false,fmt.Errorf("cmd.Run(): [%v]\n%v",err,errBuf.String())
+    return nil,fmt.Errorf("cmd.Run(): [%v]\n%v",err,errBuf.String())
   }
-  return true,nil
+  stats := &spb.Stats{}
+  if err:=proto.UnmarshalText(outBuf.String(),stats); err!=nil {
+    return nil,fmt.Errorf("proto.UnmarshalText(): %v",err)
+  }
+  return stats,nil
 }

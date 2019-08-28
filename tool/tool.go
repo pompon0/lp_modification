@@ -14,7 +14,7 @@ import (
   "github.com/golang/protobuf/proto"
 )
 
-const tool_bin_path = "tptp_parser_bin/checker"
+const tool_bin_path = "__main__/tptp_parser/bin/checker"
 const tmp_prefix = "tptp_benchmark_go_"
 
 type Language string

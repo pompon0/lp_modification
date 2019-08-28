@@ -9,8 +9,8 @@ go_library(
     importpath = "github.com/pompon0/tptp_benchmark_go/lazyparam_prover/tableau",
     visibility = ["//visibility:public"],
     deps = [
-        "//:tptp_go_proto",
         "//tool:go_default_library",
+        "//tptp_parser/proto:tptp_go_proto",
         "//utils:go_default_library",
         "@com_github_golang_protobuf//proto:go_default_library",
     ],

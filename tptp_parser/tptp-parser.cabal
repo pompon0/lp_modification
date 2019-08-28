@@ -1,0 +1,334 @@
+cabal-version: 1.24
+
+-- This file has been generated from package.yaml by hpack version 0.31.2.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: c0001feaf187f544bd395a5b60461410eac83d824b5daa6bca70ed7244a62f02
+
+name:           tptp-parser
+version:        0.0.0
+build-type:     Custom
+extra-source-files:
+    proto/proof.proto
+    proto/tptp.proto
+
+custom-setup
+  setup-depends:
+      Cabal
+    , base
+    , proto-lens-setup
+
+library
+  exposed-modules:
+      TestBin
+      ConvBin
+      ParserBin
+      ThreadBin
+      CheckerBin
+      Proto.Tptp
+      Proto.Proof
+  other-modules:
+      Brand
+      BrandTest
+      Build
+      DiscTree
+      DiscTreeTest
+      DNF
+      EqAxioms
+      Form
+      Graph
+      GraphTest
+      HashSeq
+      KBO
+      KBOTest
+      LazyParam
+      LazyParamTest
+      LazyParamTree
+      Lib
+      LibST
+      LibTest
+      LPO
+      MGU
+      MGUTest
+      NNF
+      Parser
+      ParserTest
+      Pred
+      Proof
+      ShallowIndex
+      Skolem
+      SkolemTest
+      Tableaux
+      TableauxTest
+      TptpSampleData
+      Trace
+      TraceM
+      Uuid
+      Valid
+      Paths_tptp_parser
+  hs-source-dirs:
+      src
+  ghc-options: -O2 -Werror -fbreak-on-error -fPIC
+  ld-options: -static
+  build-depends:
+      MissingH
+    , array
+    , base >=4.7 && <5
+    , bytestring
+    , clock
+    , concurrent-extra
+    , containers
+    , data-ordlist
+    , deepseq
+    , either
+    , hashable
+    , hashtables
+    , http-conduit
+    , lens
+    , lens-labels
+    , microlens
+    , mtl
+    , options
+    , parsec
+    , proto-lens
+    , proto-lens-runtime
+    , set-monad >=0.3
+    , split
+    , tar
+    , tasty
+    , tasty-hunit
+    , text
+    , threads
+    , transformers
+    , unbounded-delays
+    , unix
+    , utf8-string
+    , zlib
+  default-language: Haskell2010
+
+executable checker
+  main-is: checker.hs
+  other-modules:
+      Paths_tptp_parser
+  hs-source-dirs:
+      bin
+  ghc-options: -O2 -Werror -fbreak-on-error -fPIC
+  ld-options: -static
+  build-depends:
+      MissingH
+    , array
+    , base >=4.7 && <5
+    , bytestring
+    , clock
+    , concurrent-extra
+    , containers
+    , data-ordlist
+    , deepseq
+    , either
+    , hashable
+    , hashtables
+    , http-conduit
+    , lens
+    , lens-labels
+    , microlens
+    , mtl
+    , options
+    , parsec
+    , proto-lens
+    , proto-lens-runtime
+    , set-monad >=0.3
+    , split
+    , tar
+    , tasty
+    , tasty-hunit
+    , text
+    , threads
+    , tptp-parser
+    , transformers
+    , unbounded-delays
+    , unix
+    , utf8-string
+    , zlib
+  default-language: Haskell2010
+
+executable conv
+  main-is: conv.hs
+  other-modules:
+      Paths_tptp_parser
+  hs-source-dirs:
+      bin
+  ghc-options: -O2 -Werror -fbreak-on-error -fPIC
+  ld-options: -static
+  build-depends:
+      MissingH
+    , array
+    , base >=4.7 && <5
+    , bytestring
+    , clock
+    , concurrent-extra
+    , containers
+    , data-ordlist
+    , deepseq
+    , either
+    , hashable
+    , hashtables
+    , http-conduit
+    , lens
+    , lens-labels
+    , microlens
+    , mtl
+    , options
+    , parsec
+    , proto-lens
+    , proto-lens-runtime
+    , set-monad >=0.3
+    , split
+    , tar
+    , tasty
+    , tasty-hunit
+    , text
+    , threads
+    , tptp-parser
+    , transformers
+    , unbounded-delays
+    , unix
+    , utf8-string
+    , zlib
+  default-language: Haskell2010
+
+executable parser
+  main-is: parser.hs
+  other-modules:
+      Paths_tptp_parser
+  hs-source-dirs:
+      bin
+  ghc-options: -O2 -Werror -fbreak-on-error -fPIC
+  ld-options: -static
+  build-depends:
+      MissingH
+    , array
+    , base >=4.7 && <5
+    , bytestring
+    , clock
+    , concurrent-extra
+    , containers
+    , data-ordlist
+    , deepseq
+    , either
+    , hashable
+    , hashtables
+    , http-conduit
+    , lens
+    , lens-labels
+    , microlens
+    , mtl
+    , options
+    , parsec
+    , proto-lens
+    , proto-lens-runtime
+    , set-monad >=0.3
+    , split
+    , tar
+    , tasty
+    , tasty-hunit
+    , text
+    , threads
+    , tptp-parser
+    , transformers
+    , unbounded-delays
+    , unix
+    , utf8-string
+    , zlib
+  default-language: Haskell2010
+
+executable thread
+  main-is: thread.hs
+  other-modules:
+      Paths_tptp_parser
+  hs-source-dirs:
+      bin
+  ghc-options: -O2 -Werror -fbreak-on-error -fPIC -threaded -with-rtsopts=-N4
+  ld-options: -static
+  build-depends:
+      MissingH
+    , array
+    , base >=4.7 && <5
+    , bytestring
+    , clock
+    , concurrent-extra
+    , containers
+    , data-ordlist
+    , deepseq
+    , either
+    , hashable
+    , hashtables
+    , http-conduit
+    , lens
+    , lens-labels
+    , microlens
+    , mtl
+    , options
+    , parsec
+    , proto-lens
+    , proto-lens-runtime
+    , set-monad >=0.3
+    , split
+    , tar
+    , tasty
+    , tasty-hunit
+    , text
+    , threads
+    , tptp-parser
+    , transformers
+    , unbounded-delays
+    , unix
+    , utf8-string
+    , zlib
+  default-language: Haskell2010
+
+test-suite test
+  type: exitcode-stdio-1.0
+  main-is: test.hs
+  other-modules:
+      Paths_tptp_parser
+  hs-source-dirs:
+      bin
+  ghc-options: -O2 -Werror -fbreak-on-error -fPIC
+  ld-options: -static
+  build-depends:
+      MissingH
+    , array
+    , base >=4.7 && <5
+    , bytestring
+    , clock
+    , concurrent-extra
+    , containers
+    , data-ordlist
+    , deepseq
+    , either
+    , hashable
+    , hashtables
+    , http-conduit
+    , lens
+    , lens-labels
+    , microlens
+    , mtl
+    , options
+    , parsec
+    , proto-lens
+    , proto-lens-runtime
+    , set-monad >=0.3
+    , split
+    , tar
+    , tasty
+    , tasty-hunit
+    , text
+    , threads
+    , tptp-parser
+    , transformers
+    , unbounded-delays
+    , unix
+    , utf8-string
+    , zlib
+  default-language: Haskell2010

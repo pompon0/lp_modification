@@ -1,8 +1,3 @@
-cc_proto_library(
-    name = "tptp_cc_proto",
-    deps = ["@tptp_parser//proto:tptp_proto"],
-)
-
 cc_library(
     name = "types",
     hdrs = ["types.h"],
@@ -33,7 +28,7 @@ cc_library(
         "eq_axioms.h",
     ],
     deps = [
-        ":tptp_cc_proto",
+        "//tptp_parser/proto:tptp_cc_proto",
         ":log",
         ":types",
         "//lazyparam_prover/util:util",

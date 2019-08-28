@@ -1,21 +1,25 @@
-load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
 load("@bazel_gazelle//:def.bzl", "gazelle")
 
 # gazelle:prefix github.com/pompon0/tptp_benchmark_go
 # gazelle:build_file_name BUILD
 gazelle(name = "gazelle")
 
-go_proto_library(
-    name = "tptp_go_proto",
-    importpath = "github.com/pompon0/tptp_parser/proto/tptp_go_proto",
-    proto = "@tptp_parser//proto:tptp_proto",
-    visibility = ["//visibility:public"],
-)
+### haskell proto toolchain
+load("@rules_haskell//haskell:protobuf.bzl", "haskell_proto_toolchain")
 
-go_proto_library(
-    name = "solutions_go_proto",
-    importpath = "github.com/pompon0/tptp_parser/proto/solutions_go_proto",
-    proto = "@tptp_parser//proto:solutions_proto",
-    visibility = ["//visibility:public"],
-    deps = [":tptp_go_proto"],
+haskell_proto_toolchain(
+    name = "protobuf-toolchain",
+    protoc = "@com_google_protobuf//:protoc",
+    plugin = "@proto-lens-protoc//:proto-lens-protoc",
+    deps = [
+        "@stackage//:base",
+        "@stackage//:bytestring",
+        "@stackage//:containers",
+        "@stackage//:data-default-class",
+        "@stackage//:lens-family",
+        "@stackage//:proto-lens",
+        "@stackage//:text",
+        "@stackage//:deepseq",
+        "@stackage//:vector",
+    ],
 )

@@ -8,7 +8,7 @@ import (
   "context"
 
   "github.com/pompon0/tptp_benchmark_go/utils"
-  tpb "github.com/pompon0/tptp_parser/proto/tptp_go_proto"
+  tpb "github.com/pompon0/tptp_benchmark_go/tptp_parser/proto/tptp_go_proto"
   "github.com/pompon0/tptp_benchmark_go/tool"
   "github.com/golang/protobuf/proto"
 )

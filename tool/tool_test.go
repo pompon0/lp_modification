@@ -5,7 +5,7 @@ import (
   "testing"
 
   "github.com/pompon0/tptp_benchmark_go/problems"
-  tpb "github.com/pompon0/tptp_parser/proto/tptp_go_proto"
+  tpb "github.com/pompon0/tptp_benchmark_go/tptp_parser/proto/tptp_go_proto"
 )
 
 func TestTptpToProto(t *testing.T) {

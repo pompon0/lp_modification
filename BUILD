@@ -2,6 +2,7 @@ load("@bazel_gazelle//:def.bzl", "gazelle")
 
 # gazelle:prefix github.com/pompon0/tptp_benchmark_go
 # gazelle:build_file_name BUILD
+# gazelle:proto disable
 gazelle(name = "gazelle")
 
 ### haskell proto toolchain

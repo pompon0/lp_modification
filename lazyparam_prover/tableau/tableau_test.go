@@ -6,6 +6,7 @@ import (
 
   "github.com/pompon0/tptp_benchmark_go/problems"
   "github.com/pompon0/tptp_benchmark_go/tool"
+  spb "github.com/pompon0/tptp_benchmark_go/tptp_parser/proto/solutions_go_proto"
 )
 
 func TestTableau(t *testing.T) {
@@ -17,7 +18,7 @@ func TestTableau(t *testing.T) {
     if err!=nil { t.Fatalf("tool.FOFToCNF(%q): %v",k,err) }
     proof,err := Tableau(ctx,cnf,true)
     if err!=nil { t.Fatalf("Tableau(%q): %v",k,err) }
-    _,err = tool.ValidateProof(ctx,cnf,proof)
+    _,err = tool.ValidateProof(ctx,&spb.CNF{Problem:cnf,Proof:proof})
     if err!=nil { t.Fatalf("tool.Validate(%q): %v",k,err) }
   }
 }

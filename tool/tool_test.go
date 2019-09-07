@@ -6,6 +6,7 @@ import (
 
   "github.com/pompon0/tptp_benchmark_go/problems"
   tpb "github.com/pompon0/tptp_benchmark_go/tptp_parser/proto/tptp_go_proto"
+  spb "github.com/pompon0/tptp_benchmark_go/tptp_parser/proto/solutions_go_proto"
 )
 
 func TestTptpToProto(t *testing.T) {
@@ -76,7 +77,7 @@ func TestValidateProofOK(t *testing.T) {
   cnfProof := &tpb.File {
     Input: clauses,
   }
-  if _,err := ValidateProof(context.Background(),cnfProblem,cnfProof); err!=nil {
+  if _,err := ValidateProof(context.Background(),&spb.CNF{Problem:cnfProblem,Proof:cnfProof}); err!=nil {
     t.Errorf("ValidateProof(): %v",err)
   }
 }
@@ -101,7 +102,7 @@ func TestValidateProofFail(t *testing.T) {
   cnfProof := &tpb.File {
     Input: []*tpb.Input{},
   }
-  if stats,err := ValidateProof(context.Background(),cnfProblem,cnfProof); err==nil {
+  if stats,err := ValidateProof(context.Background(),&spb.CNF{Problem:cnfProblem,Proof:cnfProof}); err==nil {
     t.Errorf("ValidateProof() = %v, want error",stats)
   }
 }

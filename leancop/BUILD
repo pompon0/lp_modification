@@ -2,8 +2,14 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "go_default_library",
-    srcs = ["leancop.go"],
-    data = ["@leancop//:leancop_bin"],
+    srcs = [
+        "leancop.go",
+        "prolog.go",
+    ],
+    data = [
+        "@leancop//:leancop_bin",
+        "@leancop_prolog//:leancop_src",
+    ],
     importpath = "github.com/pompon0/tptp_benchmark_go/leancop",
     visibility = ["//visibility:public"],
     deps = [
@@ -14,7 +20,10 @@ go_library(
 
 go_test(
     name = "go_default_test",
-    srcs = ["leancop_test.go"],
+    srcs = [
+        "leancop_test.go",
+        "prolog_test.go",
+    ],
     embed = [":go_default_library"],
     deps = ["//problems:go_default_library"],
 )

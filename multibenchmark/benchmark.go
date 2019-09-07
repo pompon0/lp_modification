@@ -21,6 +21,7 @@ var provers = []struct { name string; prover Prover } {
   {"tableau", tableau.Prove},
   {"eprover", eprover.Prove},
   {"leancop", leancop.Prove},
+  {"leancop_prolog", leancop.PrologProve},
 }
 
 type Problem struct {

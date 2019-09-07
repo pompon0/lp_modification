@@ -7,6 +7,7 @@ import (
   "sort"
   "flag"
   "context"
+  "os"
 
   "golang.org/x/sync/errgroup"
   "github.com/pompon0/tptp_benchmark_go/problems"
@@ -48,7 +49,7 @@ func worker(
         defer cancel()
         proof, err := prover(proverCtx,cnfProblem,false)
         if err ==nil {
-          if _,err := tool.ValidateProof(ctx,cnfProblem,proof); err!=nil { return err }
+          if _,err := tool.ValidateProof(ctx,&spb.CNF{Problem:cnfProblem,Proof:proof}); err!=nil { return err }
         }
         results <- Result{p.name,&spb.CNF{Problem:cnfProblem,Proof:proof},err}
         return nil
@@ -66,6 +67,9 @@ func convProblem(ctx context.Context, tptp []byte) (*tpb.File,error) {
 }
 
 func run(ctx context.Context, timeout time.Duration, cores int, mod int) error {
+  if _,err := os.Stat(*proofDir); os.IsNotExist(err) {
+    return fmt.Errorf("%q doesn't exist",*proofDir)
+  }
   prob,err := problems.GetProblems(ctx)
   if err!=nil { return fmt.Errorf("getProblems(): %v",err) }
   probCount := (len(prob)+mod-1)/mod

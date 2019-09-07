@@ -9,6 +9,7 @@ import (
   "github.com/pompon0/tptp_benchmark_go/tool"
   "github.com/pompon0/tptp_benchmark_go/lazyparam_prover/tableau"
   "github.com/pompon0/tptp_benchmark_go/utils"
+  spb "github.com/pompon0/tptp_benchmark_go/tptp_parser/proto/solutions_go_proto"
 )
 
 func run(ctx context.Context) error {
@@ -22,7 +23,7 @@ func run(ctx context.Context) error {
   if err!=nil { return fmt.Errorf("tool.FOFToCNF(%q): %v",k,err) }
   proof,err := tableau.Tableau(ctx,cnf,true)
   if err!=nil { return fmt.Errorf("Tableau(%q): %v",k,err) }
-  _,err = tool.ValidateProof(ctx,cnf,proof)
+  _,err = tool.ValidateProof(ctx,&spb.CNF{Problem:cnf,Proof:proof})
   if err!=nil { return fmt.Errorf("tool.Validate(%q): %v",k,err) }
   return nil
 }

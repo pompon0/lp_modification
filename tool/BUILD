@@ -20,6 +20,7 @@ go_test(
     embed = [":go_default_library"],
     deps = [
         "//problems:go_default_library",
+        "//tptp_parser/proto:solutions_go_proto",
         "//tptp_parser/proto:tptp_go_proto",
     ],
 )

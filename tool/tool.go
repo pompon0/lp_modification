@@ -64,8 +64,7 @@ func FOFToCNF(ctx context.Context, fof *tpb.File) (*tpb.File,error) {
   return cnf,nil
 }
 
-func ValidateProof(ctx context.Context, cnfProblem *tpb.File, cnfProof *tpb.File) (*spb.Stats,error) {
-  sol := &spb.CNF{Problem:cnfProblem,Proof:cnfProof}
+func ValidateProof(ctx context.Context, sol *spb.CNF) (*spb.Stats,error) {
   tmpSol,cleanup,err := WriteTmp([]byte(sol.String()))
   if err!=nil { return nil,fmt.Errorf("WriteTmp(): %v",err) }
   defer cleanup()

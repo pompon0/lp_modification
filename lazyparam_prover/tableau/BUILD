@@ -23,5 +23,6 @@ go_test(
     deps = [
         "//problems:go_default_library",
         "//tool:go_default_library",
+        "//tptp_parser/proto:solutions_go_proto",
     ],
 )

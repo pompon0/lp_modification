@@ -17,6 +17,15 @@ http_archive(
 )
 
 http_archive(
+    name = "leancop_prolog",
+    urls = [
+      "http://www.leancop.de/programs/leancop21.tar.gz",
+      "https://storage.googleapis.com/tptp/leancop21.tar.gz",
+    ],
+    build_file = "//:third_party/leancop_prolog.BUILD",
+)
+
+http_archive(
     name = "tptp_sample",
     urls = ["https://storage.googleapis.com/tptp/tptp_sample.tgz"],
     build_file = "//:third_party/tptp_sample.BUILD",

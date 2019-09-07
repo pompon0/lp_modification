@@ -12,6 +12,7 @@ go_library(
     deps = [
         "//lazyparam_prover/tableau:go_default_library",
         "//tool:go_default_library",
+        "//tptp_parser/proto:solutions_go_proto",
         "//utils:go_default_library",
     ],
 )

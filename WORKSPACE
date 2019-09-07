@@ -13,6 +13,7 @@ http_archive(
 http_archive(
     name = "leancop",
     urls = ["https://storage.googleapis.com/tptp/leancop_bin.tgz"],
+    sha256 = "c8c154c7f694ffd5eee7453bb50bd07f5eac0b4c564a5b9a0cb548e802ed7bbf",
     build_file = "//:third_party/leancop.BUILD",
 )
 
@@ -22,12 +23,14 @@ http_archive(
       "http://www.leancop.de/programs/leancop21.tar.gz",
       "https://storage.googleapis.com/tptp/leancop21.tar.gz",
     ],
+    sha256 = "ce432c5f9368c093f08df3120218463d8bdb8412e71ec980ab9c852c13cef300",
     build_file = "//:third_party/leancop_prolog.BUILD",
 )
 
 http_archive(
     name = "tptp_sample",
     urls = ["https://storage.googleapis.com/tptp/tptp_sample.tgz"],
+    sha256 = "81909a2753f658edcd6f0a3b10b82178c845a58665c1f3d08a583e3e644c298c",
     build_file = "//:third_party/tptp_sample.BUILD",
 )
 
@@ -35,6 +38,7 @@ http_archive(
   name = "com_google_protobuf",
   strip_prefix = "protobuf-3.9.0",
   urls = ["https://github.com/google/protobuf/archive/v3.9.0.zip"],
+  sha256 = "8eb5ca331ab8ca0da2baea7fc0607d86c46c80845deca57109a5d637ccb93bb4",
 )
 load("@com_google_protobuf//:protobuf_deps.bzl","protobuf_deps")
 protobuf_deps()
@@ -50,6 +54,7 @@ http_archive(
   name = "abseil",
   strip_prefix = "abseil-cpp-master",
   urls = ["https://github.com/abseil/abseil-cpp/archive/master.zip"],
+  sha256 = "090a0332d2f1ddfa7384546dcc3caf6351594067f71ff0f9052004ac6694d187",
 )
 
 http_archive(
@@ -86,6 +91,7 @@ http_archive(
   name = "rules_haskell",
   strip_prefix = "rules_haskell-master",
   urls = ["https://github.com/pompon0/rules_haskell/archive/master.tar.gz"],
+  sha256 = "5a0875d418b5a46edccf22b1612aafd66aa8d99c775ee8c18855f90d8b9fa18d",
 )
 
 load("@rules_haskell//haskell:repositories.bzl", "rules_haskell_dependencies", "rules_haskell_toolchains")
@@ -149,6 +155,7 @@ http_archive(
   name = "set-monad",
   strip_prefix = "set-monad-master",
   urls = ["https://github.com/giorgidze/set-monad/archive/master.zip"],
+  sha256 = "64079a9dd5d59b92ceaf7c79768ccbcb753c9bc4a9935cfb8e430519d32ca468",
   build_file = "//:third_party/set-monad.BUILD",
 )
 
@@ -156,6 +163,7 @@ http_archive(
   name = "proto-lens-protoc",
   urls = ["http://hackage.haskell.org/package/proto-lens-protoc-0.5.0.0/proto-lens-protoc-0.5.0.0.tar.gz"],
   build_file = "//:third_party/proto-lens-protoc.BUILD",
+  sha256 = "161dcee2aed780f62c01522c86afce61721cf89c0143f157efefb1bd1fa1d164",
   strip_prefix = "proto-lens-protoc-0.5.0.0",
 )
 

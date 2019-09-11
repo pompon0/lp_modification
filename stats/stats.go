@@ -7,7 +7,7 @@ import(
   "context"
   "os"
   "strings"
-  "sort"
+  //"sort"
 
   "github.com/pompon0/tptp_benchmark_go/problems"
   "github.com/pompon0/tptp_benchmark_go/tool"
@@ -70,6 +70,7 @@ func run(ctx context.Context) error {
   }
   profileCount := map[Profile]int{}
   byAxiomCount := map[string]int{}
+  percentiles := map[int]int{}
   prob,err := problems.GetProblems(ctx)
   if err!=nil { return fmt.Errorf("problems.GetProblems(): %v",err) }
   for name,_ := range prob {
@@ -80,10 +81,20 @@ func run(ctx context.Context) error {
       if err!=nil {
         return fmt.Errorf("problems.ReadProofs(%q): %v",name,err)
       }
+      ratio := float64(countAxioms(stats))/float64(countClauses(stats))
+      for p:=0; p<=100; p += 5 {
+        if float64(p)<=ratio*100. {
+          percentiles[p] += 1
+        }
+      }
       profileCount[profile(stats)] += 1
       byAxiomCount[fmt.Sprintf("%02d/%02d",countClauses(stats),countAxioms(stats))] += 1
     }
   }
+  for p:=0; p<=100; p+=5 {
+    log.Printf(">=%d%% : %d",p,percentiles[p])
+  }
+  /*
   var profileCountKeys []Profile
   for p,_ := range profileCount { profileCountKeys = append(profileCountKeys,p) }
   sort.Slice(profileCountKeys, func(a,b int) bool { return profileCount[profileCountKeys[a]]>profileCount[profileCountKeys[b]] })
@@ -92,7 +103,7 @@ func run(ctx context.Context) error {
   var byAxiomCountKeys []string
   for k,_ := range byAxiomCount { byAxiomCountKeys = append(byAxiomCountKeys,k) }
   sort.Strings(byAxiomCountKeys)
-  for _,c := range byAxiomCountKeys { log.Printf("%s: %d",c,byAxiomCount[c]) }
+  for _,c := range byAxiomCountKeys { log.Printf("%s: %d",c,byAxiomCount[c]) }*/
   return nil
 }
 

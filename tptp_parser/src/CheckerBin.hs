@@ -58,10 +58,11 @@ validate [solution_proto_file] = do
     stats <- Form.liftRM $ Proof.classify proof problem
     case counterExample proof of
       Nothing -> return ()
-      Just x -> fail ("counter example: " ++ show x)
+      Just x -> fail (
+        "\nproblem = " ++ show problem ++
+        "\nproof = " ++ show proof ++
+        "\ncounter example: " ++ show x)
     return (problem,proof,stats)) Form.emptyNI
-  putStrLnE ("problem = " ++ show problem)
-  putStrLnE ("proof = " ++ show proof)
   putStrLn (TextFormat.showMessage stats)
 
 main = do

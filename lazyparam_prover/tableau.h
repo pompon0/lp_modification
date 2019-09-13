@@ -28,7 +28,7 @@ struct SearchState {
   NotAndForm form;
   const Index cla_index;
   Valuation val;
-  size_t nodes_used = 0;
+  //size_t nodes_used = 0;
   List<DerOrClause> clauses_used;
 
   ptr<Proof> get_proof() {
@@ -44,19 +44,19 @@ struct SearchState {
   struct Snapshot {
     Valuation::Snapshot val;
     ::Snapshot stack;
-    size_t nodes_used;
+    //size_t nodes_used;
     List<DerOrClause> clauses_used;
   };
 
   void rewind(Snapshot s) {
     val.rewind(s.val);
     stack = s.stack;
-    nodes_used = s.nodes_used;
+    //nodes_used = s.nodes_used;
     clauses_used = s.clauses_used;
   }
 
   Snapshot snapshot(){
-    return {val.snapshot(),stack,nodes_used,clauses_used};
+    return {val.snapshot(),stack,/*nodes_used,*/clauses_used};
   }
 };
 
@@ -65,13 +65,13 @@ struct Cont {
  
   struct _StartFrame;
   struct _StrongFrame;
-  struct _WeakSetFrame;
+  //struct _WeakSetFrame;
   struct _WeakFrame;
   struct _WeakUnifyFrame;
 
   struct Frame {
   public:
-    enum Type { START, STRONG, WEAK_SET, WEAK, WEAK_UNIFY };
+    enum Type { START, STRONG, /*WEAK_SET,*/ WEAK, WEAK_UNIFY };
     Type type() const { return Type(*LType::at(ptr)); }
   private:
     using LType = Lens<size_t,0>;
@@ -81,7 +81,7 @@ struct Cont {
 
     friend Variant<Frame,START,_StartFrame>;
     friend Variant<Frame,STRONG,_StrongFrame>;
-    friend Variant<Frame,WEAK_SET,_WeakSetFrame>;
+    //friend Variant<Frame,WEAK_SET,_WeakSetFrame>;
     friend Variant<Frame,WEAK,_WeakFrame>;
     friend Variant<Frame,WEAK_UNIFY,_WeakUnifyFrame>;
   };
@@ -95,7 +95,7 @@ struct Cont {
     switch(f.type()) {
       case Frame::START: start(state,StartFrame(f),alts); break;
       case Frame::STRONG: strong(state,StrongFrame(f),alts); break;
-      case Frame::WEAK_SET: weak_set(state,WeakSetFrame(f),alts); break;
+      //case Frame::WEAK_SET: weak_set(state,WeakSetFrame(f),alts); break;
       case Frame::WEAK: weak(state,WeakFrame(f),alts); break;
       case Frame::WEAK_UNIFY: weak_unify(state,WeakUnifyFrame(f),alts); break;
       default: error("f.type() = %",f.type());
@@ -124,6 +124,7 @@ struct Cont {
   struct _StrongFrame {
     size_t nodes_limit;
     Branch branch;
+    size_t branch_length;
     DerOrClause dcla;
     ssize_t strong_id;
   };
@@ -131,7 +132,7 @@ struct Cont {
 
   template<typename Alts> void strong(State &state, StrongFrame f, Alts alts) const { FRAME("strong(%,%)",show(f->dcla),f->strong_id);
     auto dcla = f->dcla.shift(state.val.size());
-    state.nodes_used += dcla.cost();
+    //state.nodes_used += dcla.cost();
     auto cla = dcla.derived();
     // do not use f->cla from now on
     state.val.resize(cla.var_count());
@@ -139,16 +140,18 @@ struct Cont {
     state.clauses_used += dcla;
     size_t branch_count = cla.atom_count()-(f->strong_id>=0);
     if(!branch_count){ alts(Cont{frames.tail()}); return; }
-    List<Branch> branches;
-    for(ssize_t i=cla.atom_count(); i--;) if(i!=f->strong_id) branches += cla.atom(i) + f->branch;
-    WeakSetFrame::Builder b;
-    b->nodes_limit = f->nodes_limit;
-    b->branch_count = branch_count;
-    b->branches = branches;
-    alts(Cont{Frame(b.build()) + frames.tail()});
+    List<Frame> frames2 = frames.tail();
+    for(ssize_t i=cla.atom_count(); i--;) if(i!=f->strong_id) {
+      WeakFrame::Builder b;
+      b->nodes_limit = f->nodes_limit;
+      b->branch = cla.atom(i) + f->branch;
+      b->branch_length = f->branch_length+1;
+      frames2 += Frame(b.build());
+    }
+    alts(Cont{frames2});
   }
 
-  struct _WeakSetFrame {
+  /*struct _WeakSetFrame {
     size_t nodes_limit;
     size_t branch_count;
     List<Branch> branches;
@@ -177,25 +180,25 @@ struct Cont {
       alts(Cont{Frame(wsb.build()) + (Frame(wb.build()) + frames.tail())});
     }
     WeakFrame::Builder wb;
-    wb->nodes_limit = state.nodes_used + per_bud;
+    wb->nodes_limit = f->nodes_limit;
     wb->branch = f->branches.head();
     WeakSetFrame::Builder wsb;
     wsb->nodes_limit = f->nodes_limit;
-    wsb->branch_count = f->branch_count-1;
     wsb->branches = f->branches.tail();
     alts(Cont{Frame(wb.build()) + (Frame(wsb.build()) + frames.tail())});
-  }
+  }*/
 
-  struct _WeakFrame { size_t nodes_limit; Branch branch; };
+  struct _WeakFrame { size_t nodes_limit; Branch branch; size_t branch_length; };
   using WeakFrame = Variant<Frame,Frame::WEAK,_WeakFrame>;
 
   template<typename Alts> void weak(State &state, WeakFrame f, Alts alts) const { FRAME("weak(%)",show(f->branch.head())); 
-    size_t budget = f->nodes_limit - state.nodes_used;
+    //size_t budget = f->nodes_limit - state.nodes_used;
     COUNTER("expand");
-    for(auto ca : state.cla_index(f->branch.head(),budget)) {
+    for(auto ca : state.cla_index(f->branch.head(),f->branch_length<f->nodes_limit ? 10 : 0)) {
       StrongFrame::Builder b;
       b->nodes_limit = f->nodes_limit;
       b->branch = f->branch;
+      b->branch_length = f->branch_length;
       b->dcla = ca.cla;
       b->strong_id = ca.i;
       alts(Cont{Frame(b.build()) + frames.tail()});

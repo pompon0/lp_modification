@@ -109,11 +109,11 @@ struct ArityCtx {
 
 
 OrForm append_eq_axioms(OrForm _f) {
-  // 383/2003 doesn't use equality axioms (my CNF)
-  // 516/2003 uses reflexivity only (my CNF)
-  // 549/2003 uses refl + symm only (my CNF)
-  // 740/2003 users reft + symm + mono (my CNF)
-  // 640/2003 users reft + symm + trans (my CNF)
+  // 383/2003 don't use equality axioms (my CNF)
+  // 516/2003 use reflexivity only (my CNF)
+  // 549/2003 use refl + symm only (my CNF)
+  // 740/2003 use refl + symm + mono (my CNF)
+  // 640/2003 use refl + symm + trans (my CNF)
   NotAndForm f(_f);
   ArityCtx ctx; ctx.traverse(f);
   f.or_clauses.push_back(refl_axiom());

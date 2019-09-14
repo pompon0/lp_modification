@@ -23,3 +23,22 @@ TEST(MGU,nonflat_loop) {
   ASSERT_TRUE(V.mgu(v0,Term(Fun::slow_make(f,{v1}))));
   ASSERT_FALSE(V.mgu(v1,Term(Fun::slow_make(f,{v0}))));
 }
+
+TEST(MGU,equal) {
+  StreamLogger _(std::cerr);
+  Valuation V; V.resize(2);
+  u64 f = 0;
+  Term x(Var::make(0));
+  Term y(Var::make(1));
+  Term fx(Fun::slow_make(f,{x}));
+  Term ffx(Fun::slow_make(f,{fx}));
+  Term fy(Fun::slow_make(f,{y}));
+  ASSERT_TRUE(V.mgu(y,fx));
+  ASSERT_TRUE(V.equal(x,x));
+  ASSERT_TRUE(V.equal(y,y));
+  ASSERT_TRUE(V.equal(y,fx));
+  ASSERT_TRUE(V.equal(fy,ffx));
+  ASSERT_FALSE(V.equal(y,x));
+  ASSERT_FALSE(V.equal(fy,x));
+  ASSERT_FALSE(V.equal(y,ffx));
+}

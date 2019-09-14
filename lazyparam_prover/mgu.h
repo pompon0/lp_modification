@@ -60,6 +60,31 @@ public:
     return 0;
   }
 
+  inline bool equal(Term x, Term y) {
+    for(Maybe<Term> mxv; x.type()==Term::VAR && (mxv = val[Var(x).id()]);) x = mxv.get();
+    for(Maybe<Term> myv; y.type()==Term::VAR && (myv = val[Var(y).id()]);) y = myv.get();
+    if(x.type()!=y.type()) return 0;
+    switch(x.type()) {
+      case Term::VAR: return Var(x).id()==Var(y).id();
+      case Term::FUN: {
+        Fun fx(x),fy(y);
+        if(fx.fun()!=fy.fun()) return 0;
+        for(size_t i=fx.arg_count(); i--;) if(!equal(fx.arg(i),fy.arg(i))) return 0;
+        return 1;
+      }
+    }
+    error("equal(<type=%>,y)",x.type());
+    return 0;
+  }
+
+  inline bool equal(Atom x, Atom y) {
+    if(x.sign()!=y.sign() || x.pred()!=y.pred()) return 0;
+    for(size_t i=x.arg_count(); i--;) {
+      if(!equal(x.arg(i),y.arg(i))) return 0;
+    }
+    return 1;
+  }
+
   inline bool mgu(Term x, Term y) { FRAME("mgu(%,%) %",show(x),show(y),DebugString());
     // TODO: add this iff hash consing is implemented
     // if(t1==t2) return 1;

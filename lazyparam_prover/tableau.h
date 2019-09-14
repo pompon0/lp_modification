@@ -12,11 +12,14 @@
 #include "lazyparam_prover/eq_axioms.h"
 #include "lazyparam_prover/alt.h"
 
-using Branch = List<Atom>;
+struct Branch {
+  List<Atom> true_;
+  List<Atom> false_;
+};
 
 inline str show(Branch b) {
   vec<str> atoms;
-  for(; !b.empty(); b = b.tail()) atoms.push_back(show(b.head()));
+  for(auto bt = b.true_; !bt.empty(); bt = bt.tail()) atoms.push_back(show(bt.head()));
   return util::fmt("[%]",util::join(", ",atoms));
 }
 
@@ -135,12 +138,23 @@ struct Cont {
     auto cla = dcla.derived();
     // do not use f->cla from now on
     state.val.resize(cla.var_count());
-    if(f->strong_id>=0 && !state.val.opposite(f->branch.head(),cla.atom(f->strong_id))) return;
+    if(f->strong_id>=0 && !state.val.opposite(f->branch.true_.head(),cla.atom(f->strong_id))) return;
     state.clauses_used += dcla;
-    size_t branch_count = cla.atom_count()-(f->strong_id>=0);
-    if(!branch_count){ alts(Cont{frames.tail()}); return; }
     List<Branch> branches;
-    for(ssize_t i=cla.atom_count(); i--;) if(i!=f->strong_id) branches += cla.atom(i) + f->branch;
+    List<Atom> false_ = f->branch.false_; 
+    size_t branch_count = 0;
+    for(ssize_t i=cla.atom_count(); i--;) if(i!=f->strong_id) {
+      Atom a = cla.atom(i);
+      bool a_is_false = 0;
+      for(auto ft = false_; !ft.empty(); ft = ft.tail()) if(state.val.equal(ft.head(),a)) {
+        a_is_false = 1; break;
+      }
+      if(a_is_false) continue;
+      branches += Branch{cla.atom(i) + f->branch.true_, false_};
+      false_ += cla.atom(i);
+      branch_count++;
+    }
+    if(!branch_count){ alts(Cont{frames.tail()}); return; }
     WeakSetFrame::Builder b;
     b->nodes_limit = f->nodes_limit;
     b->branch_count = branch_count;
@@ -189,10 +203,10 @@ struct Cont {
   struct _WeakFrame { size_t nodes_limit; Branch branch; };
   using WeakFrame = Variant<Frame,Frame::WEAK,_WeakFrame>;
 
-  template<typename Alts> void weak(State &state, WeakFrame f, Alts alts) const { FRAME("weak(%)",show(f->branch.head())); 
+  template<typename Alts> void weak(State &state, WeakFrame f, Alts alts) const { FRAME("weak(%)",show(f->branch.true_.head())); 
     size_t budget = f->nodes_limit - state.nodes_used;
     COUNTER("expand");
-    for(auto ca : state.cla_index(f->branch.head(),budget)) {
+    for(auto ca : state.cla_index(f->branch.true_.head(),budget)) {
       StrongFrame::Builder b;
       b->nodes_limit = f->nodes_limit;
       b->branch = f->branch;
@@ -200,11 +214,11 @@ struct Cont {
       b->strong_id = ca.i;
       alts(Cont{Frame(b.build()) + frames.tail()});
     }
-    auto atom_hash = Index::atom_hash(f->branch.head())^1;
-    for(auto b2 = f->branch.tail(); !b2.empty(); b2 = b2.tail()) {
+    auto atom_hash = Index::atom_hash(f->branch.true_.head())^1;
+    for(auto b2 = f->branch.true_.tail(); !b2.empty(); b2 = b2.tail()) {
       if(atom_hash!=Index::atom_hash(b2.head())) continue;
       WeakUnifyFrame::Builder b;
-      b->a1 = f->branch.head();
+      b->a1 = f->branch.true_.head();
       b->a2 = b2.head();
       alts(Cont{Frame(b.build())+frames.tail()});
     }

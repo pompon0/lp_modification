@@ -14,7 +14,8 @@ import (
 
 func run(ctx context.Context) error {
   //k := "tptp_sample/f/t25_yellow_1"
-  k := "tptp_sample/f/t32_funct_1"
+  //k := "tptp_sample/f/t32_funct_1"
+  k := "tptp_sample/f/l110_zfmisc_1"
   tptp,err := ioutil.ReadFile(utils.Runfile(k))
   if err!=nil { return fmt.Errorf("ioutil.ReadFile(): %v",err) }
   fof,err := tool.TptpToProto(ctx,tool.FOF,tptp)

@@ -52,9 +52,9 @@ http_archive(
 
 http_archive(
   name = "abseil",
-  strip_prefix = "abseil-cpp-master",
-  urls = ["https://github.com/abseil/abseil-cpp/archive/master.zip"],
-  sha256 = "090a0332d2f1ddfa7384546dcc3caf6351594067f71ff0f9052004ac6694d187",
+  strip_prefix = "abseil-cpp-5374c56e5196320681993869e3126b51edac2a43",
+  urls = ["https://github.com/abseil/abseil-cpp/archive/5374c56e5196320681993869e3126b51edac2a43.zip"],
+  sha256 = "50c408c1f6f1704dc4a3c89991c7350e524177f66915c9b5cd216d5db4244819",
 )
 
 http_archive(

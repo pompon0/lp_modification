@@ -146,8 +146,12 @@ struct Cont {
     for(ssize_t i=cla.atom_count(); i--;) if(i!=f->strong_id) {
       Atom a = cla.atom(i);
       bool a_is_false = 0;
-      for(auto ft = false_; !ft.empty(); ft = ft.tail()) if(state.val.equal(ft.head(),a)) {
-        a_is_false = 1; break;
+      // exit if the new clause is disjoint with the valuation subspace
+      for(auto ft = f->branch.true_; !ft.empty(); ft = ft.tail())
+        if(ft.head().sign()==a.sign() && state.val.equal_mod_sign(ft.head(),a)) return;
+      for(auto ft = false_; !ft.empty(); ft = ft.tail()) if(state.val.equal_mod_sign(ft.head(),a)) {
+        if(ft.head().sign()!=a.sign()) return;
+        a_is_false = 1; // mark the branch as already closed
       }
       if(a_is_false) continue;
       branches += Branch{cla.atom(i) + f->branch.true_, false_};

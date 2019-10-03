@@ -77,8 +77,8 @@ public:
     return 0;
   }
 
-  inline bool equal(Atom x, Atom y) {
-    if(x.sign()!=y.sign() || x.pred()!=y.pred()) return 0;
+  inline bool equal_mod_sign(Atom x, Atom y) {
+    if(x.pred()!=y.pred()) return 0;
     for(size_t i=x.arg_count(); i--;) {
       if(!equal(x.arg(i),y.arg(i))) return 0;
     }

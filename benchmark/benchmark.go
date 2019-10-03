@@ -137,10 +137,11 @@ func run(ctx context.Context, timeout time.Duration, cores int, mod int) error {
 
 var proofDir = flag.String("proof_dir","/tmp/benchmark_proofs","output directory to write proofs to")
 var unsolvedOnly = flag.Bool("unsolved_only",false,"process only unsolved problems")
+var timeout = flag.Duration("timeout",16*time.Second,"timeout per problem")
 
 func main() {
   flag.Parse()
-  if err := run(context.Background(),16*time.Second,4,1); err!=nil {
+  if err := run(context.Background(),*timeout,4,1); err!=nil {
     log.Fatalf("%v",err)
   }
 }

@@ -89,7 +89,7 @@ private:
 public:
   enum { EQ = u64(-1), PRED_MIN = EQ };
 
-  inline bool sign(){ return ptr[SIGN]; }
+  inline bool sign() const { return ptr[SIGN]; }
   inline u64 pred() const { return ptr[PRED]; }
   inline u64 arg_count() const { return ptr[ARG_COUNT]; }
   inline Term arg(size_t i) const { return Term((u64*)ptr[ARGS+i],var_offset); }

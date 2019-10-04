@@ -74,7 +74,7 @@ struct Cont {
 
   struct Frame {
   public:
-    enum Type { START, STRONG, WEAK_SET, WEAK, WEAK_UNIFY };
+    enum Type { START, STRONG, WEAK, WEAK_UNIFY };
     Type type() const { return Type(*LType::at(ptr)); }
   private:
     using LType = Lens<size_t,0>;
@@ -84,7 +84,6 @@ struct Cont {
 
     friend Variant<Frame,START,_StartFrame>;
     friend Variant<Frame,STRONG,_StrongFrame>;
-    friend Variant<Frame,WEAK_SET,_WeakSetFrame>;
     friend Variant<Frame,WEAK,_WeakFrame>;
     friend Variant<Frame,WEAK_UNIFY,_WeakUnifyFrame>;
   };
@@ -98,7 +97,6 @@ struct Cont {
     switch(f.type()) {
       case Frame::START: start(state,StartFrame(f),alts); break;
       case Frame::STRONG: strong(state,StrongFrame(f),alts); break;
-      case Frame::WEAK_SET: weak_set(state,WeakSetFrame(f),alts); break;
       case Frame::WEAK: weak(state,WeakFrame(f),alts); break;
       case Frame::WEAK_UNIFY: weak_unify(state,WeakUnifyFrame(f),alts); break;
       default: error("f.type() = %",f.type());
@@ -140,9 +138,8 @@ struct Cont {
     state.val.resize(cla.var_count());
     if(f->strong_id>=0 && !state.val.opposite(f->branch.true_.head(),cla.atom(f->strong_id))) return;
     state.clauses_used += dcla;
-    List<Branch> branches;
     List<Atom> false_ = f->branch.false_; 
-    size_t branch_count = 0;
+    List<Frame> wf = frames.tail();
     for(ssize_t i=cla.atom_count(); i--;) if(i!=f->strong_id) {
       Atom a = cla.atom(i);
       bool a_is_false = 0;
@@ -158,54 +155,13 @@ struct Cont {
         if(a_is_true) break; // all the remaining branches have empty target subspace
         continue; // this particular branch has empty target subspace
       }
-      branches += Branch{cla.atom(i) + f->branch.true_, false_};
-      false_ += cla.atom(i);
-      branch_count++;
-    }
-    if(!branch_count){ alts(Cont{frames.tail()}); return; }
-    WeakSetFrame::Builder b;
-    b->nodes_limit = f->nodes_limit;
-    b->branch_count = branch_count;
-    b->branches = branches;
-    alts(Cont{Frame(b.build()) + frames.tail()});
-  }
-
-  struct _WeakSetFrame {
-    size_t nodes_limit;
-    size_t branch_count;
-    List<Branch> branches;
-  };
-  using WeakSetFrame = Variant<Frame,Frame::WEAK_SET,_WeakSetFrame>;
-
-  template<typename Alts> void weak_set(State &state, WeakSetFrame f, Alts alts) const { FRAME("weak_set");
-    DEBUG if(!f->branch_count) error("f->branch_count = 0");
-    if(f->branch_count==1){
       WeakFrame::Builder b;
       b->nodes_limit = f->nodes_limit;
-      b->branch = f->branches.head();
-      weak(state,b.build(),alts);
-      return;
+      b->branch = Branch{cla.atom(i) + f->branch.true_, false_};
+      wf += Frame(b.build());
+      false_ += cla.atom(i);
     }
-    
-    size_t per_bud = (f->nodes_limit-state.nodes_used)/f->branch_count;
-    if(f->nodes_limit>state.nodes_used) { // if there is budget to allocate.
-      WeakSetFrame::Builder wsb;
-      wsb->nodes_limit = f->nodes_limit-(per_bud+1);
-      wsb->branch_count = f->branch_count-1;
-      wsb->branches = f->branches.tail();
-      WeakFrame::Builder wb;
-      wb->nodes_limit = f->nodes_limit;
-      wb->branch = f->branches.head();
-      alts(Cont{Frame(wsb.build()) + (Frame(wb.build()) + frames.tail())});
-    }
-    WeakFrame::Builder wb;
-    wb->nodes_limit = state.nodes_used + per_bud;
-    wb->branch = f->branches.head();
-    WeakSetFrame::Builder wsb;
-    wsb->nodes_limit = f->nodes_limit;
-    wsb->branch_count = f->branch_count-1;
-    wsb->branches = f->branches.tail();
-    alts(Cont{Frame(wb.build()) + (Frame(wsb.build()) + frames.tail())});
+    alts(Cont{wf});
   }
 
   struct _WeakFrame { size_t nodes_limit; Branch branch; };

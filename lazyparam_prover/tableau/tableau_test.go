@@ -3,6 +3,7 @@ package tableau
 import (
   "testing"
   "context"
+  "log"
 
   "github.com/pompon0/tptp_benchmark_go/problems"
   "github.com/pompon0/tptp_benchmark_go/tool"
@@ -12,6 +13,7 @@ import (
 func TestTableau(t *testing.T) {
   ctx := context.Background()
   for k,v := range problems.SampleProblems {
+    log.Printf("[%s]",k)
     fof,err := tool.TptpToProto(ctx,tool.FOF,v)
     if err!=nil { t.Fatalf("tool.TptpToProto(%q): %v",k,err) }
     cnf,err := tool.FOFToCNF(ctx,fof)

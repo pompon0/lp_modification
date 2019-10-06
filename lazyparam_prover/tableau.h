@@ -145,15 +145,18 @@ struct Cont {
     size_t branch_count = 0;
     for(ssize_t i=cla.atom_count(); i--;) if(i!=f->strong_id) {
       Atom a = cla.atom(i);
-      bool a_is_false = 0;
-      // exit if the new clause is disjoint with the valuation subspace
+      // exit if the new clause is disjoint with the target superspace (assumed to be nonempty)
       for(auto ft = f->branch.true_; !ft.empty(); ft = ft.tail())
         if(ft.head().sign()==a.sign() && state.val.equal_mod_sign(ft.head(),a)) return;
+      bool a_is_false = 0;
+      bool a_is_true = 0;
       for(auto ft = false_; !ft.empty(); ft = ft.tail()) if(state.val.equal_mod_sign(ft.head(),a)) {
-        if(ft.head().sign()!=a.sign()) return;
-        a_is_false = 1; // mark the branch as already closed
+        (ft.head().sign()==a.sign() ? a_is_false : a_is_true) = 1;
       }
-      if(a_is_false) continue;
+      if(a_is_false) {
+        if(a_is_true) break; // all the remaining branches have empty target subspace
+        continue; // this particular branch has empty target subspace
+      }
       branches += Branch{cla.atom(i) + f->branch.true_, false_};
       false_ += cla.atom(i);
       branch_count++;

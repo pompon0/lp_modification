@@ -145,11 +145,12 @@ struct Cont {
     size_t branch_count = 0;
     for(ssize_t i=cla.atom_count(); i--;) if(i!=f->strong_id) {
       Atom a = cla.atom(i);
-      // exit if the new clause is disjoint with the target superspace (assumed to be nonempty)
-      for(auto ft = f->branch.true_; !ft.empty(); ft = ft.tail())
-        if(ft.head().sign()==a.sign() && state.val.equal_mod_sign(ft.head(),a)) return;
       bool a_is_false = 0;
       bool a_is_true = 0;
+      for(auto ft = f->branch.true_; !ft.empty(); ft = ft.tail()) if(state.val.equal_mod_sign(ft.head(),a)) {
+        if(ft.head().sign()==a.sign()) return; // the new clause is disjoint with the target superspace (assumed to be nonempty for every groud clause considered).
+        else a_is_false = 1;
+      }
       for(auto ft = false_; !ft.empty(); ft = ft.tail()) if(state.val.equal_mod_sign(ft.head(),a)) {
         (ft.head().sign()==a.sign() ? a_is_false : a_is_true) = 1;
       }

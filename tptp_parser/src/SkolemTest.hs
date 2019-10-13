@@ -15,22 +15,22 @@ tests = testGroup "SkolemTest" [
 
 testSimpleForall = do
   let refl = wrap $ PEq (wrap $ TVar 0) (wrap $ TVar 0)
-  let nnf = N.Forall $ N.PosAtom $ refl
-  S.skol nnf @?= (S.PosAtom $ wrap $ PEq (wrap $ TFun 0 []) (wrap $ TFun 0 []))
+  let nnf = N.Forall $ N.Atom True $ refl
+  S.skol nnf @?= (S.Atom True $ wrap $ PEq (wrap $ TFun 0 []) (wrap $ TFun 0 []))
 
 testSimpleExists = do
   let refl = wrap $ PEq (wrap $ TVar 0) (wrap $ TVar 0)
-  let nnf = N.Exists $ N.PosAtom $ refl
-  S.skol nnf @?= (S.PosAtom $ wrap $ PEq (wrap $ TVar 0) (wrap $ TVar 0))
+  let nnf = N.Exists $ N.Atom True $ refl
+  S.skol nnf @?= (S.Atom True $ wrap $ PEq (wrap $ TVar 0) (wrap $ TVar 0))
 
 testFE = do
   let refl = wrap $ PEq (wrap $ TVar 0) (wrap $ TVar 1)
-  let nnf = N.Forall $ N.Exists $ N.PosAtom $ refl
-  S.skol nnf @?= (S.PosAtom $ wrap $ PEq (wrap $ TVar 0) (wrap $ TFun 0 []))
+  let nnf = N.Forall $ N.Exists $ N.Atom True $ refl
+  S.skol nnf @?= (S.Atom True $ wrap $ PEq (wrap $ TVar 0) (wrap $ TFun 0 []))
 
 testEF = do
   let refl = wrap $ PEq (wrap $ TVar 1) (wrap $ TVar 0)
-  let nnf = N.Exists $ N.Forall $ N.PosAtom $ refl
-  S.skol nnf @?= (S.PosAtom $ wrap $ PEq (wrap $ TVar 0) (wrap $ TFun 0 [wrap $ TVar 0]))
+  let nnf = N.Exists $ N.Forall $ N.Atom True $ refl
+  S.skol nnf @?= (S.Atom True $ wrap $ PEq (wrap $ TVar 0) (wrap $ TFun 0 [wrap $ TVar 0]))
 
 

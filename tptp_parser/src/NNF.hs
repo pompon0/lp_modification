@@ -8,8 +8,7 @@ data Form = Forall Form
   | Exists Form
   | And [Form]
   | Or [Form]
-  | PosAtom Pred
-  | NegAtom Pred
+  | Atom Bool Pred
   deriving(Eq)
 
 instance Show Form where
@@ -17,8 +16,8 @@ instance Show Form where
   show (Exists f) = "E " ++ show f
   show (And x) = "and(" ++ sepList x ++ ")"
   show (Or x) = "or(" ++ sepList x ++ ")"
-  show (PosAtom p) = show p
-  show (NegAtom p) = "-" ++ show p
+  show (Atom True p) = show p
+  show (Atom False p) = "-" ++ show p
 
 nnf :: F.Form -> Form
 nnf = _nnf False
@@ -33,4 +32,4 @@ _nnf n f = case f of
   --       it can be optimized by caching
   F.Xor x y -> _nnf n (F.Or [F.And [F.Neg x,y], F.And [x,F.Neg y]])
   F.Neg x -> _nnf (not n) x
-  F.Atom p -> (if n then NegAtom else PosAtom) p
+  F.Atom p -> Atom (not n) p

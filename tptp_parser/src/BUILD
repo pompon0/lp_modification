@@ -1,8 +1,19 @@
-load("@rules_haskell//haskell:defs.bzl", "haskell_library")
+load("@rules_haskell//haskell:defs.bzl", "haskell_library", "haskell_test")
+
+haskell_test(
+  name = "DefDNF_test",
+  srcs = ["DefDNFTest.hs"],
+  deps = [
+    ":tptp-parser",
+    "@stackage//:base",
+    "@stackage//:tasty",
+    "@stackage//:tasty-hunit",
+  ],
+)
 
 haskell_library(
     name = "tptp-parser",
-    srcs = glob(["**/*.hs"]),
+    srcs = glob(["**/*.hs"],exclude=["DefDNFTest.hs"]),
     visibility = ["//visibility:public"],
     deps = [
         "@stackage//:base",

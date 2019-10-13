@@ -66,7 +66,7 @@ makeLenses ''NotAndForm
 instance Show NotAndForm where { show f = unlines $ map show $ f^.notAndForm'orClauses }
 
 -- Disjunctive Normal Form
-newtype AndClause = AndClause { _andClause'atoms :: [Atom] } deriving(Ord,Eq)
+newtype AndClause = AndClause { _andClause'atoms :: [Atom] } deriving(Ord,Eq,Semigroup,Monoid)
 makeLenses ''AndClause
 instance Show AndClause where { show c = intercalate " /\\ " $ map show (c^.andClause'atoms) }
 
@@ -90,8 +90,7 @@ sumOr (OrForm x) (OrForm y) = OrForm (Ordered.union x y)
 prodOr (OrForm fa) (OrForm fb) = OrForm $ Ordered.nubSort [AndClause (Ordered.union ca cb) | AndClause ca <- fa, AndClause cb <- fb]
   
 dnf :: Skolem.Form -> OrForm
-dnf (Skolem.PosAtom p) = OrForm [AndClause [Atom True p]]
-dnf (Skolem.NegAtom p) = OrForm [AndClause [Atom False p]]
+dnf (Skolem.Atom s p) = OrForm [AndClause [Atom s p]]
 dnf (Skolem.Or x) = foldl sumOr (OrForm []) (map dnf x)
 dnf (Skolem.And x) = foldl prodOr (OrForm [AndClause []]) (map dnf x)
 

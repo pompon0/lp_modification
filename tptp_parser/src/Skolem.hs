@@ -16,27 +16,28 @@ import Control.Lens(makeLenses,Traversal,Traversal',Fold,Lens,Lens',Iso',dimap)
 
 data Form = And [Form]
   | Or [Form]
-  | PosAtom Pred
-  | NegAtom Pred
+  | Atom Bool Pred
   deriving(Eq)
 
 instance Show Form where
   show (And x) = "and( " ++ sepList x ++ ")"
   show (Or x) = "or(" ++ sepList x ++ ")"
-  show (PosAtom p) = show p
-  show (NegAtom n) = "-" ++ show n
+  show (Atom True p) = show p
+  show (Atom False n) = "-" ++ show n
 
 --------------------------------------
 
 data State = State {
   _funNames :: Map.Map FunName FunName,
+  _predNames :: Map.Map PredName PredName,
   _varStack :: [Term],
   _nextVar :: VarName,
-  _nextFunName :: FunName
+  _nextFunName :: FunName,
+  _nextPredName :: PredName
 }
 makeLenses ''State
 type M = StateM.State State
-empty = State Map.empty [] 0 0
+empty = State Map.empty Map.empty [] 0 0 0
 
 
 skol :: F.Form -> Form
@@ -161,8 +162,7 @@ skolF f = case f of
     push (wrap $ TVar nv) (skolF x)
   F.Or x -> mapM skolF x >>= return .Or
   F.And x -> mapM skolF x >>= return . And
-  F.PosAtom p -> skolP p >>= return . PosAtom
-  F.NegAtom p -> skolP p >>= return . NegAtom
+  F.Atom s p -> skolP p >>= return . Atom s
 
 skolP :: Pred -> M Pred
 skolP p = case unwrap p of

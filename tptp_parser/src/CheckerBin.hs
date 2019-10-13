@@ -12,7 +12,9 @@ import qualified Proto.Solutions as SPB
 import qualified Proof
 import qualified Form
 import qualified ParserBin
+import qualified NNF
 import qualified DNF
+import qualified DefDNF
 import Valid(counterExample)
 import qualified Parser
 import qualified Trace
@@ -30,7 +32,7 @@ readAndParse tptp_path = do
 
 help = do
   putStrLn "conv [fof|cnf] [tptp_file] > [proto_file]"
-  putStrLn "cnf [fof_proto_file] > [cnf_proto_file]"
+  putStrLn "cnf [reg|def] [fof_proto_file] > [cnf_proto_file]"
   putStrLn "validate [solution_proto_file] > [stats_proto_file]"
 
 
@@ -45,10 +47,13 @@ conv [language,tptp_path] = do
     _ -> help;
   }
 
-cnf [fof_proto_file] = do
+cnf [mode,fof_proto_file] = do
   file <- readProtoFile fof_proto_file
   (fof,ni) <- assert $ Form.runM (Form.fromProto'File file) Form.emptyNI
-  assert (DNF.toProto (formToDNF fof) ni) >>= putStrLn . TextFormat.showMessage
+  case mode of
+    "reg" -> assert (DNF.toProto (formToDNF fof) ni) >>= putStrLn . TextFormat.showMessage
+    "def" -> assert (DNF.toProto dnf ni') >>= putStrLn . TextFormat.showMessage where
+      (dnf,ni') = DefDNF.defDNF (NNF.nnf fof) ni
 
 validate [solution_proto_file] = do
   solutionProto :: SPB.CNF <- readProtoFile solution_proto_file

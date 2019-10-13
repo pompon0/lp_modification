@@ -106,6 +106,12 @@ lookupPredName name = do
     return x;
   }
 
+-- ni.predNames[prefix?,arity] = ni.predNames.size()
+allocName :: Num name => String -> Int -> Map.Map (Text.Text,Int) name -> (name, Map.Map (Text.Text,Int) name)
+allocName prefix arity ni = (n, ni & at (Text.pack (prefix <> show x), arity) ?~ n) where
+  n = fromIntegral x
+  x = Map.size ni :: Int
+
 lookupFunName :: (Text.Text,Int) -> M FunName
 lookupFunName name = do
   mx <- use $ names.funNames.at name
@@ -132,6 +138,8 @@ runRM ma ni = ExceptM.runExcept (ReaderM.runReaderT ma (revNI ni))
 
 liftRM :: RM a -> M a
 liftRM ma = use names >>= (lift . ReaderM.runReaderT ma . revNI)
+
+------------------------------------------------------
 
 fromProto :: T.File -> Either String Form
 fromProto f = case runM (fromProto'File f) emptyNI of { Left e -> Left e; Right (f,ni) -> Right f }

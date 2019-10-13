@@ -4,13 +4,14 @@ cabal-version: 1.24
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: c0001feaf187f544bd395a5b60461410eac83d824b5daa6bca70ed7244a62f02
+-- hash: 2bf2729c8d01b3223bd42f2c85e5926bee0530792724ca929eebb5153d2e833b
 
 name:           tptp-parser
 version:        0.0.0
 build-type:     Custom
 extra-source-files:
     proto/proof.proto
+    proto/solutions.proto
     proto/tptp.proto
 
 custom-setup
@@ -28,10 +29,13 @@ library
       CheckerBin
       Proto.Tptp
       Proto.Proof
+      Proto.Solutions
   other-modules:
       Brand
       BrandTest
       Build
+      DefDNF
+      DefDNFTest
       DiscTree
       DiscTreeTest
       DNF
@@ -86,7 +90,6 @@ library
     , hashtables
     , http-conduit
     , lens
-    , lens-labels
     , microlens
     , mtl
     , options
@@ -130,7 +133,6 @@ executable checker
     , hashtables
     , http-conduit
     , lens
-    , lens-labels
     , microlens
     , mtl
     , options
@@ -175,7 +177,6 @@ executable conv
     , hashtables
     , http-conduit
     , lens
-    , lens-labels
     , microlens
     , mtl
     , options
@@ -220,7 +221,6 @@ executable parser
     , hashtables
     , http-conduit
     , lens
-    , lens-labels
     , microlens
     , mtl
     , options
@@ -265,7 +265,6 @@ executable thread
     , hashtables
     , http-conduit
     , lens
-    , lens-labels
     , microlens
     , mtl
     , options
@@ -311,7 +310,6 @@ test-suite test
     , hashtables
     , http-conduit
     , lens
-    , lens-labels
     , microlens
     , mtl
     , options

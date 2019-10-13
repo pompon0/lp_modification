@@ -54,7 +54,7 @@ DerOrClause cong_pred_axiom(u64 pred_name, u64 arg_count) {
   }
   cb.set_atom(arg_count,lb.build()); 
   cb.set_atom(arg_count+1,rb.build());
-  return DerOrClause(3,cb.build());
+  return DerOrClause(1,cb.build());
 }
 
 DerOrClause cong_fun_axiom(u64 fun_name, u64 arg_count) {
@@ -70,7 +70,7 @@ DerOrClause cong_fun_axiom(u64 fun_name, u64 arg_count) {
     rb.set_arg(i,ra);
   }
   cb.set_atom(arg_count,Atom::eq(true,Term(lb.build()),Term(rb.build()))); 
-  return DerOrClause(3,cb.build());
+  return DerOrClause(1,cb.build());
 }
 
 struct ArityCtx {

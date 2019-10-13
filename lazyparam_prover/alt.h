@@ -13,7 +13,7 @@ struct ExampleCont {
   template<typename Alts> void run(State &state, Alts &alts) const {}
 };
 
-template<typename Cont> bool search(typename Cont::State &state, Cont c) {
+template<typename Cont> Maybe<Cont> search(typename Cont::State &state, Cont c) {
   SCOPE("alt::search");
   struct Alt { Cont cont; typename Cont::State::Snapshot snapshot; };
   List<Alt> alts({c,state.snapshot()});
@@ -21,12 +21,12 @@ template<typename Cont> bool search(typename Cont::State &state, Cont c) {
     DEBUG if(steps%1000==0) info("steps = %",steps);
     auto a = alts.head(); alts = alts.tail();
     state.rewind(a.snapshot);
-    if(a.cont.done()) return 1;
+    if(a.cont.done()) return Maybe<Cont>(a.cont);
     a.cont.run(state,
       [&alts,&state](Cont cont){ alts = Alt{cont,state.snapshot()} + alts; }
     );
   }
-  return 0;
+  return Maybe<Cont>();
 }
 
 } // namespace alt

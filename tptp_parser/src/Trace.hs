@@ -8,7 +8,6 @@ import Test.Tasty.HUnit (assertBool,assertFailure,Assertion)
 import Control.Monad.Trans.Class(lift)
 import qualified Control.Monad.Trans.State as State
 import qualified Control.Monad.Trans.Except as Except
-import qualified TraceM as N
 import qualified System.Posix.Signals as Signals
 import qualified Control.Concurrent.MVar as MVar
 
@@ -21,16 +20,15 @@ checkChannel = do
   h <- State.get
   s <- lift $ lift $ MVar.tryTakeMVar (channel h);
   case s of
-    Just () -> N.fail "SIGINT"
+    Just () -> fail "SIGINT"
     Nothing -> return ()
 
-instance N.TraceM Trace where
-  fail msg = lift $ Except.throwE [msg]
-  ctx line args mx = do
-    checkChannel
-    State.mapStateT (Except.withExceptT
-      (\s -> (line:map (\arg -> "  "++arg) args ++ s))) mx
-  log msg = lift $ lift $ putStrLn msg
+fail msg = lift $ Except.throwE [msg]
+ctx line args mx = do
+  checkChannel
+  State.mapStateT (Except.withExceptT
+    (\s -> (line:map (\arg -> "  "++arg) args ++ s))) mx
+log msg = lift $ lift $ putStrLn msg
 
 isOk :: Trace a -> IO Bool
 isOk ta = do
@@ -43,7 +41,7 @@ same :: (Eq a, Show a) => Trace a -> Trace a -> Trace ()
 same mx my = do
   x <- mx
   y <- my
-  if x==y then return () else N.fail (show x ++ " /= " ++ show y)
+  if x==y then return () else fail (show x ++ " /= " ++ show y)
 
 evalIO :: Trace a -> IO (Either Stack a)
 evalIO ta = do
@@ -52,17 +50,3 @@ evalIO ta = do
   Signals.installHandler Signals.sigINT (Signals.Catch handler) Nothing
   Except.runExceptT (State.evalStateT ta (Hash chan))
 
--- TODO: do the printing
-assertOk :: Trace a -> Assertion
-assertOk ta = do
-  mx <- evalIO ta
-  case mx of
-    Left s -> assertFailure (unlines s)
-    Right _ -> return ()
-
-assertNotOk :: Show a => Trace a -> Assertion
-assertNotOk ta = do
-  mx <- evalIO ta
-  case mx of
-    Left _ -> return ()
-    Right a -> assertFailure ("expected error, got " ++ show a)

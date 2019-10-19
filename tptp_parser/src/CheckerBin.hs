@@ -11,19 +11,25 @@ import qualified Proto.Tptp as T
 import qualified Proto.Solutions as SPB
 import qualified Proof
 import qualified Form
-import qualified ParserBin
 import qualified NNF
 import qualified DNF
 import qualified DefDNF
+import Skolem
 import Valid(counterExample)
 import qualified Parser
 import qualified Trace
-import ParserBin(formToDNF)
 
 import qualified Data.Map as Map
 import qualified Data.Set as Set
-import qualified Data.Set.Monad as SetM
 import Control.Lens
+
+formToDNF :: (Ctx,Form.Form) -> (Ctx,DNF.OrForm)
+formToDNF = DNF.simplify . DNF.dnf . Skolem.skol . NNF.nnf
+
+--TODO: move the quantifiers down, convert to CNF (treating quantified formulas as atoms),
+--  which will give you a decomposition into subproblems
+toDNF :: T.File -> Either String DNF.OrForm
+toDNF tptpFile = fmap formToDNF (Form.fromProto tptpFile) 
 
 readAndParse :: String -> IO T.File
 readAndParse tptp_path = do

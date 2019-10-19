@@ -27,8 +27,8 @@ import Text.Printf
 import Lib
 import qualified Proto.Tptp as T
 
-data Form = Forall Form
-  | Exists Form
+data Form = Forall VarName Form
+  | Exists VarName Form
   | And [Form]
   | Or [Form]
   | Xor Form Form
@@ -36,14 +36,14 @@ data Form = Forall Form
   | Atom Pred
   deriving(Eq)
 
-instance Show Form where
-  show (Forall f) = "A " ++ show f
-  show (Exists f) = "E " ++ show f
-  show (And x) = "and(" ++ sepList x ++ ")"
-  show (Or x) = "or(" ++ sepList x ++ ")"
-  show (Xor l r) = "xor(" ++ sepList [l,r] ++ ")"
-  show (Neg f) = "-" ++ show f
-  show (Atom p) = show p
+instance Show (Ctx,Form) where
+  show (ctx, Forall vn f) = printf "A[%s] %s" (fromJust $ ctx^.fromVarNames.at vn) (show (ctx,f))
+  show (ctx, Exists vn f) = printf "E[%s] %s" (fromJust $ ctx^.fromVarNames.at vn) (show (ctx,f))
+  show (ctx, And x) = printf "and(%s)" (sepList $ map (\f -> (ctx,f)) x)
+  show (ctx, Or x) = printf "or(%s)" (sepList $ map (\f -> (ctx,f)) x)
+  show (ctx, Xor l r) = printf "xor(%s,%s)" (show (ctx,l)) (show (ctx,r))
+  show (ctx, Neg f) = printf "-%s" (show (ctx,f))
+  show (ctx, Atom p) = show (ctx,p)
 
 ---------------------------------------
 
@@ -67,18 +67,6 @@ makeLenses ''NameIndex
 
 emptyNI = NameIndex Map.empty Map.empty
 
-data RevNameIndex = RevNameIndex {
-  _revPredNames :: Map.Map PredName Text.Text,
-  _revFunNames :: Map.Map FunName Text.Text
-} deriving(Show)
-makeLenses ''RevNameIndex
-
-revNI :: NameIndex -> RevNameIndex
-revNI ni = RevNameIndex
-  (Map.fromList $ map (\((t,a),n) -> (n,t)) (Map.toList $ ni^.predNames))
-  (Map.fromList $ map (\((t,a),n) -> (n,t)) (Map.toList $ ni^.funNames))
-
-
 data State = State {
   _names :: NameIndex,
   _varStack :: [Text.Text]
@@ -88,23 +76,6 @@ makeLenses ''State
 
 type M = StateM.StateT State (ExceptM.Except String)
 type RM = ReaderM.ReaderT RevNameIndex (ExceptM.Except String)
-
-push :: [Text.Text] -> M a -> M a
-push names ma = do
-  old <- varStack <<%= (names++)
-  a <- ma
-  varStack .= old
-  return a
-
-
-lookupPredName :: (Text.Text,Int) -> M PredName
-lookupPredName name = do
-  mx <- use $ names.predNames.at name
-  case mx of { Just x -> return x; _ -> do
-    x <- use $ names.predNames.to (fromIntegral . Map.size);
-    names.predNames.at name ?= x;
-    return x;
-  }
 
 -- ni.predNames[prefix?,arity] = ni.predNames.size()
 allocName :: Num name => String -> Int -> Map.Map (Text.Text,Int) name -> (name, Map.Map (Text.Text,Int) name)
@@ -232,23 +203,23 @@ fromProto'Term term = case (term^. #type') of
   }
   _ -> fail "term.type unknown"
 
-toProto'Pred :: Pred -> RM T.Formula'Pred
-toProto'Pred pred = case unwrap pred of
+toProto'Pred :: Ctx -> Pred -> Err T.Formula'Pred
+toProto'Pred ctx pred = case unwrap pred of
   PEq l r -> do
-    args' <- mapM toProto'Term [l,r]
+    args' <- mapM (toProto'Term ctx) [l,r]
     return $ defMessage & #type' .~ T.Formula'Pred'EQ & #args .~ args'
   PCustom pn args -> do
-    name <- view (revPredNames.at pn) >>= orFail (printf "revPredNames %s = Nothing" (show pn))
-    args' <- mapM toProto'Term args
-    return $ defMessage & #type' .~ T.Formula'Pred'CUSTOM & #name .~ name & #args .~ args'
+    name <- orFail (printf "ctx.preds[%s] = Nothing" (show pn)) (ctx^.fromPredNames.at pn)
+    args' <- mapM (toProto'Term ctx) args
+    return $ defMessage & #type' .~ T.Formula'Pred'CUSTOM & #name .~ (Text.pack name) & #args .~ args'
 
-toProto'Term :: Term -> RM T.Term
-toProto'Term term = case unwrap term of
+toProto'Term :: Ctx -> Term -> Err T.Term
+toProto'Term ctx term = case unwrap term of
   TVar vn -> return $ defMessage & #type' .~ T.Term'VAR & #name .~ Text.pack (show vn)
   TFun fn args -> do
-    name <- view (revFunNames.at fn) >>= return . fromMaybe (Text.pack $ show fn) 
-    args' <- mapM toProto'Term args
-    return $ defMessage & #type' .~ T.Term'EXP & #name .~ name & #args .~ args'
+    name <- orFail (printf "ctx.funs[%s] = Nothing" (show fn)) (ctx^.fromFunNames.at fn)
+    args' <- mapM (toProto'Term ctx) args
+    return $ defMessage & #type' .~ T.Term'EXP & #name .~ (Text.pack name) & #args .~ args'
 
 freeVars'Term :: T.Term -> [Text.Text]
 freeVars'Term t = case t^. #type' of {

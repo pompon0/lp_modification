@@ -5,13 +5,13 @@ module Skolem(Form(..), skol) where
 
 import Lib
 import Pred
-import qualified Control.Monad.State.Lazy as StateM
 import Control.Lens (makeLenses, (^.), (%~), (.~), over, view, use, (.=), (%=))
 import qualified Data.Map as Map
 import qualified NNF as F
 import Data.List(intercalate)
 import qualified Data.Set.Monad as Set
 import Control.Monad(join)
+import qualified Control.Monad.Trans.State.Lazy as StateM
 import Control.Lens(makeLenses,Traversal,Traversal',Fold,Lens,Lens',Iso',dimap)
 
 data Form = And [Form]
@@ -19,41 +19,48 @@ data Form = And [Form]
   | Atom Bool Pred
   deriving(Eq)
 
-instance Show Form where
-  show (And x) = "and( " ++ sepList x ++ ")"
-  show (Or x) = "or(" ++ sepList x ++ ")"
-  show (Atom True p) = show p
-  show (Atom False n) = "-" ++ show n
+instance ShowCtx Form where
+  show (And x) = fmap (printf "and(%s)") (sepList x)
+  show (Or x) = fmap (printf "or(%s)") (sepList x)
+  show (Atom s p) = fmap ((if s then "+" else "-")++) (showCtx p)
 
 --------------------------------------
 
-data State = State {
-  _funNames :: Map.Map FunName FunName,
-  _predNames :: Map.Map PredName PredName,
-  _varStack :: [Term],
-  _nextVar :: VarName,
-  _nextFunName :: FunName,
-  _nextPredName :: PredName
-}
-makeLenses ''State
-type M = StateM.State State
-empty = State Map.empty Map.empty [] 0 0 0
+skol :: (Ctx,F.Form) -> (Ctx,Form)
+skol (ctx,f) = skol'Form emptyValuation ctx f
 
+with :: s -> (StateM.State a) -> (s,a)
+with = flip StateM.runState
+mapWithState :: (a -> (s -> (b,s))) -> ([a],s) -> ([b],s)
+mapWithState f (l,s) = StateM.runState (mapM (StateM.state . f) l) s
 
-skol :: F.Form -> Form
-skol f = let (res,_) = StateM.runState (skolF f) empty in res
+skol'Form :: Valuation -> (Ctx,F.Form) -> (Ctx,Form)
+skol'Form val (ctx,f) = case f of
+  F.Forall vn x -> skol'Form (val & vn ?~ c) (ctx',x) where
+    isVar t = case unwrap t of { TVar _->True; _-> False }
+    (fn,ctx') = (ctx & fromFunNames %%~ alloc)
+    c = wrap $ TFun fn (filter isVar st)
+  F.Exists vn x -> skol'Form (val & vn ?~ v) ctx x where
+    v = wrap $ TVar vn
+  F.Or l -> (ctx', Or l') where
+    (l',ctx') = mapWithState (swap.skol'Form val.swap) (l,ctx)
+  F.And l -> (ctx', And l') where
+    (l',ctx') = mapWithState (swap.skol'Form val.swap) (l,ctx)
+  F.Atom s p -> (ctx, Atom s skol'Pred val (ctx,p))
 
--- all the functions get renamed during skolemization
-lookupFunName :: FunName -> M FunName
-lookupFunName name = do
-  fn <- use funNames
-  case Map.lookup name fn of
-    Just i -> return i
-    Nothing -> do
-      i <- use nextFunName
-      nextFunName %= (+1)
-      funNames %= Map.insert name i
-      return i
+skol'Pred :: Valuation -> (Ctx,Pred) -> Pred
+skol'Pred val (ctx,p) = p & wh.pred'args %~ (\t -> skol'Term (ctx,t))
+
+skolT t = case unwrap t of
+  TVar vn -> do
+    mt <- use (varStack.ix vn)
+    case mt of
+      Nothing -> fail "oob"
+      Just t -> return t
+  TFun name args -> do
+    n <- lookupFunName name
+    a <- mapM skolT args
+    return (wrap $ TFun n a)
 
 {-
 Amodel Ey Ax f <=>
@@ -139,46 +146,3 @@ exponential blowup:
   conversion to DNF
 
 -}
-
-push :: Term -> M a -> M a
-push t ma = do
-  st <- use varStack
-  varStack .= t:st
-  a <- ma
-  varStack .= st
-  return a 
-
-skolF :: F.Form -> M Form
-skolF f = case f of
-  F.Forall x -> do
-    let isVar t = case unwrap t of { TVar _->True; _-> False }
-    n <- use nextFunName
-    nextFunName %= (+1)
-    st <- use varStack
-    push (wrap $ TFun n (filter isVar st)) (skolF x)
-  F.Exists x -> do
-    nv <- use nextVar
-    nextVar %= (+1)
-    push (wrap $ TVar nv) (skolF x)
-  F.Or x -> mapM skolF x >>= return .Or
-  F.And x -> mapM skolF x >>= return . And
-  F.Atom s p -> skolP p >>= return . Atom s
-
-skolP :: Pred -> M Pred
-skolP p = case unwrap p of
-  PEq l r -> do
-    sl <- skolT l
-    sr <- skolT r
-    return (wrap $ PEq sl sr)
-  PCustom name args -> mapM skolT args >>= return . wrap . PCustom name
-skolT t = case unwrap t of
-  TVar vn -> do
-    mt <- use (varStack.ix vn)
-    case mt of
-      Nothing -> fail "oob"
-      Just t -> return t
-  TFun name args -> do
-    n <- lookupFunName name
-    a <- mapM skolT args
-    return (wrap $ TFun n a)
-

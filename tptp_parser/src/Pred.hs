@@ -12,6 +12,10 @@ import Lib
 import Control.Lens(makeLenses,Traversal,Traversal',Fold,Lens,Lens',Iso',dimap)
 import qualified Data.Map as Map
 import HashSeq
+import qualified Coq
+import Control.Lens
+import Data.Maybe(fromJust)
+import Text.Printf
 
 data Term' = TVar VarName | TFun FunName [Term]
 data Pred' = PEq Term Term | PCustom PredName [Term]
@@ -38,6 +42,9 @@ term'subterm g t@(val -> TVar _) = g t *> pure t
 data SPred = SPred { _spred'name :: PredName, _spred'args :: [Term] }
 makeLenses ''SPred
 
+wh :: HashSeq a => Iso' (WithHash a) a
+wh = dimap unwrap (fmap wrap)
+
 wrap :: HashSeq a => a -> WithHash a
 wrap = withHash
 unwrap :: HashSeq a => WithHash a -> a
@@ -55,13 +62,18 @@ makePred (SPred pn args) = case args of
 pred'spred :: Iso' Pred SPred 
 pred'spred = dimap makeSPred (fmap makePred)
 
-instance Show Pred where
-  show (val -> PEq l r) = "eq(" ++ sepList [l,r] ++ ")"
-  show (val -> PCustom n x) = show n ++ "(" ++ sepList x ++ ")"
+pred'name :: Lens' Pred PredName
+pred'name = pred'spred.spred'name
 
-instance Show Term where
-  show (val -> TVar n) = show n
-  show (val -> TFun n x) = show n ++ "(" ++ sepList x ++ ")"
+pred'args :: Lens' Pred [Term]
+pred'args = pred'spred.spred'args
+
+instance ShowCtx Pred where
+  showCtx p = pure (printf "%s(%s)") <*> showCtx (p^.pred'name) <*> sepList (p^.pred'args)
+
+instance ShowCtx Term where
+  showCtx (val -> TVar n) = showCtx n
+  showCtx (val -> TFun n x) = pure (printf "%s(%s)") <*> showCtx n <*> sepList x
 
 ----------------------------------------------------
 
@@ -79,4 +91,8 @@ ground :: Term -> Term
 ground (val -> TVar _) = withHash $ TFun extraConstName []
 ground (val -> TFun f args) = withHash $ TFun f (map ground args)
 
-
+term'coq :: Ctx -> Term -> Coq.Expr
+term'coq c (val -> TVar vn) = Coq.Value $ fromJust (c^.fromVarNames.at vn)
+term'coq c (val -> TFun fn args) = foldl Coq.Apply (Coq.Value fn') args' where
+  fn' = fromJust (c^.fromFunNames.at fn)
+  args' = map (term'coq c) args

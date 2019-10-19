@@ -41,7 +41,8 @@ import Data.ProtoLens(defMessage)
 data Atom = Atom { _atom'sign :: Bool, _atom'pred :: Pred } deriving(Eq,Ord)
 makeLenses ''Atom
 
-instance Show Atom where { show (Atom s p) = (if s then "+" else "-") ++ show p }
+instance ShowCtx Atom where
+  showCtx (Atom s p) = ((if s then "+" else "-")++) =<< showCtx p
 
 atom'name :: Lens' Atom PredName
 atom'name = atom'pred.pred'spred.spred'name
@@ -125,8 +126,8 @@ isInstance a b = andClause'runMGU (a,b) emptyValuation /= Nothing
 fromProto :: T.File -> NameIndex -> Either String (OrForm,NameIndex)
 fromProto f ni = runM (fromProto'File f) ni
 
-toProto :: OrForm -> NameIndex -> Either String T.File
-toProto f ni = runRM (toProto'File f) ni
+toProto :: Ctx -> OrForm -> Err T.File
+toProto = toProto'File
 
 -----------------------------------------------------
 
@@ -176,14 +177,14 @@ fromProto'Atom f =
     Just (T.Formula'Pred' pred) -> fromProto'Pred pred >>= return . Atom True
     Just (formType@_) -> fail ("unexpected formula type: " ++ show formType)
 
-toProto'File :: OrForm -> RM T.File
-toProto'File (OrForm clauses) = do
-  inputs <- mapM (toProto'Input.notAndClause) clauses
+toProto'File :: Ctx -> OrForm -> Err T.File
+toProto'File ctx (OrForm clauses) = do
+  inputs <- mapM (toProto'Input ctx . notAndClause) clauses
   return $ defMessage & #input .~ inputs
 
-toProto'Input :: OrClause -> RM T.Input
-toProto'Input (OrClause atoms) = do
-  atoms' <- mapM toProto'Atom atoms 
+toProto'Input :: Ctx -> OrClause -> Err T.Input
+toProto'Input ctx (OrClause atoms) = do
+  atoms' <- mapM (toProto'Atom ctx) atoms 
   return $ defMessage
     & #language .~ T.Input'CNF
     & #role .~ T.Input'PLAIN
@@ -192,9 +193,9 @@ toProto'Input (OrClause atoms) = do
         & #type' .~ T.Formula'Operator'OR
         & #args .~ atoms'))
 
-toProto'Atom :: Atom -> RM T.Formula
-toProto'Atom (Atom sign pred) = do
-  pred' <- toProto'Pred pred
+toProto'Atom :: Ctx -> Atom -> Err T.Formula
+toProto'Atom ctx (Atom sign pred) = do
+  pred' <- toProto'Pred ctx pred
   let fpred = defMessage & #maybe'formula .~ Just (T.Formula'Pred' pred')
   let op = defMessage & #type' .~ T.Formula'Operator'NEG & #args .~ [fpred]
   let fop = defMessage & #maybe'formula .~ Just (T.Formula'Op op)

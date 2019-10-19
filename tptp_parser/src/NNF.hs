@@ -3,9 +3,10 @@ module NNF(nnf,Form(..),Pred(..),Term(..)) where
 import qualified Form as F
 import Pred
 import Lib
+import qualified Control.Monad.Trans.Reader as ReaderM
 
-data Form = Forall Form
-  | Exists Form
+data Form = Forall VarName Form
+  | Exists VarName Form
   | And [Form]
   | Or [Form]
   | Atom Bool Pred
@@ -19,17 +20,17 @@ instance Show Form where
   show (Atom True p) = show p
   show (Atom False p) = "-" ++ show p
 
-nnf :: F.Form -> Form
-nnf = _nnf False
-_nnf :: Bool -> F.Form -> Form
-_nnf n f = case f of
-  F.Forall x -> (if n then Exists else Forall) (_nnf n x)
-  F.Exists x -> (if n then Forall else Exists) (_nnf n x)
-  F.And x -> (if n then Or else And) (map (_nnf n) x)
-  F.Or x -> (if n then And else Or) (map (_nnf n) x)
+nnf :: (Ctx,F.Form) -> (Ctx,Form)
+nnf (ctx,f) = (ctx, _nnf False ctx f)
+_nnf :: Bool -> Ctx -> F.Form -> Form
+_nnf n ctx f = case f of
+  F.Forall x -> (if n then Exists else Forall) (_nnf n ctx x)
+  F.Exists x -> (if n then Forall else Exists) (_nnf n ctx x)
+  F.And x -> (if n then Or else And) (map (_nnf n ctx) x)
+  F.Or x -> (if n then And else Or) (map (_nnf n ctx) x)
   -- xor elimination allows to pull out the quantifiers
   -- NOTE: this reduction causes exponential blow up
   --       it can be optimized by caching
-  F.Xor x y -> _nnf n (F.Or [F.And [F.Neg x,y], F.And [x,F.Neg y]])
-  F.Neg x -> _nnf (not n) x
+  F.Xor x y -> _nnf n ctx (F.Or [F.And [F.Neg x,y], F.And [x,F.Neg y]])
+  F.Neg x -> _nnf (not n) ctx x
   F.Atom p -> Atom (not n) p

@@ -1,10 +1,13 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE Rank2Types #-}
 module Lib where
 
 import qualified Data.Map as Map
 import qualified Data.Maybe as Maybe
-import Data.List(intercalate)
+import Data.List(intercalate,find)
 import Data.List.Split(chunksOf)
 import Control.Monad(join)
 
@@ -19,16 +22,17 @@ import qualified Data.ProtoLens.TextFormat as TextFormat
 import Data.ProtoLens.Message(Message)
 import qualified Data.Text.Lazy as Text
 import qualified Data.Set as Set
+import qualified Data.Map as Map
 
 import Control.Monad.IO.Class(MonadIO,liftIO)
 import System.IO(hFlush,hPutStrLn,stdout,stderr)
-import qualified System.Posix.Signals as Signals
-import qualified Control.Concurrent as Concurrent
-import qualified Control.Concurrent.Thread.Delay as Delay
-import qualified Control.Concurrent.Thread as Thread
-import qualified Control.Concurrent.Timeout as Timeout
+import qualified Control.Monad.Trans.Except as ExceptM
+import qualified Control.Monad.Trans.Reader as ReaderM
+import Control.Lens(makeLenses,(&),at,(%~),(.~),(?~),(^.),(^?!),filtered,Index,IxValue,Lens',non,Ixed,At,view)
 
 import qualified System.Clock as Clock
+
+type Err a = ExceptM.Except String a
 
 newtype FunName = FunName Int deriving (Eq,Num,Ord,Integral,Real,Enum,Hashable)
 newtype PredName = PredName Int deriving(Eq,Num,Ord,Integral,Real,Enum,Hashable)
@@ -38,15 +42,39 @@ eqPredName = -1 :: PredName
 redEQPredName = -2 :: PredName
 redLTPredName = -3 :: PredName
 
-extraConstName :: FunName
-extraConstName = -1
+extraConstName = -1 :: FunName
 
-instance Show FunName where {
-  show fn | fn==extraConstName = "c" ;
-  show (FunName n) = "f" ++ show n;
+data Ctx = Ctx {
+  _fromPredNames :: Map.Map PredName String,
+  _fromFunNames :: Map.Map FunName String,
+  _fromVarNames :: Map.Map VarName String
 }
-instance Show PredName where { show (PredName n) = "p" ++ show n }
-instance Show VarName where { show (VarName n) = "v" ++ show n }
+makeLenses ''Ctx
+
+emptyCtx = Ctx {
+  _fromPredNames = Map.fromList [(eqPredName,"eq")],
+  _fromFunNames = Map.fromList [(extraConstName,"c")],
+  _fromVarNames = Map.empty
+}
+
+class ShowCtx a where { showCtx :: a -> ReaderM.Reader Ctx String }
+(!>) :: ShowCtx a => Ctx -> a -> String
+(!>) ctx a = ReaderM.runReader (showCtx a) ctx
+
+alloc :: (Num a, Eq a, Enum a, Ord a, Show a) => Map.Map a String -> (a, Map.Map a String)
+alloc m = (x, m & at x ?~ show x) where
+  x = [fromIntegral 0..] ^?! traverse.filtered (\i -> Maybe.isNothing (m^.at i))
+
+at' :: At m => Index m -> Lens' m (IxValue m)
+at' i f = at i (\(Just x) -> fmap Just (f x))
+
+instance Show FunName where { show (FunName i) = "f" ++ show i }
+instance Show PredName where { show (PredName i) = "p" ++ show i }
+instance Show VarName where { show (VarName i) = "v" ++ show i }
+
+instance ShowCtx FunName where { showCtx fn = view (fromFunNames.at' fn) }
+instance ShowCtx PredName where { showCtx pn = view (fromPredNames.at' pn) }
+instance ShowCtx VarName where { showCtx vn = view (fromVarNames.at' vn) }
 
 -------------------------------------------
 
@@ -77,8 +105,8 @@ ix i g [] = fmap (\_ -> []) (g Nothing)
 ix 0 g (h:t) = fmap (\ma -> case ma of { Nothing -> (h:t); Just x -> (x:t)}) (g (Just h))
 ix i g (h:t) = fmap (\la -> h:la) (ix (i-1) g t)
 
-sepList :: Show a => [a] -> String
-sepList x = intercalate "," (map show x)
+sepList :: ShowCtx a => [a] -> ReaderM.Reader Ctx String
+sepList x = fmap (intercalate ",") (mapM showCtx x)
 
 assert :: (Monad m, Show e) => Either e a -> m a
 assert (Left err) = fail (show err)
@@ -101,57 +129,6 @@ printE x = putStrLnE (show x)
 
 --------------------------------------
 
-killable :: IO a -> IO a
-killable cont = do
-  ti <- Concurrent.myThreadId
-  Signals.installHandler Signals.sigINT (Signals.Catch $ Concurrent.killThread ti) Nothing
-  cont
-
--- capabilities count is the size of pthread pools
--- forkOS binds thread to a pthread
--- preemptive on memory allocation
---  if an infinite loop doesn't allocate memory it is not killable
---  SIGINT handler with cap=1 won't ever trigger
---  SIGINT handler with cap>1 will trigger, but will only schedule thread termination 
---  add flag "-fno-omit-yields" to enforce preemption
--- simplest tight loop (i.e. non-allocating)
---  loop :: Int -> Int
---  loop i = loop i
-
-runInParallelWithTimeout :: Show a => Integer -> [(String,IO a)] -> IO [Thread.Result (Maybe a)]
-runInParallelWithTimeout time_per_task_us tasks = do
-  let {
-    fork (i,(n,t)) = do {
-      (_,w) <- Thread.forkOn i $ Timeout.timeout time_per_task_us t;
-      return $ do { r <- w; putStrLn $ n ++ " = " ++ show r; hFlush stdout; return r };
-    };
-    execChunk :: Show a => [(Int,(String,IO a))] -> IO [Thread.Result (Maybe a)];
-    execChunk tasks = mapM fork tasks >>= sequence;
-  }
-  cap <- Concurrent.getNumCapabilities
-  resChunks :: [[Thread.Result (Maybe a)]] <- mapM execChunk (chunksOf cap $ zip [0..] tasks)
-  return (join resChunks)
-
---------------------------------------------
-
 readProtoFile :: Message a => String -> IO a
 readProtoFile path = readFile path >>= assert . TextFormat.readMessage . Text.pack 
-
---------------------------------------------
-{-
-type Getting r s t a b = (a -> Const r b) -> (s -> Const r t)
-toListOf :: Getting [a] s t a b -> s -> [a]
-toListOf t = getConst . t (\a -> Const [a])
-
-(^..) :: s -> Getting [a] s t a b -> [a]
-(^..) = flip toListOf
-
-(^.) :: s -> Getting a s t a b -> a
-(^.) s g = getConst $ g (\a -> Const a) s
-infix 8 ^.,^..
--}
---------------------------------------------
-
-diffSeconds :: Clock.TimeSpec -> Clock.TimeSpec -> Double
-diffSeconds t1 t0 = (*1e-9) $ fromIntegral $ Clock.toNanoSecs $ Clock.diffTimeSpec t1 t0
 

@@ -87,7 +87,13 @@ private:
   u64 var_offset;
   explicit Atom(u64 *_ptr, u64 _var_offset) : ptr(_ptr), var_offset(_var_offset) {}
 public:
-  enum { EQ = u64(-1), PRED_MIN = EQ };
+  enum {
+    EQ = u64(-1),
+    EQ_TRANS_POS = u64(-2),
+    EQ_TRANS_NEG = u64(-3),
+    EQ_SYMM = u64(-4),
+    PRED_MIN = EQ_SYMM,
+  };
 
   inline bool sign() const { return ptr[SIGN]; }
   inline u64 pred() const { return ptr[PRED]; }
@@ -98,6 +104,12 @@ public:
     Builder b(sign,EQ,2);
     b.set_arg(0,l);
     b.set_arg(1,r);
+    return b.build();
+  }
+
+  static inline Atom slow_make(bool sign, u64 pred, const vec<Term> &args) {
+    Builder b(sign,pred,args.size());
+    for(size_t i=0; i<args.size(); ++i) b.set_arg(i,args[i]);
     return b.build();
   }
 
@@ -256,6 +268,10 @@ struct DerOrClause {
   }
   OrClause derived() const { return derived_.shift(offset_); }
   size_t cost() const { return cost_; }
+  List<OrClause> source_list() {
+    //TODO: shift the thing for consistency
+    return source_;
+  }
   vec<OrClause> source() const {
     vec<OrClause> s; for(auto l=source_; !l.empty(); l = l.tail()) s.push_back(l.head().shift(offset_));
     return s;

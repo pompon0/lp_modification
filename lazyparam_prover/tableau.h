@@ -253,7 +253,7 @@ ptr<Proof> prove(OrForm form, size_t limit) { FRAME("prove()");
 ptr<Proof> prove_loop(OrForm form, size_t limit) { FRAME("prove_loop()");
   SCOPE("prove_loop");
   //form = reduce_monotonicity_and_append_eq_axioms(form);
-  form = append_eq_axioms(form);
+  form = append_eq_axioms_with_restricted_transitivity(form);
   for(size_t i=1; i<=limit; ++i) {
     DEBUG info("limit = %",i);
     if(auto proof = prove(form,i)) {

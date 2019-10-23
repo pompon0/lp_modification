@@ -49,7 +49,6 @@ haskell_library(
         "@stackage//:array",
         "@set-monad//:set-monad",
         "//tptp_parser/proto:tptp_haskell_proto",
-        "//tptp_parser/proto:proof_haskell_proto",
         "//tptp_parser/proto:solutions_haskell_proto",
     ],
 )

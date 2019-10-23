@@ -2,8 +2,23 @@ syntax = "proto3";
 package solutions;
 
 import "tptp.proto";
+import "google/protobuf/duration.proto";
+import "google/protobuf/timestamp.proto";
+
+message Run {
+  google.protobuf.Timestamp date = 1;
+  string commit = 2;
+  repeated string labels = 3;
+  repeated CNF cases = 4;
+}
 
 message CNF {
+  string name = 3;
+  google.protobuf.Duration duration = 4;
+  int64 cost = 5;
+  int64 leaf_count = 6;
+  int64 extension_count = 7;
+
   tptp.File problem = 1;
   tptp.File proof = 2;
 }

@@ -10,14 +10,11 @@ proto_library(
     srcs = ["solutions.proto"],
     strip_import_prefix = "//tptp_parser/proto",
     visibility = ["//visibility:public"],
-    deps = [":tptp_proto"],
-)
-
-proto_library(
-    name = "proof_proto",
-    srcs = ["proof.proto"],
-    strip_import_prefix = "//tptp_parser/proto",
-    visibility = ["//visibility:public"],
+    deps = [
+        ":tptp_proto",
+        "@com_google_protobuf//:timestamp_proto",
+        "@com_google_protobuf//:duration_proto",
+    ],
 )
 
 #########################################
@@ -28,18 +25,18 @@ cc_proto_library(
     visibility = ["//visibility:public"],
 )
 
+cc_proto_library(
+    name = "solutions_cc_proto",
+    deps = [":solutions_proto"],
+    visibility = ["//visibility:public"],
+)
+
 #########################################
 load("@rules_haskell//haskell:protobuf.bzl", "haskell_proto_library")
 
 haskell_proto_library(
     name = "tptp_haskell_proto",
     deps = [":tptp_proto"],
-    visibility = ["//visibility:public"],
-)
-
-haskell_proto_library(
-    name = "proof_haskell_proto",
-    deps = [":proof_proto"],
     visibility = ["//visibility:public"],
 )
 

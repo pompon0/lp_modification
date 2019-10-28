@@ -91,7 +91,7 @@ http_archive(
   name = "rules_haskell",
   strip_prefix = "rules_haskell-master",
   urls = ["https://github.com/pompon0/rules_haskell/archive/master.tar.gz"],
-  sha256 = "5a0875d418b5a46edccf22b1612aafd66aa8d99c775ee8c18855f90d8b9fa18d",
+  sha256 = "7690ae05d794f98724bd353ffc8600fd76b578db858818eb6645a7680708d22d",
 )
 
 load("@rules_haskell//haskell:repositories.bzl", "rules_haskell_dependencies", "rules_haskell_toolchains")
@@ -146,6 +146,7 @@ stack_snapshot(
     "options",
     "array",
     "vector",
+    "proto-lens-protoc",
   ],
   snapshot = "lts-14.2",
   tools = ["@happy"],

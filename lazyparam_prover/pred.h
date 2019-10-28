@@ -253,7 +253,7 @@ struct DerAndClause {
 
   DerOrClause neg() const;
   
-  size_t cost;
+  size_t cost = 0;
   AndClause derived;
   vec<AndClause> source;
 };
@@ -321,7 +321,10 @@ inline OrForm::OrForm(const NotAndForm &f) {
   for(const auto &c : f.or_clauses) and_clauses.push_back(c.neg());
 }
 
-using Proof = DerAndClause;
+struct ProverOutput {
+  size_t cont_count;
+  ptr<DerAndClause> proof;
+};
 
 static_assert(sizeof(u64*)==sizeof(u64));
 static_assert(sizeof(Term)==2*sizeof(u64));

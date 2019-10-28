@@ -55,3 +55,13 @@ func WriteReport(reportDir string, report *spb.Report) error {
   reportString := (&proto.TextMarshaler{Compact:false}).Text(report)
   return ioutil.WriteFile(path.Join(reportDir,time.Now().Format("2006-01-02_15:04:05")),[]byte(reportString),0666)
 }
+
+func ReadReport(reportPath string) (*spb.Report, error) {
+  raw,err := ioutil.ReadFile(reportPath)
+  if err!=nil { return nil,fmt.Errorf("ioutil.ReadFile(): %v",err) }
+  report := &spb.Report{}
+  if err:=proto.UnmarshalText(string(raw),report); err!=nil {
+    return nil,fmt.Errorf("proto.UnmarshalText(): %v",err)
+  }
+  return report,nil
+}

@@ -9,6 +9,7 @@ import (
 
   "github.com/pompon0/tptp_benchmark_go/utils"
   tpb "github.com/pompon0/tptp_benchmark_go/tptp_parser/proto/tptp_go_proto"
+  spb "github.com/pompon0/tptp_benchmark_go/tptp_parser/proto/solutions_go_proto"
   "github.com/pompon0/tptp_benchmark_go/tool"
   "github.com/golang/protobuf/proto"
 )
@@ -24,7 +25,7 @@ func Prove(ctx context.Context, tptpFOFProblem []byte) error {
   return err
 }
 
-func Tableau(ctx context.Context, cnfProblem *tpb.File, streamStdErr bool) (*tpb.File,error) {
+func Tableau(ctx context.Context, cnfProblem *tpb.File, streamStdErr bool) (*spb.ProverOutput,error) {
   var inBuf,outBuf,errBuf bytes.Buffer
   if _,err := inBuf.WriteString(cnfProblem.String()); err!=nil {
     return nil,fmt.Errorf("inBuf.Write(): %v",err)
@@ -41,9 +42,9 @@ func Tableau(ctx context.Context, cnfProblem *tpb.File, streamStdErr bool) (*tpb
     return nil,fmt.Errorf("cmd.Run(): %v",err)
   }
 
-  cnfProof := &tpb.File{}
-  if err:=proto.UnmarshalText(outBuf.String(),cnfProof); err!=nil {
+  output := &spb.ProverOutput{}
+  if err:=proto.UnmarshalText(outBuf.String(),output); err!=nil {
     return nil,fmt.Errorf("proto.UnmarshalText(): %v",err)
   }
-  return cnfProof,nil
+  return output,nil
 }

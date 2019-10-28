@@ -1,19 +1,22 @@
 load("@rules_haskell//haskell:defs.bzl", "haskell_library", "haskell_test")
 
 haskell_test(
-  name = "DefDNF_test",
-  srcs = ["DefDNFTest.hs"],
-  deps = [
-    ":tptp-parser",
-    "@stackage//:base",
-    "@stackage//:tasty",
-    "@stackage//:tasty-hunit",
-  ],
+    name = "DefDNF_test",
+    srcs = ["DefDNFTest.hs"],
+    deps = [
+        ":tptp-parser",
+        "@stackage//:base",
+        "@stackage//:tasty",
+        "@stackage//:tasty-hunit",
+    ],
 )
 
 haskell_library(
     name = "tptp-parser",
-    srcs = glob(["**/*.hs"],exclude=["DefDNFTest.hs"]),
+    srcs = glob(
+        ["**/*.hs"],
+        exclude = ["DefDNFTest.hs"],
+    ),
     visibility = ["//visibility:public"],
     deps = [
         "@stackage//:base",
@@ -49,7 +52,6 @@ haskell_library(
         "@stackage//:array",
         "@set-monad//:set-monad",
         "//tptp_parser/proto:tptp_haskell_proto",
-        "//tptp_parser/proto:proof_haskell_proto",
         "//tptp_parser/proto:solutions_haskell_proto",
     ],
 )

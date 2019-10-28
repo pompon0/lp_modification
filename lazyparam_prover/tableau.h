@@ -34,9 +34,10 @@ struct SearchState {
   size_t nodes_used = 0;
   List<DerOrClause> clauses_used;
 
-  ptr<Proof> get_proof() {
-    ptr<Proof> proof(new Proof);
+  ptr<DerAndClause> get_proof() {
+    ptr<DerAndClause> proof(new DerAndClause);
     for(auto l=clauses_used; !l.empty(); l = l.tail()) {
+      proof->cost += l.head().cost();
       for(auto cla : l.head().source()) {
         proof->source.push_back(ground(val.eval(cla)).neg());
       }
@@ -239,32 +240,32 @@ struct Cont {
   }  
 };
 
-ptr<Proof> prove(OrForm form, size_t limit) { FRAME("prove()");
+ProverOutput prove(OrForm form, size_t limit) { FRAME("prove()");
   SCOPE("prove");
   SearchState s(form);
   Cont::StartFrame::Builder b;
   b->nodes_limit = limit;
-  if(alt::search(s,Cont{List<Cont::Frame>(Cont::Frame(b.build()))})) {
-    return s.get_proof();
-  }
-  return 0;
+  auto res = alt::search(s,Cont{List<Cont::Frame>(Cont::Frame(b.build()))});
+  return {res.cont_count,res.found ? s.get_proof() : 0};
 }
 
-ptr<Proof> prove_loop(OrForm form, size_t limit) { FRAME("prove_loop()");
+ProverOutput prove_loop(OrForm form, size_t limit) { FRAME("prove_loop()");
   SCOPE("prove_loop");
   //form = reduce_monotonicity_and_append_eq_axioms(form);
   form = append_eq_axioms_with_restricted_transitivity(form);
+  ProverOutput out;
   for(size_t i=1; i<=limit; i++) {
     DEBUG info("limit = %",i);
-    if(auto proof = prove(form,i)) {
+    out = prove(form,i);
+    if(out.proof) {
       DEBUG info("SUCCESS");
-      DEBUG info("%",show(*proof));
-      return proof;
+      DEBUG info("%",show(*out.proof));
+      return out;
     }
     std::cerr << "expands[" << i << "]: " << profile.scopes["expand"].count << std::endl;
   }
   DEBUG info("FAILURE");
-  return 0;
+  return out;
 }
 
 #endif  // TABLEAU_H_

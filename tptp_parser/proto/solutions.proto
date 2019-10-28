@@ -5,22 +5,26 @@ import "tptp.proto";
 import "google/protobuf/duration.proto";
 import "google/protobuf/timestamp.proto";
 
-message Run {
+message Report {
   google.protobuf.Timestamp date = 1;
   string commit = 2;
   repeated string labels = 3;
-  repeated CNF cases = 4;
+  repeated Case cases = 4;
 }
 
-message CNF {
-  string name = 3;
-  google.protobuf.Duration duration = 4;
-  int64 cost = 5;
-  int64 leaf_count = 6;
-  int64 extension_count = 7;
+message Case {
+  string name = 1;
+  google.protobuf.Duration duration = 2;
+  tptp.File fof_problem = 3;
+  tptp.File cnf_problem = 4;
+  ProverOutput output = 5;
+}
 
-  tptp.File problem = 1;
-  tptp.File proof = 2;
+message ProverOutput {
+  int64 cost = 1;
+  int64 leaf_count = 2;
+  int64 extension_count = 3;
+  tptp.File proof = 4;
 }
 
 message Stats {
@@ -36,3 +40,10 @@ message Stats {
   message OrClause { tptp.Input cla = 1; int64 count = 2; };
   repeated OrClause or_clauses = 6;
 }
+
+// deprecated
+message CNF {
+  tptp.File problem = 1;
+  tptp.File proof = 2;
+}
+

@@ -50,3 +50,8 @@ func WriteProof(proofDir string, name string, solution *spb.CNF) (bool,error) {
   }
   return len(oldSolutions)==0,nil
 }
+
+func WriteReport(reportDir string, report *spb.Report) error {
+  reportString := (&proto.TextMarshaler{Compact:false}).Text(report)
+  return ioutil.WriteFile(path.Join(reportDir,time.Now().Format("2006-01-02_15:04:05")),[]byte(reportString),0666)
+}

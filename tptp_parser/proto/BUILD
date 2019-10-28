@@ -11,9 +11,9 @@ proto_library(
     strip_import_prefix = "//tptp_parser/proto",
     visibility = ["//visibility:public"],
     deps = [
-      ":tptp_proto",
-      "@com_google_protobuf//:timestamp_proto",
-      "@com_google_protobuf//:duration_proto",
+        ":tptp_proto",
+        "@com_google_protobuf//:timestamp_proto",
+        "@com_google_protobuf//:duration_proto",
     ],
 )
 
@@ -22,6 +22,12 @@ proto_library(
 cc_proto_library(
     name = "tptp_cc_proto",
     deps = [":tptp_proto"],
+    visibility = ["//visibility:public"],
+)
+
+cc_proto_library(
+    name = "solutions_cc_proto",
+    deps = [":solutions_proto"],
     visibility = ["//visibility:public"],
 )
 

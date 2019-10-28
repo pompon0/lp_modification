@@ -5,6 +5,7 @@
 #include <iostream>
 #include "lazyparam_prover/tableau.h"
 #include "lazyparam_prover/pred.h"
+#include "solutions.pb.h"
 
 #include "absl/flags/flag.h"
 #include "absl/flags/parse.h"
@@ -25,6 +26,8 @@ int main(int argc, char **argv) {
   ProtoCtx pctx(ctx);
   OrForm proof_form;
   for(auto cla : proof->source) proof_form.and_clauses.push_back(DerAndClause(1,cla));
-  std::cout << pctx.proto_notAndForm(NotAndForm(proof_form)).DebugString() << std::endl;
+  solutions::CNF res;
+  *res.mutable_proof() = pctx.proto_notAndForm(NotAndForm(proof_form));
+  std::cout << res.DebugString() << std::endl;
   return 0;
 }

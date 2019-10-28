@@ -278,7 +278,7 @@ NotAndForm append_restricted_transitivity_axioms(NotAndForm f) {
   OrClause::Builder symm2s(2,2);
   symm2s.set_atom(0,Atom::slow_make(false,Atom::EQ,{b,a}));
   symm2s.set_atom(1,Atom::slow_make(true,Atom::EQ,{a,b}));
-  f.or_clauses.push_back(DerOrClause(0,symm2.build(),symm2s.build() + e));
+  f.or_clauses.push_back(DerOrClause(1,symm2.build(),symm2s.build() + e));
   // -symm(a,b) b/=c a=c
   OrClause::Builder trans_pos(3,3);
   trans_pos.set_atom(0,Atom::slow_make(false,Atom::EQ_SYMM,{a,b}));
@@ -288,7 +288,7 @@ NotAndForm append_restricted_transitivity_axioms(NotAndForm f) {
   trans_pos_s.set_atom(0,Atom::slow_make(false,Atom::EQ,{a,b}));
   trans_pos_s.set_atom(1,Atom::slow_make(false,Atom::EQ,{b,c}));
   trans_pos_s.set_atom(2,Atom::slow_make(true,Atom::EQ,{a,c}));
-  f.or_clauses.push_back(DerOrClause(1,trans_pos.build(),trans_pos_s.build() + e));
+  f.or_clauses.push_back(DerOrClause(3,trans_pos.build(),trans_pos_s.build() + e));
   // {a=b} a/=c b/=c
   OrClause::Builder trans_neg(3,3);
   trans_neg.set_atom(0,Atom::slow_make(true,Atom::EQ_TRANS_NEG,{a,b}));
@@ -298,7 +298,17 @@ NotAndForm append_restricted_transitivity_axioms(NotAndForm f) {
   trans_neg_s.set_atom(0,Atom::slow_make(true,Atom::EQ,{a,b}));
   trans_neg_s.set_atom(1,Atom::slow_make(false,Atom::EQ,{b,c}));
   trans_neg_s.set_atom(2,Atom::slow_make(false,Atom::EQ,{a,c}));
-  f.or_clauses.push_back(DerOrClause(0,trans_neg.build(),trans_neg_s.build() + e));
+  f.or_clauses.push_back(DerOrClause(3,trans_neg.build(),trans_neg_s.build() + e));
+  // -symm(a=b) a=b
+  OrClause::Builder cheap_pos(2,2);
+  cheap_pos.set_atom(0,Atom::slow_make(false,Atom::EQ_SYMM,{a,b}));
+  cheap_pos.set_atom(1,Atom::slow_make(true,Atom::EQ,{a,b}));
+  f.or_clauses.push_back(DerOrClause(0,cheap_pos.build(),e));
+  // {a=b} a/=b
+  OrClause::Builder cheap_neg(2,2);
+  cheap_neg.set_atom(0,Atom::slow_make(true,Atom::EQ_TRANS_NEG,{a,b}));
+  cheap_neg.set_atom(1,Atom::slow_make(false,Atom::EQ,{a,b}));
+  f.or_clauses.push_back(DerOrClause(0,cheap_neg.build(),e));
   return f;
 }
 

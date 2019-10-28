@@ -265,8 +265,8 @@ NotAndForm append_restricted_transitivity_axioms(NotAndForm f) {
   Term b(Var::make(var_count++));
   Term c(Var::make(var_count++));
 
-  // -[a=b] symm(a,b)
   List<OrClause> e;
+  // -[a=b] symm(a,b)
   OrClause::Builder symm1(2,2);
   symm1.set_atom(0,Atom::slow_make(false,Atom::EQ_TRANS_POS,{a,b}));
   symm1.set_atom(1,Atom::slow_make(true,Atom::EQ_SYMM,{a,b}));
@@ -289,6 +289,12 @@ NotAndForm append_restricted_transitivity_axioms(NotAndForm f) {
   trans_pos_s.set_atom(1,Atom::slow_make(false,Atom::EQ,{b,c}));
   trans_pos_s.set_atom(2,Atom::slow_make(true,Atom::EQ,{a,c}));
   f.or_clauses.push_back(DerOrClause(3,trans_pos.build(),trans_pos_s.build() + e));
+  // -symm(a=b) a=b
+  OrClause::Builder cheap_pos(2,2);
+  cheap_pos.set_atom(0,Atom::slow_make(false,Atom::EQ_SYMM,{a,b}));
+  cheap_pos.set_atom(1,Atom::slow_make(true,Atom::EQ,{a,b}));
+  f.or_clauses.push_back(DerOrClause(0,cheap_pos.build(),e));
+  
   // {a=b} a/=c b/=c
   OrClause::Builder trans_neg(3,3);
   trans_neg.set_atom(0,Atom::slow_make(true,Atom::EQ_TRANS_NEG,{a,b}));
@@ -299,16 +305,26 @@ NotAndForm append_restricted_transitivity_axioms(NotAndForm f) {
   trans_neg_s.set_atom(1,Atom::slow_make(false,Atom::EQ,{b,c}));
   trans_neg_s.set_atom(2,Atom::slow_make(false,Atom::EQ,{a,c}));
   f.or_clauses.push_back(DerOrClause(3,trans_neg.build(),trans_neg_s.build() + e));
-  // -symm(a=b) a=b
-  OrClause::Builder cheap_pos(2,2);
-  cheap_pos.set_atom(0,Atom::slow_make(false,Atom::EQ_SYMM,{a,b}));
-  cheap_pos.set_atom(1,Atom::slow_make(true,Atom::EQ,{a,b}));
-  f.or_clauses.push_back(DerOrClause(0,cheap_pos.build(),e));
+  // {a=a}
+  OrClause::Builder refl(1,1);
+  refl.set_atom(0,Atom::slow_make(true,Atom::EQ_TRANS_NEG,{a,a}));
+  OrClause::Builder refl_s(1,1);
+  refl_s.set_atom(0,Atom::slow_make(true,Atom::EQ,{a,a}));
+  f.or_clauses.push_back(DerOrClause(0,refl.build(),refl_s.build() + e));
   // {a=b} a/=b
-  OrClause::Builder cheap_neg(2,2);
-  cheap_neg.set_atom(0,Atom::slow_make(true,Atom::EQ_TRANS_NEG,{a,b}));
-  cheap_neg.set_atom(1,Atom::slow_make(false,Atom::EQ,{a,b}));
-  f.or_clauses.push_back(DerOrClause(0,cheap_neg.build(),e));
+  OrClause::Builder neg_id(2,2);
+  neg_id.set_atom(0,Atom::slow_make(true,Atom::EQ_TRANS_NEG,{a,b}));
+  neg_id.set_atom(1,Atom::slow_make(false,Atom::EQ,{a,b}));
+  f.or_clauses.push_back(DerOrClause(0,neg_id.build(),e));
+  // {a=b} b/=a
+  OrClause::Builder neg_symm(2,2);
+  neg_symm.set_atom(0,Atom::slow_make(true,Atom::EQ_TRANS_NEG,{b,a}));
+  neg_symm.set_atom(1,Atom::slow_make(false,Atom::EQ,{a,b}));
+  OrClause::Builder neg_symms(2,2);
+  neg_symms.set_atom(0,Atom::slow_make(true,Atom::EQ,{b,a}));
+  neg_symms.set_atom(1,Atom::slow_make(false,Atom::EQ,{a,b}));
+  f.or_clauses.push_back(DerOrClause(1,neg_symm.build(),neg_symms.build() + e));
+
   return f;
 }
 
@@ -331,7 +347,6 @@ OrForm append_eq_axioms_with_restricted_transitivity(OrForm _f) {
     }
     dc = DerOrClause(dc.cost(),b.build(),dc.source_list());
   }
-  f.or_clauses.push_back(refl_axiom());
   f = append_restricted_transitivity_axioms(f);
   info("f + axioms = \n%",show(OrForm(f)));
   return OrForm(f);

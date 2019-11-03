@@ -1,10 +1,116 @@
-load("@rules_haskell//haskell:defs.bzl", "haskell_library", "haskell_test")
+load("@rules_haskell//haskell:defs.bzl", "haskell_library", "haskell_test", "haskell_binary")
+
+haskell_library(
+  name = "Ctx",
+  srcs = ["Ctx.hs"],
+  deps = [
+    "@stackage//:base",
+    "@stackage//:lens",
+    "@stackage//:containers",
+  ],
+)
+
+haskell_library(
+  name = "TptpLens",
+  srcs = ["TptpLens.hs"],
+  deps = [
+    "@stackage//:base",
+    "@stackage//:lens",
+    "@stackage//:proto-lens",
+    "//tptp_parser/proto:tptp_haskell_proto",
+  ],
+)
+
+haskell_library(
+  name = "Pred",
+  srcs = [
+    "Pred.hs",
+    "HashSeq.hs",
+    "Coq.hs",
+  ],
+  deps = [
+    ":Ctx",
+    "@stackage//:base",
+    "@stackage//:lens",
+    "@stackage//:containers",
+  ],
+)
+
+haskell_library(
+  name = "MGU",
+  srcs = ["MGU.hs"],
+  deps = [
+    ":Ctx",
+    ":Pred",
+    "@stackage//:base",
+    "@stackage//:containers",
+    "@stackage//:lens",
+    "@stackage//:mtl",
+    "@stackage//:transformers",
+  ],
+)
+
+haskell_test(
+  name = "MGU_test",
+  srcs = ["MGUTest.hs"],
+  deps = [
+    ":Ctx",
+    ":MGU",
+    ":Pred",
+    "@stackage//:base",
+    "@stackage//:containers",
+    "@stackage//:tasty",
+    "@stackage//:tasty-hunit",
+  ],
+)
+
+haskell_library(
+  name = "FOF",
+  srcs = [
+    "FOF.hs",
+    "NNF.hs",
+  ],
+  deps = [
+    ":Ctx",
+    ":TptpLens",
+    ":Pred",
+    "@stackage//:base",
+    "@stackage//:text",
+    "@stackage//:lens",
+    "@stackage//:transformers",
+    "@stackage//:proto-lens",
+    "@stackage//:containers",
+    "//tptp_parser/proto:tptp_haskell_proto",
+  ],
+)
+
+haskell_library(
+  name = "DNF",
+  srcs = ["DNF.hs", "DefDNF.hs"],
+  deps = [
+    ":Ctx",
+    ":TptpLens",
+    ":Pred",
+    ":FOF",
+    ":MGU",
+    "@stackage//:base",
+    "@stackage//:containers",
+    "@stackage//:text",
+    "@stackage//:lens",
+    "@stackage//:proto-lens",
+    "//tptp_parser/proto:tptp_haskell_proto",
+  ],
+)
 
 haskell_test(
   name = "DefDNF_test",
   srcs = ["DefDNFTest.hs"],
   deps = [
-    ":tptp-parser",
+    ":Ctx",
+    ":Pred",
+    ":FOF",
+    ":DNF",
+    "@stackage//:lens",
     "@stackage//:base",
     "@stackage//:tasty",
     "@stackage//:tasty-hunit",
@@ -12,44 +118,56 @@ haskell_test(
 )
 
 haskell_library(
-    name = "tptp-parser",
-    srcs = glob(["**/*.hs"],exclude=["DefDNFTest.hs"]),
-    visibility = ["//visibility:public"],
-    deps = [
-        "@stackage//:base",
-        "@stackage//:either",
-        "@stackage//:tasty-hunit",
-        "@stackage//:tasty",
-        "@stackage//:parsec",
-        "@stackage//:transformers",
-        "@stackage//:unix",
-        "@stackage//:bytestring",
-        "@stackage//:utf8-string",
-        "@stackage//:tar",
-        "@stackage//:http-conduit",
-        "@stackage//:zlib",
-        "@stackage//:lens",
-        "@stackage//:proto-lens-runtime",
-        "@stackage//:proto-lens",
-        "@stackage//:microlens",
-        "@stackage//:text",
-        "@stackage//:containers",
-        "@stackage//:mtl",
-        "@stackage//:MissingH",
-        "@stackage//:threads",
-        "@stackage//:concurrent-extra",
-        "@stackage//:unbounded-delays",
-        "@stackage//:deepseq",
-        "@stackage//:split",
-        "@stackage//:data-ordlist",
-        "@stackage//:clock",
-        "@stackage//:hashable",
-        "@stackage//:hashtables",
-        "@stackage//:options",
-        "@stackage//:array",
-        "@set-monad//:set-monad",
-        "//tptp_parser/proto:tptp_haskell_proto",
-        "//tptp_parser/proto:proof_haskell_proto",
-        "//tptp_parser/proto:solutions_haskell_proto",
-    ],
+  name = "Parser",
+  srcs = ["Parser.hs"],
+  deps = [
+    ":Ctx",
+    "@stackage//:base",
+    "@stackage//:lens",
+    "@stackage//:parsec",
+    "@stackage//:proto-lens",
+    "@stackage//:text",
+    "//tptp_parser/proto:tptp_haskell_proto",
+  ],
+)
+
+haskell_library(
+  name = "Valid",
+  srcs = [
+    "Valid.hs",
+    "Proof.hs",
+    "EqAxioms.hs"
+  ],
+  deps = [
+    ":Ctx",
+    ":DNF",
+    ":Pred",
+    "@stackage//:base",
+    "@stackage//:containers",
+    "@stackage//:lens",
+    "@stackage//:proto-lens",
+    "@stackage//:text",
+    "@stackage//:transformers",
+    "//tptp_parser/proto:solutions_haskell_proto",
+  ],
+)
+
+haskell_binary(
+  name = "tool",
+  srcs = ["ToolBin.hs"],
+  deps = [
+    ":Ctx",
+    ":DNF",
+    ":FOF",
+    ":Parser",
+    ":Valid",
+    "@stackage//:base",
+    "@stackage//:containers",
+    "@stackage//:lens",
+    "@stackage//:proto-lens",
+    "@stackage//:text",
+    "//tptp_parser/proto:tptp_haskell_proto",
+    "//tptp_parser/proto:solutions_haskell_proto",
+  ],
+  visibility = ["//visibility:public"],
 )

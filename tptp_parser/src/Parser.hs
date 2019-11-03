@@ -10,8 +10,7 @@ import Control.Lens
 import Data.ProtoLens(defMessage)
 import Data.ProtoLens.Labels()
 
-import Lib
-import Form
+import Ctx
 import qualified Proto.Tptp as T
 
 type Parser a = P.Parsec [Char] () a

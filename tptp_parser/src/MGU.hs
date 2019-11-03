@@ -1,5 +1,7 @@
 module MGU(runMGU) where
 
+import HashSeq
+import Ctx
 import Pred
 import qualified Control.Monad.Trans.State.Lazy as StateM
 import qualified Control.Monad.Trans.Except as ExceptM
@@ -7,9 +9,7 @@ import Control.Monad.State.Class(get,modify)
 import Control.Monad.Trans.Class(lift)
 import qualified Data.Map as Map
 import Debug.Trace
-import Control.Lens(at,(.=))
-
-import Lib
+import Control.Lens hiding(assign)
 
 type M = StateM.StateT Valuation (ExceptM.Except ())
 

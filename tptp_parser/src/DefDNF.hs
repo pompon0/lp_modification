@@ -1,18 +1,14 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE ViewPatterns #-}
-module DefDNF where
+module DefDNF (nnf'dnf, nnf'dnf'def) where
 
-import Lib
+import HashSeq
 import Pred
-import qualified Form
-import Form(predNames,funNames,allocName)
 import DNF
+import Ctx
 import qualified NNF
-
-import Data.Maybe(fromJust)
 import qualified Data.Set as Set
-import Control.Lens hiding(ix)
-import qualified Control.Monad.Trans.State.Lazy as StateM
+import Control.Lens 
 
 {-
  - rename variables
@@ -28,70 +24,82 @@ import qualified Control.Monad.Trans.State.Lazy as StateM
  - If it is duplicated, replace definitional form with the previous
  -}
 
-orForm'term :: Traversal' OrForm Term
-orForm'term = orForm'andClauses.traverse.andClause'atoms.traverse.atom'term
+orForm'varName'rec :: Traversal' OrForm VarName
+orForm'varName'rec = orForm'andClauses.traverse.andClause'atoms.traverse.atom'pred.pred'args.traverse.term'varName'rec
 
-data Stack = Stack {
-  _vars :: [VarName],
-  _existVars :: [VarName]
+data Local = Local {
+  _globalVar :: GlobalVar,
+  _valuation :: Valuation
 }
-makeLenses ''Stack
+makeLenses ''Local
+empty'Local = Local empty'GlobalVar emptyValuation
 
-data State = State {
-  _nameIndex :: Form.NameIndex,
-  _nextVar :: VarName
-}
-makeLenses ''State
+relevantVars :: Stack VarName -> OrForm -> Set.Set VarName
+relevantVars s dnf = Set.intersection sub sup where
+  sub = Set.fromList (dnf^..orForm'varName'rec)
+  sup = Set.fromList (stack'ids s)
 
-type M = StateM.State State
+type Join = GlobalVar -> OrForm -> OrForm -> (GlobalVar,OrForm)
 
-alloc x = (x,x+1)
+----------------------------------------------
 
-term'var :: Traversal' Term VarName
-term'var f (unwrap -> TFun fn args) = pure (wrap . TFun fn) <*> (traverse.term'var) f args
-term'var f (unwrap -> TVar vn) = pure (wrap . TVar) <*> f vn
+nnf'dnf'def :: (Global,NNF.NNF) -> (GlobalVar,OrForm)
+nnf'dnf'def (g,nnf) = defDNF (empty'Local & globalVar.global' .~ g) nnf
 
-pred'args :: Traversal' Pred [Term]
-pred'args = pred'spred.spred'args
+defDNFs :: Local -> Join -> OrForm -> [NNF.NNF] -> (GlobalVar,OrForm)
+defDNFs local join zero = rec (local^.globalVar)  where
+  rec gv [] = (gv,zero)
+  rec gv (h:t) = join gv3 h' t' where
+    (gv2,t') = rec gv t :: (GlobalVar,OrForm)
+    (gv3,h') = defDNF (local & globalVar .~ gv2) h :: (GlobalVar,OrForm)
 
-relevantVars :: Stack -> OrForm -> [Term]
-relevantVars s f = Set.toList (Set.intersection sub sup) & traverse %~ (wrap . TVar) where
-  sub = Set.fromList (f^..orForm'term.term'var)
-  sup = Set.fromList (s^.existVars)
+defDNF :: Local -> NNF.NNF -> (GlobalVar,OrForm)
+defDNF local nnf = case nnf of
+  NNF.Forall vn f -> defDNF local3 f where
+    ev = local^.globalVar.existsVars.to stack'ids
+    (fn,local2) = local & globalVar.global'.funs %%~ push1 "_skolem" :: (FunName,Local)
+    local3 = local2 & valuation.at vn ?~ wrap (TFun fn (map (wrap.TVar) ev))
+  NNF.Exists vn f -> defDNF local3 f where
+    (vn',local2) = local & globalVar.existsVars %%~ reloc vn
+    local3 = local2 & valuation.at vn ?~ wrap (TVar vn')
+  NNF.Or conj -> defDNFs local (\gv da db -> (gv, da <> db)) mempty conj
+  NNF.And disj -> defDNFs local join (OrForm [mempty]) disj where
+    join gv da db = case (da, db) of
+      (OrForm [],_) -> (gv,mempty);
+      (_,OrForm []) -> (gv,mempty);
+      (OrForm [a], OrForm [b]) ->(gv, OrForm [a <> b]);
+      (_,_) -> (gv',da' <> db') where
+        (pn,gv') = gv & global'.preds %%~ push1 "_def"
+        rv = relevantVars (gv'^.existsVars) (da <> db)
+        defPred = wrap $ PCustom pn $ map (wrap.TVar) (Set.toList rv)
+        da' = da & orForm'andClauses.traverse.andClause'atoms %~ (Atom True defPred:)
+        db' = db & orForm'andClauses.traverse.andClause'atoms %~ (Atom False defPred:)
+  NNF.Atom sign p -> (local^.globalVar, OrForm [AndClause [Atom sign p']]) where
+    p' = p & pred'args.traverse %~ eval (local^.valuation)
 
-defDNF :: NNF.Form -> Form.NameIndex -> (DNF.OrForm,Form.NameIndex)
-defDNF f ni = (dnf,state'^.nameIndex) where
-  (dnf,state') = StateM.runState (_defDNF f (Stack [] [])) (State ni 0)
+-------------------------------------------------
 
-_defDNF :: NNF.Form -> Stack -> M DNF.OrForm
-_defDNF nnf s = case nnf of
-  NNF.Forall f -> do
-    vn <- nextVar %%= alloc
-    f' <- _defDNF f (s & vars %~ (vn:))
-    let rv = relevantVars s f'
-    skolemTerm <- (nameIndex.funNames %%= allocName "_skolem" (length rv)) >>= (\fn -> return $ wrap (TFun fn rv))
-    return $ f' & orForm'term.term'subst %~ (\x -> if x==vn then skolemTerm else wrap (TVar x))
-  NNF.Exists f -> do
-    vn <- nextVar %%= alloc
-    _defDNF f (s & vars %~ (vn:) & existVars %~ (vn:))
-  NNF.And conj -> do
-    conj' <- mapM (\f -> _defDNF f s) conj
-    return (mconcat conj')
-  NNF.Or [] -> return mempty
-  NNF.Or (h:t) -> do
-    t' <- _defDNF (NNF.Or t) s
-    h' <- _defDNF h s
-    case (h', t') of {
-      (OrForm [],_) -> return mempty;
-      (_,OrForm []) -> return mempty;
-      (OrForm [a], OrForm [b]) -> return $ OrForm [a <> b];
-      (u,v) -> do {
-        let { rv = relevantVars s (u <> v) };
-        defPred <- (nameIndex.predNames %%= allocName "_def" (length rv)) >>= (\pn -> return (wrap $ PCustom pn rv));
-        let { u' = u & orForm'andClauses.traverse %~ (andClause'atoms %~ (Atom True defPred:)) };
-        let { v' = v & orForm'andClauses.traverse %~ (andClause'atoms %~ (Atom False defPred:)) };
-        return (u' <> v');
-      };
-    }
-  NNF.Atom sign p -> return $ OrForm [AndClause [
-    Atom sign (p & pred'args.traverse.term'subst %~ (\i -> wrap $ TVar (fromJust $ s^.vars.ix i)))]]
+nnf'dnf :: (Global,NNF.NNF) -> (GlobalVar,OrForm)
+nnf'dnf (g,nnf) = dnf (empty'Local & globalVar.global' .~ g) nnf
+
+dnfs :: Local -> Join -> OrForm -> [NNF.NNF] -> (GlobalVar,OrForm)
+dnfs local join zero = rec (local^.globalVar)  where
+  rec gv [] = (gv,zero)
+  rec gv (h:t) = join gv3 h' t' where
+    (gv2,t') = rec gv t :: (GlobalVar,OrForm)
+    (gv3,h') = defDNF (local & globalVar .~ gv2) h :: (GlobalVar,OrForm)
+
+dnf :: Local -> NNF.NNF -> (GlobalVar,OrForm)
+dnf local nnf = case nnf of
+  NNF.Forall vn f -> dnf local3 f where
+    ev = local^.globalVar.existsVars.to stack'ids
+    (fn,local2) = local & globalVar.global'.funs %%~ push1 "_skolem" :: (FunName,Local)
+    local3 = local2 & valuation.at vn ?~ wrap (TFun fn (map (wrap.TVar) ev))
+  NNF.Exists vn f -> dnf local3 f where
+    (vn',local2) = local & globalVar.existsVars %%~ reloc vn
+    local3 = local2 & valuation.at vn ?~ wrap (TVar vn')
+  NNF.Or conj -> dnfs local (\gv da db -> (gv, da <> db)) mempty conj
+  NNF.And disj -> dnfs local join (OrForm [mempty]) disj where
+    join = \gv (OrForm a) (OrForm b) -> (gv, OrForm [x <> y | x <- a, y <- b])
+  NNF.Atom sign p -> (local^.globalVar, OrForm [AndClause [Atom sign p']]) where
+    p' = p & pred'args.traverse %~ eval (local^.valuation)

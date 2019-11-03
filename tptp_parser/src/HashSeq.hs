@@ -1,6 +1,9 @@
-module HashSeq (HashSeq,hashSeq,unit,WithHash,hash,val,withHash) where
+module HashSeq (
+  HashSeq,WithHash,
+  hashSeq,unit,hash,wh,wrap,unwrap) where
 
 import Data.Word(Word64)
+import Control.Lens
 
 type Hash = (Word64,Word64)
 base :: Word64
@@ -21,3 +24,13 @@ instance Eq (WithHash a) where
 
 instance Ord (WithHash a) where
   compare x y = compare (fst (hash x)) (fst (hash y))
+
+wrap :: HashSeq a => a -> WithHash a
+wrap = withHash
+unwrap :: HashSeq a => WithHash a -> a
+unwrap = val
+
+wh :: HashSeq a => Iso' (WithHash a) a
+wh = dimap unwrap (fmap wrap)
+
+

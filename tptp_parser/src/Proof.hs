@@ -3,47 +3,27 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Proof where
 
-import Lib
+import Ctx
 import DNF
 import Pred
-import qualified Proto.Proof as P
+--import qualified Proto.Proof as P
 import qualified Data.Map as Map
-import qualified Data.Text as Text
+import Data.Text.Lens
 import Data.ProtoLens(defMessage)
 import Data.ProtoLens.Labels()
 import Control.Lens
 import Control.Monad(foldM,forM)
-import Control.Lens()
-import Data.Monoid(Endo(..))
-import Data.Functor.Const(Const(..))
 import Data.List(partition,group,sort)
 import Data.Either(partitionEithers)
-import Valid(counterExample)
+import Valid
 import EqAxioms
-import Form
+--import Form
 import qualified Proto.Solutions as SPB
 
 import qualified Control.Monad.Trans.Except as ExceptM
 
-type Proof = OrForm
-
------------------------------------------------------
-
-val'lookup :: Valuation -> VarName -> Term
-val'lookup val vn = case Map.lookup vn val of { Just t -> t; Nothing -> wrap $ TVar vn }
-
-andClause'subst :: Traversal AndClause AndClause VarName Term
-andClause'subst = andClause'atoms.traverse.atom'pred.pred'spred.spred'args.traverse.term'subst
-
-andClause'term :: Traversal' AndClause Term
-andClause'term = andClause'atoms.traverse.atom'args.traverse
-
------------------------------------------------------
-
-type E = ExceptM.Except String
-
-classify :: Ctx -> Proof -> OrForm -> E SPB.Stats
-classify ctx (OrForm c0) f = do
+classify :: OrForm -> OrForm -> Err SPB.Stats
+classify (OrForm c0) f = do
   let {
   (refl,c1) = partition isReflAxiom c0;
   (symm,c2) = partition isSymmAxiom c1;
@@ -54,17 +34,17 @@ classify ctx (OrForm c0) f = do
   x <- case isSubForm (OrForm c5) f of
     Just x -> return x
     Nothing -> fail "proof doesn't imply the formula"
-  funMono <- forM (group $ sort fmono) (\l -> do
-    let mfn = ctx^.fromFunNames.at (head l)
-    fn <- assertMaybe mfn
-    return $ (defMessage :: SPB.Stats'FunMono) & #name .~ Text.pack fn & #count .~ fromIntegral (length l))
-  predMono <- forM (group $ sort pmono) (\l -> do
-    let mpn = ctx^.fromPredNames.at (head l)
-    pn <- assertMaybe mpn
-    return $ (defMessage :: SPB.Stats'PredMono) & #name .~ Text.pack pn & #count .~ fromIntegral (length l))
-  orClauses <- forM (group $ sort x) (\l -> do
-    cla <- toProto'Input ctx (notAndClause $ head l)
-    return $ (defMessage :: SPB.Stats'OrClause) & #cla .~ cla & #count .~ fromIntegral (length l))
+  let {
+    funMono = (flip map) (group $ sort fmono) (\fns -> (defMessage :: SPB.Stats'FunMono)
+      & #name.unpacked .~ head fns^._Wrapped'.label
+      & #count .~ fromIntegral (length fns));
+    predMono = (flip map) (group $ sort pmono) (\pns -> (defMessage :: SPB.Stats'PredMono)
+      & #name.unpacked .~ head pns^._Wrapped'.label
+      & #count .~ fromIntegral (length pns));
+    orClauses = (flip map) (group $ sort x) (\l -> (defMessage :: SPB.Stats'OrClause)
+      & #cla .~ toProto'Input (notAndClause $ head l)
+      & #count .~ fromIntegral (length l));
+  }
   return $ defMessage
     & #refl .~ fromIntegral (length refl)
     & #symm .~ fromIntegral (length symm)

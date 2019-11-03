@@ -1,40 +1,59 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE OverloadedLabels #-}
-module CheckerBin(main) where
+module Main where
 
-import Lib
 import System.Environment(getArgs)
 import qualified Data.ProtoLens.TextFormat as TextFormat
 import Data.ProtoLens.Message(Message)
-import qualified Data.Text.Lazy as Text
 import qualified Proto.Tptp as T
 import qualified Proto.Solutions as SPB
 import qualified Proof
-import qualified Form
-import qualified NNF
-import qualified DNF
-import qualified DefDNF
-import Skolem
+
+import Ctx
+import qualified FOF
+import NNF
+import DNF
+import DefDNF
 import Valid(counterExample)
 import qualified Parser
-import qualified Trace
 
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Control.Lens
+import Control.Monad.IO.Class(MonadIO,liftIO)
+import qualified Data.Text.Lazy as Text
+import System.IO(hFlush,hPutStrLn,stdout,stderr)
 
-formToDNF :: (Ctx,Form.Form) -> (Ctx,DNF.OrForm)
-formToDNF = DNF.simplify . DNF.dnf . Skolem.skol . NNF.nnf
+readProtoFile :: Message a => String -> IO a
+readProtoFile path = readFile path >>= assert . Err . TextFormat.readMessage . Text.pack 
+
+putStrLnE :: MonadIO m => String -> m ()
+putStrLnE s = liftIO (hPutStrLn stderr s >> hFlush stderr)
+printE :: (MonadIO m, Show a) => a -> m ()
+printE x = putStrLnE (show x)
+
+--------------------------------
+
+fof'dnf :: (Global,FOF.FOF) -> (GlobalVar,OrForm)
+fof'dnf (g,fof) = (gv,simplify dnf) where
+  (gv,dnf) = nnf'dnf (g, fof'nnf fof)
+
+fof'dnf'def :: (Global,FOF.FOF) -> (GlobalVar,OrForm)
+fof'dnf'def (g,fof) = (gv,simplify dnf) where
+  (gv,dnf) = nnf'dnf'def (g, fof'nnf fof)
 
 --TODO: move the quantifiers down, convert to CNF (treating quantified formulas as atoms),
 --  which will give you a decomposition into subproblems
-toDNF :: T.File -> Either String DNF.OrForm
-toDNF tptpFile = fmap formToDNF (Form.fromProto tptpFile) 
+file'dnf :: T.File -> Err (GlobalVar,OrForm)
+file'dnf tptpFile = fof'dnf <$> FOF.fromProto'File tptpFile
+
+assert :: Err a -> IO a
+assert (Err ea) = case ea of { Left e -> fail e; Right a -> return a }
 
 readAndParse :: String -> IO T.File
 readAndParse tptp_path = do
   content <- readFile tptp_path
-  Trace.evalIO (Parser.parse content) >>= assert
+  assert (Parser.parse content)
 
 help = do
   putStrLn "conv [fof|cnf] [tptp_file] > [proto_file]"
@@ -47,30 +66,29 @@ conv [language,tptp_path] = do
     "fof" -> readAndParse tptp_path >>= putStrLn . TextFormat.showMessage;
     "cnf" -> do {
       file <- readAndParse tptp_path;
-      (dnf,ni) <- assert $ DNF.fromProto file Form.emptyNI;
-      assert (DNF.toProto dnf ni) >>= putStrLn . TextFormat.showMessage;
+      (gv,dnf) <- assert $ fromProto'File file;
+      putStrLn $ TextFormat.showMessage $ toProto'File dnf;
     };
     _ -> help;
   }
 
 cnf [mode,fof_proto_file] = do
   file <- readProtoFile fof_proto_file
-  (fof,ni) <- assert $ Form.runM (Form.fromProto'File file) Form.emptyNI
-  case mode of
-    "reg" -> assert (DNF.toProto (formToDNF fof) ni) >>= putStrLn . TextFormat.showMessage
-    "def" -> assert (DNF.toProto dnf ni') >>= putStrLn . TextFormat.showMessage where
-      (dnf,ni') = DefDNF.defDNF (NNF.nnf fof) ni
+  (g,fof) <- assert $ FOF.fromProto'File file
+  let f = case mode of { "reg" -> fof'dnf; "def" -> fof'dnf'def }
+  let (gv,dnf) = f (g,fof)
+  putStrLn $ TextFormat.showMessage $ toProto'File dnf
 
 validate [solution_proto_file] = do
   solutionProto :: SPB.CNF <- readProtoFile solution_proto_file
-  ((problem,proof,stats),_) <- assert $ Form.runM (do
-    problem <- DNF.fromProto'File (solutionProto^. #problem)
-    proof <- DNF.fromProto'File (solutionProto^. #proof)
-    stats <- Form.liftRM $ Proof.classify proof problem
+  (problem,proof,stats) <- assert $ do
+    (g,problem) <- fromProto'File (solutionProto^. #problem)
+    (_,proof) <- fromProto'File (solutionProto^. #proof)
+    stats <- Proof.classify proof problem
     case counterExample proof of
       Nothing -> return ()
       Just x -> fail ("counter example: " ++ show x)
-    return (problem,proof,stats)) Form.emptyNI
+    return (problem,proof,stats)
   putStrLnE ("problem = " ++ show problem)
   putStrLnE ("proof = " ++ show proof)
   putStrLn (TextFormat.showMessage stats)

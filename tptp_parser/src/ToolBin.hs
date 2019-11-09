@@ -16,21 +16,15 @@ import DNF
 import DefDNF
 import Valid(counterExample)
 import qualified Parser
+import IO
 
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Control.Lens
-import Control.Monad.IO.Class(MonadIO,liftIO)
 import qualified Data.Text.Lazy as Text
-import System.IO(hFlush,hPutStrLn,stdout,stderr)
 
 readProtoFile :: Message a => String -> IO a
 readProtoFile path = readFile path >>= assert . Err . TextFormat.readMessage . Text.pack 
-
-putStrLnE :: MonadIO m => String -> m ()
-putStrLnE s = liftIO (hPutStrLn stderr s >> hFlush stderr)
-printE :: (MonadIO m, Show a) => a -> m ()
-printE x = putStrLnE (show x)
 
 --------------------------------
 
@@ -41,11 +35,6 @@ fof'dnf (g,fof) = (gv,simplify dnf) where
 fof'dnf'def :: (Global,FOF.FOF) -> (GlobalVar,OrForm)
 fof'dnf'def (g,fof) = (gv,simplify dnf) where
   (gv,dnf) = nnf'dnf'def (g, fof'nnf fof)
-
---TODO: move the quantifiers down, convert to CNF (treating quantified formulas as atoms),
---  which will give you a decomposition into subproblems
-file'dnf :: T.File -> Err (GlobalVar,OrForm)
-file'dnf tptpFile = fof'dnf <$> FOF.fromProto'File tptpFile
 
 assert :: Err a -> IO a
 assert (Err ea) = case ea of { Left e -> fail e; Right a -> return a }
@@ -66,24 +55,31 @@ conv [language,tptp_path] = do
     "fof" -> readAndParse tptp_path >>= putStrLn . TextFormat.showMessage;
     "cnf" -> do {
       file <- readAndParse tptp_path;
-      (gv,dnf) <- assert $ fromProto'File file;
+      let { gv = FOF.make'GlobalVar [file] };
+      dnf <- assert $ fromProto'File gv file;
       putStrLn $ TextFormat.showMessage $ toProto'File dnf;
     };
     _ -> help;
   }
 
 cnf [mode,fof_proto_file] = do
+  putStrLnE "doing cnf..."
   file <- readProtoFile fof_proto_file
-  (g,fof) <- assert $ FOF.fromProto'File file
+  let g = FOF.make'Global [file]
+  fof <- assert $ FOF.fromProto'File g file
   let f = case mode of { "reg" -> fof'dnf; "def" -> fof'dnf'def }
+  putStrLnE "starting conversion..."
   let (gv,dnf) = f (g,fof)
+  putStrLnE "conversion done..."
   putStrLn $ TextFormat.showMessage $ toProto'File dnf
+  putStrLnE "dnf returned"
 
 validate [solution_proto_file] = do
   solutionProto :: SPB.CNF <- readProtoFile solution_proto_file
   (problem,proof,stats) <- assert $ do
-    (g,problem) <- fromProto'File (solutionProto^. #problem)
-    (_,proof) <- fromProto'File (solutionProto^. #proof)
+    let gv = FOF.make'GlobalVar [solutionProto^. #problem, solutionProto^. #proof]
+    problem <- fromProto'File gv (solutionProto^. #problem)
+    proof <- fromProto'File gv (solutionProto^. #proof)
     stats <- Proof.classify proof problem
     case counterExample proof of
       Nothing -> return ()

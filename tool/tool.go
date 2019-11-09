@@ -14,7 +14,7 @@ import (
   "github.com/golang/protobuf/proto"
 )
 
-const tool_bin_path = "__main__/tptp_parser/bin/checker"
+const tool_bin_path = "__main__/tptp_parser/src/tool"
 const tmp_prefix = "tptp_benchmark_go_"
 
 type Language string
@@ -33,10 +33,10 @@ func TptpToProto(ctx context.Context, lang Language, tptp []byte) (*tpb.File,err
   if err!=nil { return nil,fmt.Errorf("WriteTmp(): %v",err) }
   defer cleanup()
 
-  var outBuf,errBuf bytes.Buffer
+  var outBuf bytes.Buffer
   cmd := exec.CommandContext(ctx,utils.Runfile(tool_bin_path),"conv",string(lang),tmp)
   cmd.Stdout = &outBuf
-  cmd.Stderr = &errBuf
+  cmd.Stderr = os.Stderr
   if err = cmd.Run(); err!=nil { return nil,fmt.Errorf("cmd.Run(): %v",err) }
 
   pbFile := &tpb.File{}
@@ -51,10 +51,10 @@ func FOFToCNF(ctx context.Context, fof *tpb.File) (*tpb.File,error) {
   if err!=nil { return nil,fmt.Errorf("WriteTmp(): %v",err) }
   defer cleanup()
 
-  var outBuf,errBuf bytes.Buffer
+  var outBuf bytes.Buffer
   cmd := exec.CommandContext(ctx,utils.Runfile(tool_bin_path),"cnf","reg",tmp)
   cmd.Stdout = &outBuf
-  cmd.Stderr = &errBuf
+  cmd.Stderr = os.Stderr
   if err = cmd.Run(); err!=nil { return nil,fmt.Errorf("cmd.Run(): %v",err) }
 
   cnf := &tpb.File{}

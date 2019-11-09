@@ -57,6 +57,7 @@ haskell_test(
     ":Ctx",
     ":MGU",
     ":Pred",
+    ":IO",
     "@stackage//:base",
     "@stackage//:containers",
     "@stackage//:tasty",
@@ -152,6 +153,14 @@ haskell_library(
   ],
 )
 
+haskell_library(
+  name = "IO",
+  srcs = ["IO.hs"],
+  deps = [
+    "@stackage//:base",    
+  ],
+)
+
 haskell_binary(
   name = "tool",
   srcs = ["ToolBin.hs"],
@@ -161,11 +170,13 @@ haskell_binary(
     ":FOF",
     ":Parser",
     ":Valid",
+    ":IO",
     "@stackage//:base",
     "@stackage//:containers",
     "@stackage//:lens",
     "@stackage//:proto-lens",
     "@stackage//:text",
+    "@stackage//:deepseq",
     "//tptp_parser/proto:tptp_haskell_proto",
     "//tptp_parser/proto:solutions_haskell_proto",
   ],

@@ -3,6 +3,7 @@ package tool
 import (
   "context"
   "testing"
+  "log"
 
   "github.com/pompon0/tptp_benchmark_go/problems"
   tpb "github.com/pompon0/tptp_benchmark_go/tptp_parser/proto/tptp_go_proto"
@@ -18,10 +19,14 @@ func TestTptpToProto(t *testing.T) {
 
 func TestFOFToCNF(t *testing.T) {
   for k,v := range problems.SampleProblems {
+    log.Printf("%s",k)
+    log.Printf("tptp -> fof")
     fof,err := TptpToProto(context.Background(),FOF,v)
     if err!=nil { t.Fatalf("TptpToProto(%q): %v",k,err) }
+    log.Printf("fof -> cnf")
     cnf,err := FOFToCNF(context.Background(),fof)
     if err!=nil { t.Errorf("FOFToCNF(%q): %v",k,err) }
+    log.Printf("iterating over inputs")
     for _,i := range cnf.Input {
       if got,want := i.Language,tpb.Input_CNF; got!=want {
         t.Errorf("i.Language = %v, want %v",got,want)

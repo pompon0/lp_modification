@@ -25,7 +25,7 @@ testSimpleForall = do
     (gv,dnf) = nnf'dnf'def (empty'Global,nnf);
     [fn] = gv^.global'.funs.to stack'ids;
     val = emptyValuation & at vn ?~ (wrap $ TFun fn []);
-    (gv',dnf') = nnf'dnf (gv^.global', refl & NNF.nnf'pred.pred'args.traverse %~ eval val);
+    (gv',dnf') = nnf'dnf (gv^.global', refl & NNF.nnf'pred.pred'args.traverse.term'subst %~ eval val);
   }
   dnf @?= dnf'
   gv @?= gv'

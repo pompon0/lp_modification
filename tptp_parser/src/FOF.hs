@@ -51,11 +51,24 @@ preds f = case f of
 -}
 ---------------------------------------
 
-make'Global :: T.File -> Global
-make'Global f = Global {
-    _funs = push (Set.fromList $ f^..file'formula.formula'pred.pred'args.traverse.term'funName'rec) empty'Stack,
-    _preds = push (Set.fromList $ f^..file'formula.formula'pred.pred'name) empty'Stack
+freeVars :: T.Formula'Formula -> Set.Set String
+freeVars f = case f of
+  T.Formula'Pred' pred -> Set.fromList $ pred^..pred'args.traverse.term'varName'rec
+  T.Formula'Quant' quant -> Set.difference (Set.unions $ quant^..quant'sub.to freeVars) (Set.fromList $ quant^..quant'varName)
+  T.Formula'Op op -> Set.unions (op^.. #args.traverse. #maybe'formula.traverse.to freeVars)
+
+make'Global :: [T.File] -> Global
+make'Global fs = Global {
+    _funs = push (Set.fromList $ fs^..traverse.file'formula.formula'pred.pred'args.traverse.term'funName'rec) empty'Stack,
+    _preds = push (Set.fromList $ fs^..traverse.file'formula.formula'pred.pred'name) empty'Stack
   }
+
+make'GlobalVar :: [T.File] -> GlobalVar 
+make'GlobalVar fs = GlobalVar {
+    _global' = make'Global fs,
+    _existsVars = push (Set.unions $ fs^..traverse.file'formula.to freeVars) empty'Stack
+  }
+
 
 getFormula :: T.Formula -> Err T.Formula'Formula
 getFormula f = case f^. #maybe'formula of
@@ -72,11 +85,8 @@ makeLenses ''Local
 
 empty'Local = Local empty'Global empty'Stack
 
-fromProto'File :: T.File -> Err (Global,FOF)
-fromProto'File f = do
-  let glob = make'Global f
-  f' <- Or <$> mapM (fromProto'Input glob) (f^. #input)
-  return (glob,f')
+fromProto'File :: Global -> T.File -> Err FOF
+fromProto'File glob f = Or <$> mapM (fromProto'Input glob) (f^. #input)
 
 fromProto'Input :: Global -> T.Input -> Err FOF
 fromProto'Input glob i = do
@@ -146,10 +156,4 @@ toProto'Term :: Term -> T.Term
 toProto'Term term = case unwrap term of
   TVar vn -> defMessage & #type' .~ T.Term'VAR & term'name .~ show vn
   TFun fn args -> defMessage & #type' .~ T.Term'EXP & term'name .~ show fn & #args .~ map toProto'Term args
-
-freeVars :: T.Formula'Formula -> Set.Set String
-freeVars f = case f of
-  T.Formula'Pred' pred -> Set.fromList $ pred^..pred'args.traverse.term'varName'rec
-  T.Formula'Quant' quant -> Set.difference (Set.unions $ quant^..quant'sub.to freeVars) (Set.fromList $ quant^..quant'varName)
-  T.Formula'Op op -> Set.unions (op^.. #args.traverse. #maybe'formula.traverse.to freeVars)
 

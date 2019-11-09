@@ -16,9 +16,8 @@ tests = testGroup "MGUTest" [testCase "loop" loopTest]
 
 loopTest = do
   let {
-    s0 = emptyValuation;
-    [vn0,vn1] = labels'ids ["X","Y"];
-    s1 = fromJust $ MGU.runMGU (wrap $ TVar vn0, wrap $ TVar vn0) s0;
-    s2 = fromJust $ MGU.runMGU (wrap $ TVar vn0, wrap $ TVar vn1) s1;
+    [x,y] = map (wrap.TVar) $ labels'ids ["X","Y"];
+    s = fromJust $ return MGU.empty >>= MGU.term'mgu (y,x) >>= MGU.term'mgu (x,y)
   }
-  [(vn1, wrap $ TVar vn0)] @=? Map.toList s2
+  x @=? MGU.val'get s y
+  x @=? MGU.val'get s x

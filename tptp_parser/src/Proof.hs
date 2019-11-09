@@ -6,21 +6,16 @@ module Proof where
 import Ctx
 import DNF
 import Pred
---import qualified Proto.Proof as P
 import qualified Data.Map as Map
 import Data.Text.Lens
 import Data.ProtoLens(defMessage)
 import Data.ProtoLens.Labels()
 import Control.Lens
-import Control.Monad(foldM,forM)
 import Data.List(partition,group,sort)
 import Data.Either(partitionEithers)
 import Valid
 import EqAxioms
---import Form
 import qualified Proto.Solutions as SPB
-
-import qualified Control.Monad.Trans.Except as ExceptM
 
 classify :: OrForm -> OrForm -> Err SPB.Stats
 classify (OrForm c0) f = do

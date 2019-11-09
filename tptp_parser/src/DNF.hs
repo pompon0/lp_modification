@@ -80,31 +80,25 @@ simplify (OrForm x) =
 isSubForm :: OrForm -> OrForm -> Maybe [AndClause]
 isSubForm a b = mapM (\c -> List.find (isInstance c) (b^.orForm'andClauses)) (a^.orForm'andClauses)
 
-atom'runMGU :: (Atom,Atom) -> Valuation -> Maybe Valuation
-atom'runMGU (a1,a2) val = do
-  if (a1^.atom'sign) /= (a2^.atom'sign) then Nothing else return ()
-  if (a1^.atom'name) /= (a2^.atom'name) then Nothing else return ()
-  if length (a1^.atom'args) /= length (a2^.atom'args) then Nothing else return ()
-  foldM (flip MGU.runMGU) val $ zip (a1^.atom'args) (a2^.atom'args)
+atom'mgu :: (Atom,Atom) -> MGU.Valuation -> Maybe MGU.Valuation
+atom'mgu (a1,a2) val = do
+  when ((a1^.atom'sign) /= (a2^.atom'sign)) Nothing
+  when ((a1^.atom'name) /= (a2^.atom'name)) Nothing
+  when (length (a1^.atom'args) /= length (a2^.atom'args)) Nothing
+  foldM (flip MGU.term'mgu) val $ zip (a1^.atom'args) (a2^.atom'args)
 
-andClause'runMGU :: (AndClause,AndClause) -> Valuation -> Maybe Valuation
-andClause'runMGU (c1,c2) val = do
-  if length (c1^.andClause'atoms) /= length (c2^.andClause'atoms) then Nothing else return ()
-  foldM (flip atom'runMGU) val $ zip (c1^.andClause'atoms) (c2^.andClause'atoms) 
+andClause'mgu :: (AndClause,AndClause) -> MGU.Valuation -> Maybe MGU.Valuation
+andClause'mgu (c1,c2) val = do
+  when (length (c1^.andClause'atoms) /= length (c2^.andClause'atoms)) Nothing
+  foldM (flip atom'mgu) val $ zip (c1^.andClause'atoms) (c2^.andClause'atoms) 
 
 isInstance :: AndClause -> AndClause -> Bool
-isInstance a b = andClause'runMGU (a,b) emptyValuation /= Nothing
+isInstance a b = andClause'mgu (a,b) MGU.empty /= Nothing
 
 -----------------------------------------------------
 
-fromProto'File :: T.File -> Err (GlobalVar,OrForm)
-fromProto'File f = do
-  let gv = GlobalVar {
-    _global' = FOF.make'Global f,
-    _existsVars = push (Set.unions $ f^..file'formula.to FOF.freeVars) empty'Stack
-  }
-  f' <- OrForm <$> mapM (fmap notOrClause. fromProto'Input gv) (f^. #input)
-  return (gv,f')
+fromProto'File :: GlobalVar -> T.File -> Err OrForm
+fromProto'File gv f = OrForm <$> mapM (fmap notOrClause. fromProto'Input gv) (f^. #input)
 
 fromProto'Input :: GlobalVar -> T.Input -> Err OrClause
 fromProto'Input gv i = do

@@ -78,15 +78,11 @@ instance Show Pred where
 
 ----------------------------------------------------
 
--- Valuation is a function V-FV -> T[FV], represented by acyclic V-FV -> T[V] function
-type Valuation = Map.Map VarName Term
+type FlatValuation = Map.Map VarName Term
 
 emptyValuation = Map.empty
-
--- function T[V] -> T[FV], represented by the valuation
-eval :: Valuation -> Term -> Term
-eval s t@(unwrap -> TVar vn) = case Map.lookup vn s of { Nothing -> t; Just t' -> eval s t' }
-eval s (unwrap -> TFun f args) = wrap $ TFun f (map (eval s) args)
+eval :: FlatValuation -> VarName -> Term
+eval val vn = val^.at vn.non (error "var not found")
 
 ground :: Term -> Term
 ground (unwrap -> TVar _) = wrap $ TFun extraConstName []

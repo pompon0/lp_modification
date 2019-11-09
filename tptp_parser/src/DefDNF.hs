@@ -29,7 +29,7 @@ orForm'varName'rec = orForm'andClauses.traverse.andClause'atoms.traverse.atom'pr
 
 data Local = Local {
   _globalVar :: GlobalVar,
-  _valuation :: Valuation
+  _valuation :: FlatValuation
 }
 makeLenses ''Local
 empty'Local = Local empty'GlobalVar emptyValuation
@@ -75,7 +75,7 @@ defDNF local nnf = case nnf of
         da' = da & orForm'andClauses.traverse.andClause'atoms %~ (Atom True defPred:)
         db' = db & orForm'andClauses.traverse.andClause'atoms %~ (Atom False defPred:)
   NNF.Atom sign p -> (local^.globalVar, OrForm [AndClause [Atom sign p']]) where
-    p' = p & pred'args.traverse %~ eval (local^.valuation)
+    p' = p & pred'args.traverse.term'subst %~ eval (local^.valuation)
 
 -------------------------------------------------
 
@@ -87,7 +87,7 @@ dnfs local join zero = rec (local^.globalVar)  where
   rec gv [] = (gv,zero)
   rec gv (h:t) = join gv3 h' t' where
     (gv2,t') = rec gv t :: (GlobalVar,OrForm)
-    (gv3,h') = defDNF (local & globalVar .~ gv2) h :: (GlobalVar,OrForm)
+    (gv3,h') = dnf (local & globalVar .~ gv2) h :: (GlobalVar,OrForm)
 
 dnf :: Local -> NNF.NNF -> (GlobalVar,OrForm)
 dnf local nnf = case nnf of
@@ -102,4 +102,4 @@ dnf local nnf = case nnf of
   NNF.And disj -> dnfs local join (OrForm [mempty]) disj where
     join = \gv (OrForm a) (OrForm b) -> (gv, OrForm [x <> y | x <- a, y <- b])
   NNF.Atom sign p -> (local^.globalVar, OrForm [AndClause [Atom sign p']]) where
-    p' = p & pred'args.traverse %~ eval (local^.valuation)
+    p' = p & pred'args.traverse.term'subst %~ eval (local^.valuation)

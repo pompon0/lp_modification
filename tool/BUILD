@@ -3,7 +3,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "go_default_library",
     srcs = ["tool.go"],
-    data = ["//tptp_parser/bin:checker"],
+    data = ["//tptp_parser/src:tool"],
     importpath = "github.com/pompon0/tptp_benchmark_go/tool",
     visibility = ["//visibility:public"],
     deps = [

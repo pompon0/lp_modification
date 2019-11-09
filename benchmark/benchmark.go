@@ -44,7 +44,7 @@ func worker(
     case <-ctx.Done(): return nil
     case p,ok := <-problems:
       if !ok { return nil }
-      fofProblem,cnfProblem,err := convProblem(ctx,p.tptpFOFProblem)
+      fofProblem,cnfProblem,err := convProblemEprover(ctx,p.tptpFOFProblem)
       if err!=nil { return fmt.Errorf("convProblem(%q): %v",p.name,err) }
       if err := func() error {
         c := &spb.Case{

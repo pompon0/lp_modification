@@ -47,4 +47,3 @@ classify (OrForm c0) f = do
     & #funMono .~ funMono 
     & #predMono .~ predMono 
     & #orClauses .~ orClauses
- 

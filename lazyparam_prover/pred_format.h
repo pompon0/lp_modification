@@ -21,11 +21,21 @@ str show(Term t) {
   error("unexpected t.type() = %",t.type());
 }
 
+str show_pred_name(u64 pred) {
+  switch(pred) {
+  case Atom::EQ: return "eq";
+  case Atom::EQ_TRANS_POS: return "[eq]";
+  case Atom::EQ_TRANS_NEG: return "{eq}";
+  case Atom::EQ_SYMM: return "symm";
+  }
+  return util::fmt("p%",pred);
+}
+
 str show(Atom a) {
   vec<str> args(a.arg_count());
   for(size_t i=a.arg_count(); i--;) args[i] = show(a.arg(i));
   str sign = a.sign() ? "+" : "-";
-  str pred_name = a.pred()==Atom::EQ ? "eq" : util::fmt("p%",a.pred());
+  str pred_name = show_pred_name(a.pred());
   return util::fmt("%%(%)",sign,pred_name,util::join(",",args));
 }
 

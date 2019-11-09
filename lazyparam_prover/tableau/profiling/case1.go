@@ -22,9 +22,9 @@ func run(ctx context.Context) error {
   if err!=nil { return fmt.Errorf("tool.TptpToProto(%q): %v",k,err) }
   cnf,err := tool.FOFToCNF(ctx,fof)
   if err!=nil { return fmt.Errorf("tool.FOFToCNF(%q): %v",k,err) }
-  proof,err := tableau.Tableau(ctx,cnf,true)
+  out,err := tableau.Tableau(ctx,cnf,true)
   if err!=nil { return fmt.Errorf("Tableau(%q): %v",k,err) }
-  _,err = tool.ValidateProof(ctx,&spb.CNF{Problem:cnf,Proof:proof})
+  _,err = tool.ValidateProof(ctx,&spb.CNF{Problem:cnf,Proof:out.Proof})
   if err!=nil { return fmt.Errorf("tool.Validate(%q): %v",k,err) }
   return nil
 }

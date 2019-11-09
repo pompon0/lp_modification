@@ -63,16 +63,12 @@ conv [language,tptp_path] = do
   }
 
 cnf [mode,fof_proto_file] = do
-  putStrLnE "doing cnf..."
   file <- readProtoFile fof_proto_file
   let g = FOF.make'Global [file]
   fof <- assert $ FOF.fromProto'File g file
   let f = case mode of { "reg" -> fof'dnf; "def" -> fof'dnf'def }
-  putStrLnE "starting conversion..."
   let (gv,dnf) = f (g,fof)
-  putStrLnE "conversion done..."
   putStrLn $ TextFormat.showMessage $ toProto'File dnf
-  putStrLnE "dnf returned"
 
 validate [solution_proto_file] = do
   solutionProto :: SPB.CNF <- readProtoFile solution_proto_file

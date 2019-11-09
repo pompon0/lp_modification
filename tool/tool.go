@@ -52,7 +52,7 @@ func FOFToCNF(ctx context.Context, fof *tpb.File) (*tpb.File,error) {
   defer cleanup()
 
   var outBuf bytes.Buffer
-  cmd := exec.CommandContext(ctx,utils.Runfile(tool_bin_path),"cnf","reg",tmp)
+  cmd := exec.CommandContext(ctx,utils.Runfile(tool_bin_path),"cnf","def",tmp)
   cmd.Stdout = &outBuf
   cmd.Stderr = os.Stderr
   if err = cmd.Run(); err!=nil { return nil,fmt.Errorf("cmd.Run(): %v",err) }

@@ -14,6 +14,7 @@ import (
   "github.com/pompon0/tptp_benchmark_go/problems"
   "github.com/pompon0/tptp_benchmark_go/lazyparam_prover/tableau"
   "github.com/pompon0/tptp_benchmark_go/tool"
+  "github.com/pompon0/tptp_benchmark_go/eprover"
   "github.com/golang/protobuf/ptypes"
   tpb "github.com/pompon0/tptp_benchmark_go/tptp_parser/proto/tptp_go_proto"
   spb "github.com/pompon0/tptp_benchmark_go/tptp_parser/proto/solutions_go_proto"
@@ -72,6 +73,16 @@ func convProblem(ctx context.Context, tptp []byte) (/*fof*/ *tpb.File, /*cnf*/ *
   if err!=nil { return nil,nil,fmt.Errorf("tool.TptpToProto(): %v",err) }
   cnf,err := tool.FOFToCNF(ctx,fof)
   if err!=nil { return nil,nil,fmt.Errorf("tool.FOFTOCNF(): %v",err) }
+  return fof,cnf,nil
+}
+
+func convProblemEprover(ctx context.Context, tptp []byte) (/*fof*/ *tpb.File, /*cnf*/ *tpb.File, error) {
+  fof,err := tool.TptpToProto(ctx,tool.FOF,tptp)
+  if err!=nil { return nil,nil,fmt.Errorf("tool.TptpToProto(FOF): %v",err) }
+  tptpCNF,err := eprover.FOFToCNF(ctx,tptp)
+  if err!=nil { return nil,nil,fmt.Errorf("eprover.FOFToCNF(): %v",err) }
+  cnf,err := tool.TptpToProto(ctx,tool.CNF,tptpCNF)
+  if err!=nil { return nil,nil,fmt.Errorf("tool.TptpToProto(CNF): %v",err) }
   return fof,cnf,nil
 }
 

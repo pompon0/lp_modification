@@ -6,6 +6,7 @@ go_library(
     importpath = "github.com/pompon0/tptp_benchmark_go/benchmark",
     visibility = ["//visibility:private"],
     deps = [
+        "//eprover:go_default_library",
         "//lazyparam_prover/tableau:go_default_library",
         "//problems:go_default_library",
         "//tool:go_default_library",

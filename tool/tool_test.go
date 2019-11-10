@@ -25,7 +25,7 @@ func TestFOFToCNF(t *testing.T) {
     if err!=nil { t.Fatalf("TptpToProto(%q): %v",k,err) }
     log.Printf("fof -> cnf")
     cnf,err := FOFToCNF(context.Background(),fof)
-    if err!=nil { t.Errorf("FOFToCNF(%q): %v",k,err) }
+    if err!=nil { t.Fatalf("FOFToCNF(%q): %v",k,err) }
     log.Printf("iterating over inputs")
     for _,i := range cnf.Input {
       if got,want := i.Language,tpb.Input_CNF; got!=want {

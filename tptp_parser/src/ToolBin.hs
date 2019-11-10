@@ -64,7 +64,7 @@ conv [language,tptp_path] = do
 
 cnf [mode,fof_proto_file] = do
   file <- readProtoFile fof_proto_file
-  let g = FOF.make'Global [file]
+  let g = FOF.global'make [file]
   fof <- assert $ FOF.fromProto'File g file
   let f = case mode of { "reg" -> fof'dnf; "def" -> fof'dnf'def }
   let (gv,dnf) = f (g,fof)

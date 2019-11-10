@@ -18,12 +18,13 @@ tests = testGroup "DefDNFTest.hs" [
 
 testSimpleForall = do
   let {
-    local0 = empty'Stack;
-    (vn,local1) = push1 "X" local0;
+    local0 = stack'empty;
+    vn = VarName "X";
+    local1 = stack'push vn local0;
     refl = NNF.Atom True$ wrap $ PEq (wrap $ TVar vn) (wrap $ TVar vn);
     nnf = lambda NNF.Forall local0 (local1,refl); -- A[X] X=X
-    (gv,dnf) = nnf'dnf'def (empty'Global,nnf);
-    [fn] = gv^.global'.funs.to stack'ids;
+    (gv,dnf) = nnf'dnf'def (global'empty,nnf);
+    [fn] = gv^.global'.funs.stack'ids;
     val = emptyValuation & at vn ?~ (wrap $ TFun fn []);
     (gv',dnf') = nnf'dnf (gv^.global', refl & NNF.nnf'pred.pred'args.traverse.term'subst %~ eval val);
   }

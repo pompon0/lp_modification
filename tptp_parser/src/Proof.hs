@@ -31,10 +31,10 @@ classify (OrForm c0) f = do
     Nothing -> fail "proof doesn't imply the formula"
   let {
     funMono = (flip map) (group $ sort fmono) (\fns -> (defMessage :: SPB.Stats'FunMono)
-      & #name.unpacked .~ head fns^._Wrapped'.label
+      & #name.unpacked .~ show (head fns)
       & #count .~ fromIntegral (length fns));
     predMono = (flip map) (group $ sort pmono) (\pns -> (defMessage :: SPB.Stats'PredMono)
-      & #name.unpacked .~ head pns^._Wrapped'.label
+      & #name.unpacked .~ show (head pns)
       & #count .~ fromIntegral (length pns));
     orClauses = (flip map) (group $ sort x) (\l -> (defMessage :: SPB.Stats'OrClause)
       & #cla .~ toProto'Input (notAndClause $ head l)

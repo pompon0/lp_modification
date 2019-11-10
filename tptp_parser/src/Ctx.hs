@@ -3,8 +3,10 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE UndecidableInstances #-}
 module Ctx where
 
+import HashSeq
 import Control.Lens
 import Data.Maybe
 import qualified Data.Set as Set
@@ -14,6 +16,8 @@ import Text.Printf
 import Prelude hiding(fail)
 import Control.Monad hiding(fail)
 import Control.Monad.Fail
+import Control.Exception
+import Debug.Trace
 
 -------------------------------------
 
@@ -22,67 +26,65 @@ instance MonadFail Err where { fail = Err . Left }
 
 -------------------------------------
 
-data ID = ID { _uuid :: Int, _label :: String } deriving(Eq,Ord)
-makeLenses ''ID
+instance HashSeq String where hashSeq = map (unit.fromIntegral.fromEnum)
+data Stack a = Stack'Empty | Stack { stack'top :: a, stack'values_ :: Set.Set a, stack'pop :: Stack a }
 
-instance Show ID where { show (ID i l) = printf "%s_%d" l i }
 
-data Stack a = Stack {
-  _values :: Set.Set Int,
-  _order :: [ID]
-} deriving(Eq,Show)
-makeLenses ''Stack
+instance Stackable a => Eq (Stack a) where x == y = (x^.stack'ids) == (y^.stack'ids)
+instance Stackable a => Show (Stack a) where show x = show (x^.stack'ids)
 
-empty'Stack = Stack Set.empty []
+---------------------------------------------------
 
-stack'ids :: (Wrapped a, Unwrapped a ~ ID) => Stack a -> [a]
-stack'ids s = s^..order.traverse._Unwrapped'
+class (Show a, Eq a, Ord a) => Stackable a where
+  stack'empty :: Stack a
+  stack'empty = Stack'Empty
 
-labels'stack :: (Wrapped a, Unwrapped a ~ ID) => [String] -> Stack a
-labels'stack labels = Stack (Set.fromList $ map _uuid ids) ids where
-  ids = map (uncurry ID) (zip [0..] labels)
+  stack'values :: Stack a -> Set.Set a
+  stack'values s = case s of
+    Stack'Empty -> Set.empty
+    Stack _ v _ -> v 
 
-labels'ids :: (Wrapped a, Unwrapped a ~ ID) => [String] -> [a]
-labels'ids = stack'ids.labels'stack
+  stack'push :: a -> Stack a -> Stack a
+  stack'push h s = Stack h (Set.insert h (stack'values s)) s
 
-{-make'Stack :: (Wrapped a, Unwrapped a ~ ID) => Set.Set String -> Stack a
-make'Stack labels = Stack values order where
-  order = map (uncurry ID) (zip [0..] (Set.toList labels))
-  values = Set.fromList (map _uuid order)
--}
+  stack'has :: a -> Stack a -> Bool
+  stack'has l s = Set.member l (stack'values s)
+  
+  stack'ids :: Iso' (Stack a) [a]
+  stack'ids = iso to from where
+    to Stack'Empty = []
+    to (Stack h _ t) = h:to t
+    from [] = Stack'Empty
+    from (h:t) = stack'push h (from t)
 
-nextUuid :: Stack a -> Int
-nextUuid s = s^.values.to Set.lookupMax.non (-1).to (+1)
+  stack'push'unused :: (Int -> a) -> Stack a -> (a, Stack a)
+  stack'push'unused f s = (x, stack'push x s) where
+    x = fromJust $ f <$> List.find (\i -> not $ stack'has (f i) s) [0..]
 
-push1 :: (Wrapped a, Unwrapped a ~ ID) => String -> Stack a -> (a,Stack a)
-push1 label s = (x^._Unwrapped', s & order %~ (x:) & values %~ Set.insert (x^.uuid)) where
-  x = ID (nextUuid s) label
+  stack'push' :: [a] -> Stack a -> Stack a
+  stack'push' ids s = foldr stack'push s ids
 
-push :: (Wrapped a, Unwrapped a ~ ID) => Set.Set String -> Stack a -> Stack a
-push labels s = foldl (\s x -> s & order %~ (x:) & values %~ Set.insert (x^.uuid)) s ids where
-  ids = map (uncurry ID) (zip [(nextUuid s)..] (Set.toList labels))
+  stack'make :: Set.Set a -> Stack a
+  stack'make labels = stack'push' (Set.toList labels) Stack'Empty
 
-reloc :: (Wrapped a, Unwrapped a ~ ID) => a -> Stack a -> (a,Stack a)
-reloc y = push1 (y^._Wrapped'.label) 
+  pop :: Stack a -> (a,Stack a)
+  pop s = (stack'top s, stack'pop s)
 
-pop :: (Wrapped a, Unwrapped a ~ ID) => Stack a -> (a,Stack a)
-pop s = (xl^._Unwrapped', s & values %~ Set.delete (xl^.uuid) & order .~ t) where
-  (xl:t) = s^.order
+  stack'find :: Stack a -> a -> a
+  stack'find s l = assert (stack'has l s) l
 
-find :: (Wrapped a, Unwrapped a ~ ID) => String -> Stack a -> a
-find l s = List.find (^.label.to (==l)) (s^.order) ^.to fromJust._Unwrapped'
-
+instance (Show a, Eq a, Ord a) => Stackable a
 ---------------------------------------------
 
-newtype VarName = VarName ID deriving(Eq,Ord,Show)
-newtype FunName = FunName ID deriving(Eq,Ord,Show)
-newtype PredName = PredName ID deriving(Eq,Ord,Show)
-makeWrapped ''VarName
-makeWrapped ''FunName
-makeWrapped ''PredName
+newtype VarName = VarName String deriving(Eq,Ord,HashSeq)
+newtype FunName = FunName String deriving(Eq,Ord,HashSeq)
+newtype PredName = PredName String deriving(Eq,Ord,HashSeq)
+instance Show VarName where show (VarName x) = x
+instance Show FunName where show (FunName x) = x
+instance Show PredName where show (PredName x) = x
 
-eqPredName = PredName (ID (-1) "eq") :: PredName
-extraConstName = FunName (ID (-1) "c") :: FunName
+eqPredName = PredName "eq"
+extraConstName = FunName "c"
 
 data Global = Global {
   _funs :: Stack FunName,
@@ -90,14 +92,14 @@ data Global = Global {
 } deriving(Eq,Show)
 makeLenses ''Global
 
-empty'Global = Global empty'Stack empty'Stack
+global'empty = Global Stack'Empty Stack'Empty
 
 data GlobalVar = GlobalVar {
   _global' :: Global,
   _existsVars :: Stack VarName
 } deriving(Eq,Show)
 makeLenses ''GlobalVar
-empty'GlobalVar = GlobalVar empty'Global empty'Stack
+globalVar'empty = GlobalVar global'empty Stack'Empty
 
 lambda :: (VarName -> x -> x) -> Stack VarName -> (Stack VarName,x) -> x
 lambda w e sx = it sx where

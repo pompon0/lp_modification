@@ -1,8 +1,12 @@
 load("@rules_haskell//haskell:defs.bzl", "haskell_library", "haskell_test", "haskell_binary")
 
+
 haskell_library(
   name = "Ctx",
-  srcs = ["Ctx.hs"],
+  srcs = [
+    "Ctx.hs",
+    "HashSeq.hs",
+  ],
   deps = [
     "@stackage//:base",
     "@stackage//:lens",
@@ -25,7 +29,6 @@ haskell_library(
   name = "Pred",
   srcs = [
     "Pred.hs",
-    "HashSeq.hs",
     "Coq.hs",
   ],
   deps = [
@@ -60,6 +63,7 @@ haskell_test(
     ":IO",
     "@stackage//:base",
     "@stackage//:containers",
+    "@stackage//:lens",
     "@stackage//:tasty",
     "@stackage//:tasty-hunit",
   ],

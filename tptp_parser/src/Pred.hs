@@ -26,12 +26,12 @@ type Term = WithHash Term'
 type Pred = WithHash Pred'
 
 instance HashSeq Term' where
-  hashSeq (TVar vn) = [unit 0, unit (vn^._Wrapped'.uuid.to fromIntegral)]
-  hashSeq (TFun fn args) = unit 1 : unit (fn^._Wrapped'.uuid.to fromIntegral) : map hash args
+  hashSeq (TVar vn) = [unit 0, hash (wrap vn)]
+  hashSeq (TFun fn args) = unit 1 : hash (wrap fn) : map hash args
 
 instance HashSeq Pred' where
   hashSeq (PEq a b) = [unit 0,hash a,hash b]
-  hashSeq (PCustom pn args) = unit 1 : unit (pn^._Wrapped'.uuid.to fromIntegral) : map hash args
+  hashSeq (PCustom pn args) = unit 1 : hash (wrap pn) : map hash args
 
 term'subst :: Traversal Term Term VarName Term
 term'subst g (unwrap -> TVar vn) = g vn

@@ -18,6 +18,7 @@ import Control.Monad(when)
 import Data.ProtoLens(defMessage)
 import Data.ProtoLens.Labels()
 import Text.Printf
+import Debug.Trace
 
 data FOF = Forall VarName FOF
   | Exists VarName FOF
@@ -57,16 +58,16 @@ freeVars f = case f of
   T.Formula'Quant' quant -> Set.difference (Set.unions $ quant^..quant'sub.to freeVars) (Set.fromList $ quant^..quant'varName)
   T.Formula'Op op -> Set.unions (op^.. #args.traverse. #maybe'formula.traverse.to freeVars)
 
-make'Global :: [T.File] -> Global
-make'Global fs = Global {
-    _funs = push (Set.fromList $ fs^..traverse.file'formula.formula'pred.pred'args.traverse.term'funName'rec) empty'Stack,
-    _preds = push (Set.fromList $ fs^..traverse.file'formula.formula'pred.pred'name) empty'Stack
+global'make :: [T.File] -> Global
+global'make fs = Global {
+    _funs = stack'make (Set.fromList $ fs^..traverse.file'formula.formula'pred.pred'args.traverse.term'funName'rec.to FunName),
+    _preds = stack'make (Set.fromList $ fs^..traverse.file'formula.formula'pred.pred'name.to PredName)
   }
 
 make'GlobalVar :: [T.File] -> GlobalVar 
 make'GlobalVar fs = GlobalVar {
-    _global' = make'Global fs,
-    _existsVars = push (Set.unions $ fs^..traverse.file'formula.to freeVars) empty'Stack
+    _global' = global'make fs,
+    _existsVars = stack'make (Set.map VarName $ Set.unions $ fs^..traverse.file'formula.to freeVars)
   }
 
 
@@ -83,7 +84,7 @@ data Local = Local {
 }
 makeLenses ''Local
 
-empty'Local = Local empty'Global empty'Stack
+local'empty = Local global'empty stack'empty
 
 fromProto'File :: Global -> T.File -> Err FOF
 fromProto'File glob f = Or <$> mapM (fromProto'Input glob) (f^. #input)
@@ -91,14 +92,14 @@ fromProto'File glob f = Or <$> mapM (fromProto'Input glob) (f^. #input)
 fromProto'Input :: Global -> T.Input -> Err FOF
 fromProto'Input glob i = do
   f <- getFormula (i^. #formula)
-  let vars = push (freeVars f) empty'Stack
+  let vars = stack'make $ Set.map VarName $ freeVars f
   case i^. #language of {
     T.Input'CNF -> return ();
-    T.Input'FOF -> when (vars/=empty'Stack) $ fail "unexpected free vars in FOF";
+    T.Input'FOF -> when (vars/=stack'empty) $ fail "unexpected free vars in FOF";
     lang -> fail ("unexpected language: " ++ show lang);
   };
   f2 <- fromProto'Form (Local glob vars) f
-  let f3 = lambda Forall empty'Stack (vars,f2)
+  let f3 = lambda Forall stack'empty (vars,f2)
   case i^. #role of {
     T.Input'AXIOM -> return (Neg f3);
     T.Input'PLAIN -> return (Neg f3);
@@ -111,7 +112,7 @@ fromProto'Form local f =
   case f of 
     T.Formula'Pred' pred -> Atom <$> fromProto'Pred local pred
     T.Formula'Quant' quant -> do { 
-      let { local' = local & vars %~ push (Set.fromList $ quant^..quant'varName) };
+      let { local' = local & vars %~ stack'push' (map VarName $ quant^..quant'varName) };
       w <- (case (quant^. #type') of
         T.Formula'Quant'FORALL -> return Forall
         T.Formula'Quant'EXISTS -> return Exists);
@@ -136,16 +137,16 @@ fromProto'Pred :: Local -> T.Formula'Pred -> Err Pred
 fromProto'Pred local pred =
   let args' = mapM (fromProto'Term local) (pred^.pred'args) in
   case (pred^. #type') of
-    T.Formula'Pred'CUSTOM -> wrap.PCustom (find (pred^.pred'name) (local^.global.preds)) <$> args'
+    T.Formula'Pred'CUSTOM -> wrap.PCustom (stack'find (local^.global.preds) (PredName $ pred^.pred'name)) <$> args'
     T.Formula'Pred'EQ -> do { [l,r] <- args'; return (wrap $ PEq l r) }
 
 fromProto'Term :: Local -> T.Term -> Err Term
 fromProto'Term local term =
   case (term^. #type') of
-    T.Term'VAR -> return $ wrap $ TVar $ find (term^.term'name) (local^.vars)
+    T.Term'VAR -> return $ wrap $ TVar $ stack'find (local^.vars) (VarName $ term^.term'name) 
     T.Term'EXP -> wrap.TFun fn <$> args' where
       args' = mapM (fromProto'Term local) (term^. #args)
-      fn = find (term^.term'name) (local^.global.funs)
+      fn = stack'find (local^.global.funs) (FunName $ term^.term'name) 
 
 toProto'Pred :: Pred -> T.Formula'Pred
 toProto'Pred pred = case unwrap pred of

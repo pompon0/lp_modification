@@ -9,6 +9,7 @@ import Ctx
 import qualified NNF
 import qualified Data.Set as Set
 import Control.Lens 
+import Text.Printf
 
 {-
  - rename variables
@@ -32,19 +33,19 @@ data Local = Local {
   _valuation :: FlatValuation
 }
 makeLenses ''Local
-empty'Local = Local empty'GlobalVar emptyValuation
+local'empty = Local globalVar'empty emptyValuation
 
 relevantVars :: Stack VarName -> OrForm -> Set.Set VarName
 relevantVars s dnf = Set.intersection sub sup where
   sub = Set.fromList (dnf^..orForm'varName'rec)
-  sup = Set.fromList (stack'ids s)
+  sup = stack'values s
 
 type Join = GlobalVar -> OrForm -> OrForm -> (GlobalVar,OrForm)
 
 ----------------------------------------------
 
 nnf'dnf'def :: (Global,NNF.NNF) -> (GlobalVar,OrForm)
-nnf'dnf'def (g,nnf) = defDNF (empty'Local & globalVar.global' .~ g) nnf
+nnf'dnf'def (g,nnf) = defDNF (local'empty & globalVar.global' .~ g) nnf
 
 defDNFs :: Local -> Join -> OrForm -> [NNF.NNF] -> (GlobalVar,OrForm)
 defDNFs local join zero = rec (local^.globalVar)  where
@@ -53,14 +54,18 @@ defDNFs local join zero = rec (local^.globalVar)  where
     (gv2,t') = rec gv t :: (GlobalVar,OrForm)
     (gv3,h') = defDNF (local & globalVar .~ gv2) h :: (GlobalVar,OrForm)
 
+
+push'skolemFunName = stack'push'unused (FunName . printf "_skolem%d")
+push'defPredName = stack'push'unused (PredName . printf "_def%d")
+
 defDNF :: Local -> NNF.NNF -> (GlobalVar,OrForm)
 defDNF local nnf = case nnf of
   NNF.Forall vn f -> defDNF local3 f where
-    ev = local^.globalVar.existsVars.to stack'ids
-    (fn,local2) = local & globalVar.global'.funs %%~ push1 "_skolem" :: (FunName,Local)
+    ev = local^.globalVar.existsVars.stack'ids
+    (fn,local2) = local & globalVar.global'.funs %%~ push'skolemFunName
     local3 = local2 & valuation.at vn ?~ wrap (TFun fn (map (wrap.TVar) ev))
   NNF.Exists vn f -> defDNF local3 f where
-    (vn',local2) = local & globalVar.existsVars %%~ reloc vn
+    (vn',local2) = local & globalVar.existsVars %%~ stack'push'unused (VarName . printf "%s%d" (show vn))
     local3 = local2 & valuation.at vn ?~ wrap (TVar vn')
   NNF.Or conj -> defDNFs local (\gv da db -> (gv, da <> db)) mempty conj
   NNF.And disj -> defDNFs local join (OrForm [mempty]) disj where
@@ -69,7 +74,7 @@ defDNF local nnf = case nnf of
       (_,OrForm []) -> (gv,mempty);
       (OrForm [a], OrForm [b]) ->(gv, OrForm [a <> b]);
       (_,_) -> (gv',da' <> db') where
-        (pn,gv') = gv & global'.preds %%~ push1 "_def"
+        (pn,gv') = gv & global'.preds %%~ stack'push'unused (PredName . printf "_def%d")
         rv = relevantVars (gv'^.existsVars) (da <> db)
         defPred = wrap $ PCustom pn $ map (wrap.TVar) (Set.toList rv)
         da' = da & orForm'andClauses.traverse.andClause'atoms %~ (Atom True defPred:)
@@ -80,7 +85,7 @@ defDNF local nnf = case nnf of
 -------------------------------------------------
 
 nnf'dnf :: (Global,NNF.NNF) -> (GlobalVar,OrForm)
-nnf'dnf (g,nnf) = dnf (empty'Local & globalVar.global' .~ g) nnf
+nnf'dnf (g,nnf) = dnf (local'empty & globalVar.global' .~ g) nnf
 
 dnfs :: Local -> Join -> OrForm -> [NNF.NNF] -> (GlobalVar,OrForm)
 dnfs local join zero = rec (local^.globalVar)  where
@@ -92,11 +97,11 @@ dnfs local join zero = rec (local^.globalVar)  where
 dnf :: Local -> NNF.NNF -> (GlobalVar,OrForm)
 dnf local nnf = case nnf of
   NNF.Forall vn f -> dnf local3 f where
-    ev = local^.globalVar.existsVars.to stack'ids
-    (fn,local2) = local & globalVar.global'.funs %%~ push1 "_skolem" :: (FunName,Local)
+    ev = local^.globalVar.existsVars.stack'ids
+    (fn,local2) = local & globalVar.global'.funs %%~ push'skolemFunName 
     local3 = local2 & valuation.at vn ?~ wrap (TFun fn (map (wrap.TVar) ev))
   NNF.Exists vn f -> dnf local3 f where
-    (vn',local2) = local & globalVar.existsVars %%~ reloc vn
+    (vn',local2) = local & globalVar.existsVars %%~ stack'push'unused (VarName . printf "%s%d" (show vn))
     local3 = local2 & valuation.at vn ?~ wrap (TVar vn')
   NNF.Or conj -> dnfs local (\gv da db -> (gv, da <> db)) mempty conj
   NNF.And disj -> dnfs local join (OrForm [mempty]) disj where

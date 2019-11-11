@@ -8,13 +8,18 @@ import HashSeq
 import Pred
 import DNF
 import DefDNF
+import Parser
 import qualified NNF
 import qualified FOF 
 import Control.Lens
+import Control.Monad
+import Text.Printf
 
 main = defaultMain tests
 tests = testGroup "DefDNFTest.hs" [
-  testCase "simpleForall" testSimpleForall]
+  testCase "simpleForall" testSimpleForall,
+  testCase "nnf'dnf :: noVarsInSkolemTerms" $ testNoVarsInSkolemTerms nnf'dnf,
+  testCase "nnf'dnf'def :: noVarsInSkolemTerms" $ testNoVarsInSkolemTerms nnf'dnf'def]
 
 testSimpleForall = do
   let {
@@ -31,3 +36,22 @@ testSimpleForall = do
   dnf @?= dnf'
   gv @?= gv'
 
+
+l143_zfmisc_1 = "\
+  \fof(l143_zfmisc_1, conjecture,  (! [A] :  (! [B] :  (! [C] :  ~ ( ( ~ (r2_hidden(A, C))  &  ( ~ (r2_hidden(B, C))  &  ~ (r1_xboole_0(k2_tarski(A, B), C)) ) ) ) ) ) ) ).\
+  \fof(t51_zfmisc_1, axiom,  (! [A] :  (! [B] :  (! [C] :  ~ ( ( ~ (r2_hidden(A, B))  &  ( ~ (r2_hidden(C, B))  &  ~ (r1_xboole_0(k2_tarski(A, C), B)) ) ) ) ) ) ) )."
+
+orForm'subterm :: Fold OrForm Term
+orForm'subterm = orForm'andClauses.traverse.andClause'atoms.traverse.atom'args.traverse.term'subterm
+
+testNoVarsInSkolemTerms nnf'dnf = forM_ (dnf^..orForm'subterm) expected where
+  Err (Right file) = Parser.parse l143_zfmisc_1
+  g = FOF.global'make [file]
+  Err (Right fof) = FOF.fromProto'File g file
+  (gv,dnf) = nnf'dnf (g, NNF.fof'nnf fof)
+  expected t = case unwrap t of {
+    -- skolem terms should have no vars
+    TFun fn args -> when (not (stack'has fn (g^.funs)) && args /= []) $
+      assertFailure (printf "unexpected skolem term %s" (show t));
+    TVar _ -> return ();
+  }

@@ -52,8 +52,8 @@ global'make fs = Global {
     _preds = stack'make (Set.fromList $ fs^..traverse.file'formula.formula'pred.pred'name.to PredName)
   }
 
-make'GlobalVar :: [T.File] -> GlobalVar 
-make'GlobalVar fs = GlobalVar {
+globalVar'make :: [T.File] -> GlobalVar 
+globalVar'make fs = GlobalVar {
     _global' = global'make fs,
     _existsVars = stack'make (Set.map VarName $ Set.unions $ fs^..traverse.file'formula.to freeVars)
   }

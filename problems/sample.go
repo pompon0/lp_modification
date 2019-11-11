@@ -23,6 +23,11 @@ fof(a4, axiom, (![X] : ((q(X) & r(X)) => u(X)))).
 fof(c, conjecture, (?[X] : (p(X) & r(X)))).
 `)
 
+var l143_zfmisc_1 = []byte(`
+fof(l143_zfmisc_1, conjecture,  (! [A] :  (! [B] :  (! [C] :  ~ ( ( ~ (r2_hidden(A, C))  &  ( ~ (r2_hidden(B, C))  &  ~ (r1_xboole_0(k2_tarski(A, B), C)) ) ) ) ) ) ) ).
+fof(t51_zfmisc_1, axiom,  (! [A] :  (! [B] :  (! [C] :  ~ ( ( ~ (r2_hidden(A, B))  &  ( ~ (r2_hidden(C, B))  &  ~ (r1_xboole_0(k2_tarski(A, C), B)) ) ) ) ) ) ) ).
+`)
+
 var SampleProblems = map[string][]byte {
   "trivial": trivial,
   "simple": simple,
@@ -32,4 +37,5 @@ var SampleProblems = map[string][]byte {
   "barber": barber,
   "pelletier20": pelletier20,
   "pelletier24": pelletier24,
+  "l143_zfmics_1": l143_zfmisc_1,
 }

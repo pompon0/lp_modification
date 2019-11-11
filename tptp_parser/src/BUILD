@@ -125,6 +125,7 @@ haskell_test(
         ":Pred",
         ":FOF",
         ":DNF",
+        ":Tptp",
         "@stackage//:lens",
         "@stackage//:base",
         "@stackage//:tasty",

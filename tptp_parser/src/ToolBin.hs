@@ -24,6 +24,9 @@ import qualified Data.Set as Set
 import Control.Lens
 import qualified Data.Text.Lazy as Text
 
+assert :: Err a -> IO a
+assert (Err ea) = case ea of { Left e -> fail e; Right a -> return a }
+
 readProtoFile :: Message a => String -> IO a
 readProtoFile path = readFile path >>= assert . Err . TextFormat.readMessage . Text.pack 
 
@@ -36,9 +39,6 @@ fof'dnf (g,fof) = (gv,simplify dnf) where
 fof'dnf'def :: (Global,FOF.FOF) -> (GlobalVar,OrForm)
 fof'dnf'def (g,fof) = (gv,simplify dnf) where
   (gv,dnf) = nnf'dnf'def (g, fof'nnf fof)
-
-assert :: Err a -> IO a
-assert (Err ea) = case ea of { Left e -> fail e; Right a -> return a }
 
 readAndParse :: String -> IO T.File
 readAndParse tptp_path = do
@@ -60,7 +60,7 @@ conv [language,tptp_path] = do
     "fof" -> readAndParse tptp_path >>= putStrLn . TextFormat.showMessage;
     "cnf" -> do {
       file <- readAndParse tptp_path;
-      let { gv = FOF.make'GlobalVar [file] };
+      let { gv = FOF.globalVar'make [file] };
       dnf <- assert $ fromProto'File gv file;
       putStrLn $ TextFormat.showMessage $ toProto'File dnf;
     };
@@ -78,7 +78,7 @@ cnf [mode,fof_proto_file] = do
 validate [solution_proto_file] = do
   solutionProto :: SPB.CNF <- readProtoFile solution_proto_file
   (problem,proof,stats) <- assert $ do
-    let gv = FOF.make'GlobalVar [solutionProto^. #problem, solutionProto^. #proof]
+    let gv = FOF.globalVar'make [solutionProto^. #problem, solutionProto^. #proof]
     problem <- fromProto'File gv (solutionProto^. #problem)
     proof <- fromProto'File gv (solutionProto^. #proof)
     stats <- Proof.classify proof problem

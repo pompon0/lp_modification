@@ -28,6 +28,19 @@ func WriteTmp(data []byte) (path string, cleanup func(), err error) {
   return tmpFile.Name(),func(){ os.Remove(tmpFile.Name()) },nil
 }
 
+func ProtoToTptp(ctx context.Context, f *tpb.File) ([]byte,error) {
+  tmp,cleanup,err := WriteTmp([]byte(f.String()))
+  if err!=nil { return nil,fmt.Errorf("WriteTmp(): %v",err) }
+  defer cleanup()
+
+  var outBuf bytes.Buffer
+  cmd := exec.CommandContext(ctx,utils.Runfile(tool_bin_path),"tptp",tmp)
+  cmd.Stdout = &outBuf
+  cmd.Stderr = os.Stderr
+  if err = cmd.Run(); err!=nil { return nil,fmt.Errorf("cmd.Run(): %v",err) }
+  return outBuf.Bytes(),nil
+}
+
 func TptpToProto(ctx context.Context, lang Language, tptp []byte) (*tpb.File,error) {
   tmp,cleanup,err := WriteTmp(tptp)
   if err!=nil { return nil,fmt.Errorf("WriteTmp(): %v",err) }

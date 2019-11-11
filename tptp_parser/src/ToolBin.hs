@@ -17,6 +17,7 @@ import DefDNF
 import Valid(counterExample)
 import qualified Parser
 import IO
+import qualified Tptp
 
 import qualified Data.Map as Map
 import qualified Data.Set as Set
@@ -45,10 +46,14 @@ readAndParse tptp_path = do
   assert (Parser.parse content)
 
 help = do
+  putStrLn "tptp [proto_file] > [tptp_file]"
   putStrLn "conv [fof|cnf] [tptp_file] > [proto_file]"
   putStrLn "cnf [reg|def] [fof_proto_file] > [cnf_proto_file]"
   putStrLn "validate [solution_proto_file] > [stats_proto_file]"
 
+tptp [proto_path] = do
+  file <- readProtoFile proto_path
+  putStrLn $ Tptp.file'string file
 
 conv [language,tptp_path] = do
   case language of {
@@ -88,6 +93,7 @@ validate [solution_proto_file] = do
 main = do
   cmd:args <- getArgs
   case cmd of {
+    "tptp" -> tptp args;
     "conv" -> conv args;
     "cnf" -> cnf args;
     "validate" -> validate args;

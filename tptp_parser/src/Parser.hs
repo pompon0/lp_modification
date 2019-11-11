@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-module Parser(parse) where
+module Parser where
 
 import qualified Data.Text as Text
 import qualified Text.Parsec.Char as C
@@ -106,7 +106,7 @@ fof_quant_formula = do
     char ']'; char ':'
     f <- fof_unit_formula
     return $ defMessage
-      & #quant .~ (defMessage & #type'.~quantType & #var.~(map (\t->t^. #name) vars) & #sub.~f)
+      & #quant .~ (defMessage & #type'.~quantType & #var.~ (vars^..traverse. #name) & #sub.~f)
 
 fof_pred_formula :: Parser T.Formula
 fof_pred_formula = do
@@ -119,7 +119,7 @@ fof_pred_formula = do
       return (neg,r) 
     return $ case c of
       Nothing -> defMessage & #pred.~(defMessage
-        & #type'.~T.Formula'Pred'CUSTOM & #name.~(l^. #name)& #args .~ (l^. #args))
+        & #type'.~T.Formula'Pred'CUSTOM & #name.~(l^. #name)& #args.~(l^. #args))
       Just (neg,r) ->
         let eq = defMessage & #pred.~(defMessage & #type'.~T.Formula'Pred'EQ & #args.~[l,r]) in
         case neg of

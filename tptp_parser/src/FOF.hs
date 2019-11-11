@@ -40,18 +40,6 @@ instance Show FOF where
 
 ---------------------------------------
 
-{-preds :: Form -> [Pred]
-preds f = case f of
-  Forall vn x -> preds x
-  Exists vn x -> preds x
-  Neg x -> preds x
-  And x -> join (map preds x)
-  Or x -> join (map preds x)
-  Xor x y -> preds x ++ preds y
-  Atom x -> [x]
--}
----------------------------------------
-
 freeVars :: T.Formula'Formula -> Set.Set String
 freeVars f = case f of
   T.Formula'Pred' pred -> Set.fromList $ pred^..pred'args.traverse.term'varName'rec
@@ -87,10 +75,10 @@ makeLenses ''Local
 local'empty = Local global'empty stack'empty
 
 fromProto'File :: Global -> T.File -> Err FOF
-fromProto'File glob f = Or <$> mapM (fromProto'Input glob) (f^. #input)
+fromProto'File glob f = Or <$> mapM (input'fof glob) (f^. #input)
 
-fromProto'Input :: Global -> T.Input -> Err FOF
-fromProto'Input glob i = do
+input'fof :: Global -> T.Input -> Err FOF
+input'fof glob i = do
   f <- getFormula (i^. #formula)
   let vars = stack'make $ Set.map VarName $ freeVars f
   case i^. #language of {
@@ -98,7 +86,7 @@ fromProto'Input glob i = do
     T.Input'FOF -> when (vars/=stack'empty) $ fail "unexpected free vars in FOF";
     lang -> fail ("unexpected language: " ++ show lang);
   };
-  f2 <- fromProto'Form (Local glob vars) f
+  f2 <- formula'fof (Local glob vars) f
   let f3 = lambda Forall stack'empty (vars,f2)
   case i^. #role of {
     T.Input'AXIOM -> return (Neg f3);
@@ -107,8 +95,8 @@ fromProto'Input glob i = do
     T.Input'CONJECTURE -> return f3; 
   };
 
-fromProto'Form :: Local -> T.Formula'Formula -> Err FOF
-fromProto'Form local f =
+formula'fof :: Local -> T.Formula'Formula -> Err FOF
+formula'fof local f =
   case f of 
     T.Formula'Pred' pred -> Atom <$> fromProto'Pred local pred
     T.Formula'Quant' quant -> do { 
@@ -116,11 +104,11 @@ fromProto'Form local f =
       w <- (case (quant^. #type') of
         T.Formula'Quant'FORALL -> return Forall
         T.Formula'Quant'EXISTS -> return Exists);
-      sub <- fromProto'Form local' =<< getFormula (quant^. #sub);
+      sub <- formula'fof local' =<< getFormula (quant^. #sub);
       return $ lambda w (local^.vars) (local'^.vars,sub);
     }
     T.Formula'Op op -> let
-      args' = mapM (\a -> getFormula a >>= fromProto'Form local) (op^. #args) in
+      args' = mapM (\a -> getFormula a >>= formula'fof local) (op^. #args) in
       case (op^. #type') of
         T.Formula'Operator'NEG -> do { [a] <- args'; return (Neg a) } -- will throw Exception
         T.Formula'Operator'OR -> Or <$> args'

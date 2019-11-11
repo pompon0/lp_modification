@@ -50,10 +50,12 @@ formula'assert :: T.Formula -> T.Formula'Formula
 formula'assert f = f^. #maybe'formula.non (error "empty formula")
 
 varName'assert :: String -> String
-varName'assert vn = case P.runP Parser.variable () "" vn of { Left err -> error (show err); Right _ -> vn }
+varName'assert vn = vn
+--varName'assert vn = case P.runP Parser.variable () "" vn of { Left err -> error (show err); Right _ -> vn }
 
 funName'assert :: String -> String
-funName'assert fn = case P.runP Parser.lower_word () "" fn of { Left err -> error (show err); Right _ -> fn }
+funName'assert fn = fn
+--funName'assert fn = case P.runP Parser.lower_word () "" fn of { Left err -> error (show err); Right _ -> fn }
 
 formula'string :: T.Formula'Formula -> String
 formula'string f = case f of

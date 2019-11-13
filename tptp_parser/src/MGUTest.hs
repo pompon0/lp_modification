@@ -1,17 +1,24 @@
-module MGUTest(tests) where
+module Main where
 
-import Test.Tasty (testGroup)
+import Test.Tasty (testGroup,defaultMain)
 import Test.Tasty.HUnit (Assertion,testCase,(@=?))
 
-import Lib
+import HashSeq
+import Ctx
 import Pred
 import qualified MGU
 import qualified Data.Map as Map
+import qualified Data.Set as Set
+import Data.Maybe
+import Control.Lens
 
+main = defaultMain tests
 tests = testGroup "MGUTest" [testCase "loop" loopTest]
 
 loopTest = do
-  let s0 = emptyValuation
-  s1 <- assertMaybe $ MGU.runMGU (wrap $ TVar $ VarName 1, wrap $ TVar $ VarName 0) s0
-  s2 <- assertMaybe $ MGU.runMGU (wrap $ TVar $ VarName 0, wrap $ TVar $ VarName 1) s1
-  [(VarName 1,wrap $ TVar $ VarName 0)] @=? Map.toList s2
+  let {
+    [x,y] = wrap . TVar . VarName <$> ["X","Y"];
+    s = fromJust $ return MGU.empty >>= MGU.term'mgu (y,x) >>= MGU.term'mgu (x,y)
+  }
+  x @=? MGU.val'get s y
+  x @=? MGU.val'get s x

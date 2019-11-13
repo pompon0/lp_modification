@@ -25,14 +25,30 @@ inline str show(Branch b) {
 
 //////////////////////////////////////////
 
+struct Constraint {
+  enum Type { NEQ, LT };
+  Type type;
+  Atom l,r;
+
+  bool check(const Valuation &val) const {
+    auto res = kbo(l,r,val);
+    switch(type) {
+      case NEQ: return res!=Balance::E;
+      case LT: return res!=Balance::E && res!=Balance::G;
+    }
+  }
+};
+
 struct SearchState {
   SearchState(OrForm _form) : form(_form), cla_index(form) {}
  
   NotAndForm form;
   const Index cla_index;
+
   Valuation val;
   size_t nodes_used = 0;
   List<DerOrClause> clauses_used;
+  List<Constraint> constraints;
 
   ptr<DerAndClause> get_proof() {
     ptr<DerAndClause> proof(new DerAndClause);
@@ -57,10 +73,11 @@ struct SearchState {
     stack = s.stack;
     nodes_used = s.nodes_used;
     clauses_used = s.clauses_used;
+    constraints = s.constraints;
   }
 
   Snapshot snapshot(){
-    return {val.snapshot(),stack,nodes_used,clauses_used};
+    return {val.snapshot(),stack,nodes_used,clauses_used,constraints};
   }
 };
 
@@ -115,7 +132,7 @@ struct Cont {
   template<typename Alts> void start(State &state, StartFrame f, Alts alts) const { FRAME("start");
     for(auto dcla : state.form.or_clauses) {
       OrClause cla = dcla.derived();
-      // start will all-negative clauses
+      // start with all-negative clauses
       bool ok = 1;
       for(size_t i=cla.atom_count(); i--;) ok &= !cla.atom(i).sign();
       if(!ok) continue;

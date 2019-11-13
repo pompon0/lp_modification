@@ -119,6 +119,11 @@ public:
     return 1;
   }
 
+  inline Term shallow_eval(Term t) const {
+    while(t.type()==Term::Var && val.val[Var(t).id()]) t = val.val[Var(t).id()].get();
+    return t;
+  }
+
   // clears offset
   inline Term eval(Term t) { FRAME("eval(%)",show(t));
     switch(t.type()) {

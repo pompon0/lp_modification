@@ -35,35 +35,29 @@ func Prove(ctx context.Context, tptpFOFProblem []byte) error {
   return nil
 }
 
-/*func toCNF(ctx context.Context, before map[string][]byte) (map[string][]byte,error) {
-  after := map[string][]byte{}
-
-  for k,v := range before {
-    var inBuf,outBuf,errBuf bytes.Buffer
-    if _,err := inBuf.Write(v); err!=nil {
-      return nil,fmt.Errorf("inBuf(): %v",err)
-    }
-    cmd := exec.CommandContext(ctx,utils.Runfile(eproverBinPath),"--cnf","-s")
-    cmd.Stdin = &inBuf
-    cmd.Stdout = &outBuf
-    cmd.Stderr = &errBuf
-    err := cmd.Run();
-    if err!=nil {
-      log.Printf("out = %q",outBuf.String())
-      log.Printf("err = %q",errBuf.String())
-      return nil,fmt.Errorf("cmd.Run(): %v",err)
-    }
-    var buf bytes.Buffer
-    for _,l := range strings.Split(outBuf.String(),"\n") {
-      if l!="" && l[0]!='#' {
-        buf.WriteString(l)
-        buf.WriteByte('\n')
-      }
-    }
-    after[k] = buf.Bytes()
+func FOFToCNF(ctx context.Context, tptpFOF []byte) ([]byte,error) {
+  var inBuf,outBuf,errBuf bytes.Buffer
+  if _,err := inBuf.Write(tptpFOF); err!=nil {
+    return nil,fmt.Errorf("inBuf(): %v",err)
   }
-  return after,nil
-}*/
+  cmd := exec.CommandContext(ctx,utils.Runfile(eproverBinPath),"--cnf","-s")
+  cmd.Stdin = &inBuf
+  cmd.Stdout = &outBuf
+  cmd.Stderr = &errBuf
+  if err := cmd.Run(); err!=nil {
+    //log.Printf("out = %q",outBuf.String())
+    //log.Printf("err = %q",errBuf.String())
+    return nil,fmt.Errorf("cmd.Run(): %v",err)
+  }
+  var buf bytes.Buffer
+  for _,l := range strings.Split(outBuf.String(),"\n") {
+    if l!="" && l[0]!='#' {
+      buf.WriteString(l)
+      buf.WriteByte('\n')
+    }
+  }
+  return buf.Bytes(),nil
+}
 
 /*func run(ctx context.Context) error {
   // benchmark problem set

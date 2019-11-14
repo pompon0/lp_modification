@@ -72,10 +72,11 @@ struct Cont {
   struct _WeakSetFrame;
   struct _WeakFrame;
   struct _WeakUnifyFrame;
+  struct _MinCostFrame;
 
   struct Frame {
   public:
-    enum Type { START, STRONG, WEAK_SET, WEAK, WEAK_UNIFY };
+    enum Type { START, STRONG, WEAK_SET, WEAK, WEAK_UNIFY, MIN_COST };
     Type type() const { return Type(*LType::at(ptr)); }
   private:
     using LType = Lens<size_t,0>;
@@ -88,6 +89,7 @@ struct Cont {
     friend Variant<Frame,WEAK_SET,_WeakSetFrame>;
     friend Variant<Frame,WEAK,_WeakFrame>;
     friend Variant<Frame,WEAK_UNIFY,_WeakUnifyFrame>;
+    friend Variant<Frame,MIN_COST,_MinCostFrame>;
   };
   
   List<Frame> frames;
@@ -102,6 +104,7 @@ struct Cont {
       case Frame::WEAK_SET: weak_set(state,WeakSetFrame(f),alts); break;
       case Frame::WEAK: weak(state,WeakFrame(f),alts); break;
       case Frame::WEAK_UNIFY: weak_unify(state,WeakUnifyFrame(f),alts); break;
+      case Frame::MIN_COST: min_cost(state,MinCostFrame(f),alts); break;
       default: error("f.type() = %",f.type());
     }
   }
@@ -182,6 +185,7 @@ struct Cont {
     DEBUG if(!f->branch_count) error("f->branch_count = 0");
     if(f->branch_count==1){
       WeakFrame::Builder b;
+      b->min_cost = 0;
       b->nodes_limit = f->nodes_limit;
       b->branch = f->branches.head();
       weak(state,b.build(),alts);
@@ -195,11 +199,13 @@ struct Cont {
       wsb->branch_count = f->branch_count-1;
       wsb->branches = f->branches.tail();
       WeakFrame::Builder wb;
+      wb->min_cost = per_bud+1;
       wb->nodes_limit = f->nodes_limit;
       wb->branch = f->branches.head();
       alts(Cont{Frame(wsb.build()) + (Frame(wb.build()) + frames.tail())});
     }
     WeakFrame::Builder wb;
+    wb->min_cost = 0;
     wb->nodes_limit = state.nodes_used + per_bud;
     wb->branch = f->branches.head();
     WeakSetFrame::Builder wsb;
@@ -209,19 +215,28 @@ struct Cont {
     alts(Cont{Frame(wb.build()) + (Frame(wsb.build()) + frames.tail())});
   }
 
-  struct _WeakFrame { size_t nodes_limit; Branch branch; };
+  struct _WeakFrame { size_t min_cost; size_t nodes_limit; Branch branch; };
   using WeakFrame = Variant<Frame,Frame::WEAK,_WeakFrame>;
 
   template<typename Alts> void weak(State &state, WeakFrame f, Alts alts) const { FRAME("weak(%)",show(f->branch.true_.head())); 
     size_t budget = f->nodes_limit - state.nodes_used;
     COUNTER("expand");
+    // add a checkpoint for branch cost lower bound.
+    if(budget<f->min_cost) return;
+    List<Frame> tail = frames.tail();
+    if(f->min_cost) {
+      MinCostFrame::Builder b;
+      b->min_cost = state.nodes_used + f->min_cost;
+      tail += Frame(b.build());
+    }
+
     for(auto ca : state.cla_index(f->branch.true_.head(),budget)) {
       StrongFrame::Builder b;
       b->nodes_limit = f->nodes_limit;
       b->branch = f->branch;
       b->dcla = ca.cla;
       b->strong_id = ca.i;
-      alts(Cont{Frame(b.build()) + frames.tail()});
+      alts(Cont{Frame(b.build()) + tail});
     }
     auto atom_hash = Index::atom_hash(f->branch.true_.head())^1;
     for(auto b2 = f->branch.true_.tail(); !b2.empty(); b2 = b2.tail()) {
@@ -229,7 +244,7 @@ struct Cont {
       WeakUnifyFrame::Builder b;
       b->a1 = f->branch.true_.head();
       b->a2 = b2.head();
-      alts(Cont{Frame(b.build())+frames.tail()});
+      alts(Cont{Frame(b.build())+tail});
     }
   }
   
@@ -237,7 +252,13 @@ struct Cont {
   using WeakUnifyFrame = Variant<Frame,Frame::WEAK_UNIFY,_WeakUnifyFrame>;
   template<typename Alts> void weak_unify(State &state, WeakUnifyFrame f, Alts &alts) const { FRAME("weak_unify");
     if(state.val.opposite(f->a1,f->a2)) alts(Cont{frames.tail()}); 
-  }  
+  }
+
+  struct _MinCostFrame { size_t min_cost; };
+  using MinCostFrame = Variant<Frame,Frame::MIN_COST,_MinCostFrame>;
+  template<typename Alts> void min_cost(State &state, MinCostFrame f, Alts &alts) const { FRAME("min_cost");
+    if(state.nodes_used>=f->min_cost) alts(Cont{frames.tail()});
+  }
 };
 
 ProverOutput prove(OrForm form, size_t limit) { FRAME("prove()");

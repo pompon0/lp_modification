@@ -13,5 +13,8 @@ go_test(
     name = "go_default_test",
     srcs = ["eprover_test.go"],
     embed = [":go_default_library"],
-    deps = ["//problems:go_default_library"],
+    deps = [
+        "//problems:go_default_library",
+        "//tool:go_default_library",
+    ],
 )

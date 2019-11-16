@@ -58,6 +58,17 @@ cc_test(
 )
 
 cc_test(
+    name = "kbo_test",
+    srcs = ["kbo_test.cc"],
+    copts = ["--std=c++17"],
+    deps = [
+        ":prover",
+        "//lazyparam_prover/util:util",
+        "@gtest//:gtest_main",
+    ],
+)
+
+cc_test(
     name = "pred_test",
     srcs = ["pred_test.cc"],
     deps = [
@@ -65,19 +76,6 @@ cc_test(
         "@gtest//:gtest_main",
     ],
 )
-
-"""cc_test(
-  name = "simple_test",
-  srcs = ["simple_test.cc"],
-  data = ["@tptp_test_cnf_proto//:problems"],
-  copts = ["--std=c++17"],
-  linkopts = ["-lstdc++fs"],
-  deps = [
-    ":prover",
-    "//lazyparam_prover/util:util",
-    "@gtest//:gtest_main",
-  ],
-)"""
 
 cc_test(
     name = "eq_axioms_test",

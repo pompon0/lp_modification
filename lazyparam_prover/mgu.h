@@ -120,7 +120,7 @@ public:
   }
 
   inline Term shallow_eval(Term t) const {
-    while(t.type()==Term::Var && val.val[Var(t).id()]) t = val.val[Var(t).id()].get();
+    while(t.type()==Term::VAR && val[Var(t).id()]) t = val[Var(t).id()].get();
     return t;
   }
 

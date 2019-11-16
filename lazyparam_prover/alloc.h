@@ -95,6 +95,29 @@ public:
   const E & operator[](size_t i) const { DEBUG validate_idx(i); return ptr[i]; }
 };
 
+template<typename E> struct ResetArray {
+private:
+  vec<E> data;
+  vec<size_t> dirty;
+  void validate_idx(size_t i) const { if(i>=data.size()) error("[0..%) [%]",data.size(),i); }
+public:
+  E operator[](size_t i) const { DEBUG validate_idx(i); return data[i]; }
+  void resize(size_t n, E e){ FRAME("resize(%,_)",n);
+    data.resize(n,e);
+  }
+  size_t size() const { return data.size(); }
+  void set(size_t i, E e){
+    DEBUG validate_idx(i);
+    data[i] = e;
+    dirty.push_back(i);
+  }
+
+  void reset(E e){ FRAME("reset()");
+    for(auto i : dirty) data[i] = e;
+    dirty.clear();
+  }
+};
+
 template<typename E> struct RewindArray {
 private:
   vec<Maybe<E>> data;

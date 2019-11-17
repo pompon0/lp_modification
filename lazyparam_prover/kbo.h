@@ -2,10 +2,12 @@
 #define KBO_H_
 
 #include "lazyparam_prover/util/short.h"
+#include "lazyparam_prover/util/string.h"
 #include "lazyparam_prover/pred.h"
 #include "lazyparam_prover/types.h"
 #include "lazyparam_prover/alloc.h"
 #include "lazyparam_prover/mgu.h"
+#include "lazyparam_prover/log.h"
 #include <algorithm>
 
 struct Constraint {
@@ -31,11 +33,35 @@ public:
   // returning false invalidates the object
   inline bool mgu(Term x, Term y) {
     if(!val.mgu(x,y)) return false;
-    if(!check_constraints()) return false; 
+    if(!check_constraints()) {
+      DEBUG {
+        info("val = %",val.DebugString());
+        for(auto c = constraints; !c.empty(); c = c.tail()) { 
+          vec<str> ps;
+          for(auto p = c.head().or_; !p.empty(); p = p.tail()) {
+            ps.push_back(util::fmt("[% = %, % = %]",show(p.head().l),show(val.eval(p.head().l)),show(p.head().r),show(val.eval(p.head().r))));
+          }
+          str ts = c.head().type==Constraint::NEQ ? "!=" : "<";
+          info("% :: %",ts,util::join(" ",ps));
+        }
+      }
+      return false;
+    }
     return true;
   } 
   inline OrClause eval(OrClause cla) { return val.eval(cla); }
-  inline bool opposite(Atom x, Atom y) { return val.opposite(x,y); }
+  
+  // unifies opposite atoms, uses KBO.mgu() instead of MGU.mgu()
+  inline bool opposite(Atom x, Atom y) { FRAME("opposite()");
+    SCOPE("Valuation::opposite");
+    if(x.sign()==y.sign()) return 0;
+    if(x.pred()!=y.pred()) return 0;
+    DEBUG if(x.arg_count()!=y.arg_count()) error("arg_count() mismatch: %, %",show(x),show(y));
+    auto s = snapshot();
+    for(size_t i=x.arg_count(); i--;)
+      if(!mgu(x.arg(i),y.arg(i))){ rewind(s); return 0; }
+    return 1;
+  }
   
   enum Res { L, G, E, N };
   inline Res cmp(Term l, Term r) { FRAME("KBO.cmp()");
@@ -43,9 +69,11 @@ public:
     var_occ.reset(0);
     return res;
   }
+
   List<Constraint> constraints;
-  void push_not_opposite_constraint(Atom l, Atom r) {
-    if(l.pred()!=r.pred() || l.sign()==r.sign()) return;
+  // ignores sign
+  void push_constraint(Atom l, Atom r) { FRAME("push_constraint(%,%)",show(l),show(r));
+    if(l.pred()!=r.pred()) return;
     DEBUG if(l.arg_count()!=r.arg_count()) error("l.arg_count() = %, r.arg_count() = %",show(l),show(r));
     List<Constraint::Pair> p;
     for(size_t i=l.arg_count(); i--;) p += {l.arg(i),r.arg(i)};
@@ -75,8 +103,8 @@ private:
                 done = true;
                 break;
             }
-            if(!done) return false;
           }
+          if(!done) return false;
           break;
         }
         case Constraint::LT: {

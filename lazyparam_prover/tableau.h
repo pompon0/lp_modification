@@ -143,7 +143,15 @@ struct Cont {
     auto cla = dcla.derived();
     // do not use f->cla from now on
     state.val.resize(cla.var_count());
-    if(f->strong_id>=0 && !state.val.opposite(f->branch.true_.head(),cla.atom(f->strong_id))) return;
+    if(f->strong_id>=0) {
+      // add constraints on the head of the path
+      // (predicate may not repeat - negative repetition should be closed by weak step,
+      // positive is redundant by regularity).
+      auto h = f->branch.true_.head();
+      for(auto t = f->branch.true_.tail(); !t.empty(); t = t.tail())
+        state.val.push_constraint(h,t.head());
+      if(!state.val.opposite(h,cla.atom(f->strong_id))) return;
+    }
     state.clauses_used += dcla;
     List<Branch> branches;
     List<Atom> false_ = f->branch.false_; 
@@ -152,10 +160,13 @@ struct Cont {
       Atom a = cla.atom(i);
       bool a_is_false = 0;
       bool a_is_true = 0;
-      for(auto ft = f->branch.true_; !ft.empty(); ft = ft.tail()) if(state.val.equal_mod_sign(ft.head(),a)) {
-        if(ft.head().sign()==a.sign()) return; // the new clause is disjoint with the target superspace (assumed to be nonempty for every groud clause considered).
-        else a_is_false = 1;
+      for(auto ft = f->branch.true_; !ft.empty(); ft = ft.tail()) {
+        if(state.val.equal_mod_sign(ft.head(),a)) {
+          if(ft.head().sign()==a.sign()) return; // the new clause is disjoint with the target superspace (assumed to be nonempty for every groud clause considered).
+          else a_is_false = 1;
+        }
       }
+          
       for(auto ft = false_; !ft.empty(); ft = ft.tail()) if(state.val.equal_mod_sign(ft.head(),a)) {
         (ft.head().sign()==a.sign() ? a_is_false : a_is_true) = 1;
       }

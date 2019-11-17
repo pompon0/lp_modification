@@ -12,6 +12,7 @@ import (
 func TestTableau(t *testing.T) {
   ctx := context.Background()
   for k,v := range problems.SampleProblems {
+    t.Logf("case %q",k)
     fof,err := tool.TptpToProto(ctx,tool.FOF,v)
     if err!=nil { t.Fatalf("tool.TptpToProto(%q): %v",k,err) }
     cnf,err := tool.FOFToCNF(ctx,fof)

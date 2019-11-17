@@ -150,7 +150,9 @@ struct Cont {
       auto h = f->branch.true_.head();
       for(auto t = f->branch.true_.tail(); !t.empty(); t = t.tail())
         state.val.push_constraint(h,t.head());
-      if(!state.val.opposite(h,cla.atom(f->strong_id))) return;
+      for(auto t = f->branch.false_; !t.empty(); t = t.tail())
+        state.val.push_constraint(h,t.head());
+      if(!state.val.mgu(h,cla.atom(f->strong_id))) return;
     }
     state.clauses_used += dcla;
     List<Branch> branches;
@@ -159,21 +161,19 @@ struct Cont {
     for(ssize_t i=cla.atom_count(); i--;) if(i!=f->strong_id) {
       Atom a = cla.atom(i);
       bool a_is_false = 0;
-      bool a_is_true = 0;
       for(auto ft = f->branch.true_; !ft.empty(); ft = ft.tail()) {
         if(state.val.equal_mod_sign(ft.head(),a)) {
           if(ft.head().sign()==a.sign()) return; // the new clause is disjoint with the target superspace (assumed to be nonempty for every groud clause considered).
           else a_is_false = 1;
         }
       }
-          
-      for(auto ft = false_; !ft.empty(); ft = ft.tail()) if(state.val.equal_mod_sign(ft.head(),a)) {
-        (ft.head().sign()==a.sign() ? a_is_false : a_is_true) = 1;
+      for(auto ft = false_; !ft.empty(); ft = ft.tail()) {
+        if(state.val.equal_mod_sign(ft.head(),a)) {
+          if(ft.head().sign()!=a.sign()) return;
+          else a_is_false = 1;
+        }
       }
-      if(a_is_false) {
-        if(a_is_true) break; // all the remaining branches have empty target subspace
-        continue; // this particular branch has empty target subspace
-      }
+      if(a_is_false) continue; // this particular branch has empty target subspace
       branches += Branch{cla.atom(i) + f->branch.true_, false_};
       false_ += cla.atom(i);
       branch_count++;
@@ -258,12 +258,20 @@ struct Cont {
       b->a2 = b2.head();
       alts(Cont{Frame(b.build())+tail});
     }
+    atom_hash ^= 1;
+    for(auto b2 = f->branch.false_; !b2.empty(); b2 = b2.tail()) {
+      if(atom_hash!=Index::atom_hash(b2.head())) continue;
+      WeakUnifyFrame::Builder b;
+      b->a1 = f->branch.true_.head();
+      b->a2 = b2.head();
+      alts(Cont{Frame(b.build())+tail});
+    }
   }
   
   struct _WeakUnifyFrame { Atom a1,a2; };
   using WeakUnifyFrame = Variant<Frame,Frame::WEAK_UNIFY,_WeakUnifyFrame>;
   template<typename Alts> void weak_unify(State &state, WeakUnifyFrame f, Alts &alts) const { FRAME("weak_unify");
-    if(state.val.opposite(f->a1,f->a2)) alts(Cont{frames.tail()}); 
+    if(state.val.mgu(f->a1,f->a2)) alts(Cont{frames.tail()}); 
   }
 
   struct _MinCostFrame { size_t min_cost; };

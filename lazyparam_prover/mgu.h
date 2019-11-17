@@ -107,10 +107,9 @@ public:
     return 0;
   }
 
-  // unifies opposite atoms
-  inline bool opposite(Atom x, Atom y) { FRAME("opposite()");
-    SCOPE("Valuation::opposite");
-    if(x.sign()==y.sign()) return 0;
+  // unifies atoms ignoring the sign
+  inline bool mgu(Atom x, Atom y) { FRAME("opposite()");
+    SCOPE("Valuation::mgu(Atom)");
     if(x.pred()!=y.pred()) return 0;
     DEBUG if(x.arg_count()!=y.arg_count()) error("arg_count() mismatch: %, %",show(x),show(y));
     auto s = snapshot();

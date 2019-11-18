@@ -70,6 +70,7 @@ struct Cont {
  
   struct _StartFrame;
   struct _StrongFrame;
+  struct _WeakConnectionsFrame;
   struct _WeakSetFrame;
   struct _WeakFrame;
   struct _WeakUnifyFrame;
@@ -77,7 +78,7 @@ struct Cont {
 
   struct Frame {
   public:
-    enum Type { START, STRONG, WEAK_SET, WEAK, WEAK_UNIFY, MIN_COST };
+    enum Type { START, STRONG, WEAK_CONNECTIONS, WEAK_SET, WEAK, WEAK_UNIFY, MIN_COST };
     Type type() const { return Type(*LType::at(ptr)); }
   private:
     using LType = Lens<size_t,0>;
@@ -87,6 +88,7 @@ struct Cont {
 
     friend Variant<Frame,START,_StartFrame>;
     friend Variant<Frame,STRONG,_StrongFrame>;
+    friend Variant<Frame,WEAK_CONNECTIONS,_WeakConnectionsFrame>;
     friend Variant<Frame,WEAK_SET,_WeakSetFrame>;
     friend Variant<Frame,WEAK,_WeakFrame>;
     friend Variant<Frame,WEAK_UNIFY,_WeakUnifyFrame>;
@@ -102,6 +104,7 @@ struct Cont {
     switch(f.type()) {
       case Frame::START: start(state,StartFrame(f),alts); break;
       case Frame::STRONG: strong(state,StrongFrame(f),alts); break;
+      case Frame::WEAK_CONNECTIONS: weak_connections(state,WeakConnectionsFrame(f),alts); break;
       case Frame::WEAK_SET: weak_set(state,WeakSetFrame(f),alts); break;
       case Frame::WEAK: weak(state,WeakFrame(f),alts); break;
       case Frame::WEAK_UNIFY: weak_unify(state,WeakUnifyFrame(f),alts); break;
@@ -141,50 +144,84 @@ struct Cont {
     auto dcla = f->dcla.shift(state.val.size());
     state.nodes_used += dcla.cost();
     auto cla = dcla.derived();
-    // do not use f->cla from now on
+    // do not use f->dcla from now on
     state.val.resize(cla.var_count());
-    if(f->strong_id>=0) {
-      // add constraints on the head of the path
-      // (predicate may not repeat - negative repetition should be closed by weak step,
-      // positive is redundant by regularity).
-      auto h = f->branch.true_.head();
-      for(auto t = f->branch.true_.tail(); !t.empty(); t = t.tail())
-        state.val.push_constraint(h,t.head());
-      for(auto t = f->branch.false_; !t.empty(); t = t.tail())
-        state.val.push_constraint(h,t.head());
-      if(!state.val.mgu(h,cla.atom(f->strong_id))) return;
-    }
+    if(f->strong_id>=0) if(!state.val.mgu(f->branch.true_.head(),cla.atom(f->strong_id))) return;
     state.clauses_used += dcla;
-    List<Branch> branches;
-    List<Atom> false_ = f->branch.false_; 
-    size_t branch_count = 0;
-    for(ssize_t i=cla.atom_count(); i--;) if(i!=f->strong_id) {
-      Atom a = cla.atom(i);
-      bool a_is_false = 0;
-      for(auto ft = f->branch.true_; !ft.empty(); ft = ft.tail()) {
-        if(state.val.equal_mod_sign(ft.head(),a)) {
-          if(ft.head().sign()==a.sign()) return; // the new clause is disjoint with the target superspace (assumed to be nonempty for every groud clause considered).
-          else a_is_false = 1;
-        }
-      }
-      for(auto ft = false_; !ft.empty(); ft = ft.tail()) {
-        if(state.val.equal_mod_sign(ft.head(),a)) {
-          if(ft.head().sign()!=a.sign()) return;
-          else a_is_false = 1;
-        }
-      }
-      if(a_is_false) continue; // this particular branch has empty target subspace
-      branches += Branch{cla.atom(i) + f->branch.true_, false_};
-      false_ += cla.atom(i);
-      branch_count++;
-    }
-    if(!branch_count){ alts(Cont{frames.tail()}); return; }
-    WeakSetFrame::Builder b;
+    
+    WeakConnectionsFrame::Builder b;
     b->nodes_limit = f->nodes_limit;
-    b->branch_count = branch_count;
-    b->branches = branches;
+    b->atoms = List<Atom>();
+    b->branches = List<Branch>();
+    b->branch_count = 0;
+    b->next = f->branch;
+    for(ssize_t i=cla.atom_count(); i--;) if(i!=f->strong_id) b->atoms += cla.atom(i);
     alts(Cont{Frame(b.build()) + frames.tail()});
   }
+
+  struct _WeakConnectionsFrame {
+    size_t nodes_limit;
+    List<Atom> atoms;
+    List<Branch> branches;
+    size_t branch_count;
+    Branch next;
+  };
+  using WeakConnectionsFrame = Variant<Frame,Frame::WEAK_CONNECTIONS,_WeakConnectionsFrame>;
+  template<typename Alts> void weak_connections(State &state, WeakConnectionsFrame f, Alts alts) const { FRAME("weak_connections");
+    if(!f->atoms.empty()) {
+      Atom a = f->atoms.head(); 
+
+      // try to do weak connection for each atom of the clause, or add a != constraint.
+      auto atom_hash = Index::atom_hash(a);
+      WeakConnectionsFrame::Builder cb;
+      cb->nodes_limit = f->nodes_limit;
+      cb->atoms = f->atoms.tail();
+      cb->branches = f->branches;
+      cb->branch_count = f->branch_count;
+      cb->next = f->next;
+      auto tail = Frame(cb.build())+frames.tail();
+      // try to unify with lemma
+      for(auto b = f->next.false_; !b.empty(); b = b.tail()) {
+        if(atom_hash!=Index::atom_hash(b.head())) continue;
+        WeakUnifyFrame::Builder ub;
+        ub->a1 = a;
+        ub->a2 = b.head();
+        alts(Cont{Frame(ub.build())+tail});
+   
+      }
+      // try to unify with path
+      for(auto b = f->next.true_; !b.empty(); b = b.tail()) {
+        if((atom_hash^1)!=Index::atom_hash(b.head())) continue;
+        WeakUnifyFrame::Builder ub;
+        ub->a1 = a;
+        ub->a2 = b.head();
+        alts(Cont{Frame(ub.build())+tail});
+      }
+      
+      // assume that <a> doesn't occur in the path or lemmas
+      {
+        // add constraints
+        for(auto b = f->next.false_; !b.empty(); b = b.tail()) state.val.push_constraint(a,b.head());
+        for(auto b = f->next.true_; !b.empty(); b = b.tail()) state.val.push_constraint(a,b.head());
+        WeakConnectionsFrame::Builder cb;
+        cb->nodes_limit = f->nodes_limit;
+        cb->atoms = f->atoms.tail();
+        cb->branches = Branch{a + f->next.true_, f->next.false_} + f->branches;
+        cb->branch_count = f->branch_count + 1;
+        cb->next = Branch { f->next.true_, a + f->next.false_};
+        alts(Cont{Frame(cb.build())+frames.tail()});
+      }
+    } else if(f->branch_count) {
+      WeakSetFrame::Builder b;
+      b->nodes_limit = f->nodes_limit;
+      b->branches = f->branches;
+      b->branch_count = f->branch_count;
+      alts(Cont{Frame(b.build()) + frames.tail()});
+    } else {
+      alts(Cont{frames.tail()});
+    }
+  }
+
 
   struct _WeakSetFrame {
     size_t nodes_limit;
@@ -233,7 +270,6 @@ struct Cont {
   template<typename Alts> void weak(State &state, WeakFrame f, Alts alts) const { FRAME("weak(%)",show(f->branch.true_.head())); 
     size_t budget = f->nodes_limit - state.nodes_used;
     COUNTER("expand");
-    // add a checkpoint for branch cost lower bound.
     if(budget<f->min_cost) return;
     List<Frame> tail = frames.tail();
     if(f->min_cost) {
@@ -249,22 +285,6 @@ struct Cont {
       b->dcla = ca.cla;
       b->strong_id = ca.i;
       alts(Cont{Frame(b.build()) + tail});
-    }
-    auto atom_hash = Index::atom_hash(f->branch.true_.head())^1;
-    for(auto b2 = f->branch.true_.tail(); !b2.empty(); b2 = b2.tail()) {
-      if(atom_hash!=Index::atom_hash(b2.head())) continue;
-      WeakUnifyFrame::Builder b;
-      b->a1 = f->branch.true_.head();
-      b->a2 = b2.head();
-      alts(Cont{Frame(b.build())+tail});
-    }
-    atom_hash ^= 1;
-    for(auto b2 = f->branch.false_; !b2.empty(); b2 = b2.tail()) {
-      if(atom_hash!=Index::atom_hash(b2.head())) continue;
-      WeakUnifyFrame::Builder b;
-      b->a1 = f->branch.true_.head();
-      b->a2 = b2.head();
-      alts(Cont{Frame(b.build())+tail});
     }
   }
   

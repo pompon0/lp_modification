@@ -340,13 +340,13 @@ private:
 public:
   Index(const NotAndForm &f) { FRAME("Index");
     for(auto cla : f.or_clauses) {
-      DEBUG info("cla.derived.atom_count() = %",cla.derived().atom_count());
+      //DEBUG info("cla.derived.atom_count() = %",cla.derived().atom_count());
       for(size_t i=0; i<cla.derived().atom_count(); ++i) {
-        DEBUG info("Index i=%",i);
+        //DEBUG info("Index i=%",i);
         auto h = atom_hash(cla.derived().atom(i));
-        DEBUG info("h = %",h);
+        //DEBUG info("h = %",h);
         if(map.size()<=h) map.resize(h+1,{{}});
-        DEBUG info("cla.cost() = %",cla.cost());
+        //DEBUG info("cla.cost() = %",cla.cost());
         if(map[h].size()<=cla.cost()) map[h].resize(cla.cost()+1,map[h].back());
         for(size_t cc=cla.cost(); cc<map[h].size(); ++cc) map[h][cc].push_back({i,cla});
       }

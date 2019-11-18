@@ -155,7 +155,7 @@ struct Cont {
     b->branches = List<Branch>();
     b->branch_count = 0;
     b->next = f->branch;
-    for(ssize_t i=cla.atom_count(); i--;) if(i!=f->strong_id) b->atoms += cla.atom(i);
+    for(ssize_t i=0,n=cla.atom_count(); i<n; ++i) if(i!=f->strong_id) b->atoms += cla.atom(i);
     alts(Cont{Frame(b.build()) + frames.tail()});
   }
 

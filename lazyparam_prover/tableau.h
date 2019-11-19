@@ -201,8 +201,10 @@ struct Cont {
       // assume that <a> doesn't occur in the path or lemmas
       {
         // add constraints
-        for(auto b = f->next.false_; !b.empty(); b = b.tail()) state.val.push_constraint(a,b.head());
-        for(auto b = f->next.true_; !b.empty(); b = b.tail()) state.val.push_constraint(a,b.head());
+        for(auto b = f->next.false_; !b.empty(); b = b.tail())
+          if(!state.val.push_constraint(a,b.head())) return;
+        for(auto b = f->next.true_; !b.empty(); b = b.tail())
+          if(!state.val.push_constraint(a,b.head())) return;
         WeakConnectionsFrame::Builder cb;
         cb->nodes_limit = f->nodes_limit;
         cb->atoms = f->atoms.tail();

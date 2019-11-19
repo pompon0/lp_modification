@@ -30,35 +30,19 @@ public:
   
   inline bool equal(Term x, Term y){ return val.equal(x,y); }
   inline bool equal_mod_sign(Atom x, Atom y) { return val.equal_mod_sign(x,y); } 
-  // returning false invalidates the object
-  inline bool mgu(Term x, Term y) {
-    if(!val.mgu(x,y)) return false;
-    if(!check_constraints()) {
-      DEBUG {
-        info("val = %",val.DebugString());
-        for(auto c = constraints; !c.empty(); c = c.tail()) { 
-          vec<str> ps;
-          for(auto p = c.head().or_; !p.empty(); p = p.tail()) {
-            ps.push_back(util::fmt("[% = %, % = %]",show(p.head().l),show(val.eval(p.head().l)),show(p.head().r),show(val.eval(p.head().r))));
-          }
-          str ts = c.head().type==Constraint::NEQ ? "!=" : "<";
-          info("% :: %",ts,util::join(" ",ps));
-        }
-      }
-      return false;
-    }
-    return true;
-  } 
   inline OrClause eval(OrClause cla) { return val.eval(cla); }
   
-  // unifies atoms ignoring the sign, uses KBO.mgu() instead of MGU.mgu()
-  inline bool mgu(Atom x, Atom y) { FRAME("opposite()");
+  // unifies atoms ignoring the sign, validates constraints afterwards 
+  // returning false invalidates the object 
+  inline bool mgu(Atom x, Atom y) { FRAME("mgu()");
     SCOPE("Valuation::mgu(Atom)");
     if(x.pred()!=y.pred()) return 0;
     DEBUG if(x.arg_count()!=y.arg_count()) error("arg_count() mismatch: %, %",show(x),show(y));
     auto s = snapshot();
     for(size_t i=x.arg_count(); i--;)
-      if(!mgu(x.arg(i),y.arg(i))){ rewind(s); return 0; }
+      if(!val.mgu(x.arg(i),y.arg(i))){ rewind(s); return 0; }
+
+    if(!check_constraints()) return 0;
     return 1;
   }
   
@@ -71,12 +55,13 @@ public:
 
   List<Constraint> constraints;
   // ignores sign
-  void push_constraint(Atom l, Atom r) { FRAME("push_constraint(%,%)",show(l),show(r));
-    if(l.pred()!=r.pred()) return;
+  // returning false invalidates the object 
+  bool push_constraint(Atom l, Atom r) { FRAME("push_constraint(%,%)",show(l),show(r));
+    if(l.pred()!=r.pred()) return 1;
     DEBUG if(l.arg_count()!=r.arg_count()) error("l.arg_count() = %, r.arg_count() = %",show(l),show(r));
     List<Constraint::Pair> p;
     for(size_t i=l.arg_count(); i--;) p += {l.arg(i),r.arg(i)};
-    constraints += {Constraint::NEQ,p};
+    return check_and_push_constraint_with_log(constraints,{Constraint::NEQ,p});
   }
 private:
   ResetArray<int> var_occ;
@@ -85,40 +70,55 @@ private:
   bool check_constraints() {
     List<Constraint> c2;
     for(auto c = constraints; !c.empty(); c = c.tail()) {
-      auto ch = c.head();
-      switch(ch.type) {
-        case Constraint::NEQ: {
-          auto p = ch.or_;
-          bool done = false;
-          for(; !done && !p.empty(); p = p.tail()) {
-            auto ph = p.head();
-            switch(cmp(ph.l,ph.r)) {
-              case KBO::E: break;
-              case KBO::N:
-                c2 += {ch.type,p};
-                done = true;
-                break;
-              default:
-                done = true;
-                break;
-            }
-          }
-          if(!done) return false;
-          break;
-        }
-        case Constraint::LT: {
-          DEBUG if(ch.or_.size()!=1) error("ch.or_.size() = %, want %",ch.or_.size(),1);
-          auto ph = ch.or_.head(); 
-          switch(cmp(ph.l,ph.r)) {
-            case KBO::L: break;
-            case KBO::N: c2 += ch;
-            default: return false;
-          }
-        }
-      }
+      if(!check_and_push_constraint_with_log(c2,c.head())) return false;
     }
     constraints = c2;
     return true;
+  } 
+
+  bool check_and_push_constraint_with_log(List<Constraint> &constraints, Constraint c) {
+    if(check_and_push_constraint(constraints,c)) return 1;
+    DEBUG {
+      info("val = %",val.DebugString());
+      for(auto c = constraints; !c.empty(); c = c.tail()) { 
+        vec<str> ps;
+        for(auto p = c.head().or_; !p.empty(); p = p.tail()) {
+          ps.push_back(util::fmt("[% = %, % = %]",show(p.head().l),show(val.eval(p.head().l)),show(p.head().r),show(val.eval(p.head().r))));
+        }
+        str ts = c.head().type==Constraint::NEQ ? "!=" : "<";
+        info("% :: %",ts,util::join(" ",ps));
+      }
+    }
+    return 0;
+  }
+
+  bool check_and_push_constraint(List<Constraint> &constraints, Constraint c) { FRAME("check_and_push_constraint");
+    switch(c.type) {
+      case Constraint::NEQ: {
+        for(auto p = c.or_; !p.empty(); p = p.tail()) {
+          auto ph = p.head();
+          switch(cmp(ph.l,ph.r)) {
+            case KBO::E: break;
+            case KBO::N:
+              constraints += {c.type,p};
+              return true;
+            default:
+              return true;
+          }
+        }
+        return false;
+      }
+      case Constraint::LT: {
+        DEBUG if(c.or_.size()!=1) error("c.or_.size() = %, want %",c.or_.size(),1);
+        auto ph = c.or_.head(); 
+        switch(cmp(ph.l,ph.r)) {
+          case KBO::L: return true;
+          case KBO::N: constraints += c; return true;
+          default: return false;
+        }
+      }
+    }
+    error("c.type() = %",c.type);
   }
 
   struct Ctx {

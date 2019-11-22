@@ -180,15 +180,14 @@ struct Cont {
       cb->branch_count = f->branch_count;
       cb->next = f->next;
       auto tail = Frame(cb.build())+frames.tail();
-      // try to match with lemma
+      // try to unify with lemma
       for(auto b = f->next.false_; !b.empty(); b = b.tail()) {
         if(atom_hash!=Index::atom_hash(b.head())) continue;
-        if(!state.val.equal_mod_sign(a,b.head())) continue;
-        WeakConnectionsFrame::Builder cb;
-        *cb = *f;
-        cb->atoms = f->atoms.tail();
-        alts(Cont{Frame(cb.build())+frames.tail()});
-        return;
+        WeakUnifyFrame::Builder ub;
+        ub->a1 = a;
+        ub->a2 = b.head();
+        alts(Cont{Frame(ub.build())+tail});
+   
       }
       // try to unify with path
       for(auto b = f->next.true_; !b.empty(); b = b.tail()) {
@@ -201,7 +200,9 @@ struct Cont {
       
       // assume that <a> doesn't occur in the path or lemmas
       {
-        // add constraints (wrt path)
+        // add constraints
+        for(auto b = f->next.false_; !b.empty(); b = b.tail())
+          if(!state.val.push_constraint(a,b.head())) return;
         for(auto b = f->next.true_; !b.empty(); b = b.tail())
           if(!state.val.push_constraint(a,b.head())) return;
         WeakConnectionsFrame::Builder cb;

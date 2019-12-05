@@ -43,7 +43,7 @@ private:
   enum { FUN = Term::SIZE, ARG_COUNT, ARGS };
   Term term;
 public:
-  enum { EXTRA_CONST = -1 };
+  enum { EXTRA_CONST = -1, VAR_WRAP = -2 };
   Fun(Term t) : term(t) {
     DEBUG if(term.ptr[Term::TYPE]!=FUN) error("Fun(<type=%>)",term.ptr[Term::TYPE]);
   }
@@ -92,7 +92,9 @@ public:
     EQ_TRANS_POS = u64(-2),
     EQ_TRANS_NEG = u64(-3),
     EQ_SYMM = u64(-4),
-    PRED_MIN = EQ_SYMM,
+    MONO_NEQ = u64(-5),
+    MONO_NEQ_REFL = u64(-6),
+    PRED_MIN = MONO_NEQ_REFL,
   };
 
   inline bool sign() const { return ptr[SIGN]; }

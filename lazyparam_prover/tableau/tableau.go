@@ -6,6 +6,7 @@ import (
   "os/exec"
   "os"
   "context"
+  "time"
 
   "github.com/pompon0/tptp_benchmark_go/utils"
   tpb "github.com/pompon0/tptp_benchmark_go/tptp_parser/proto/tptp_go_proto"
@@ -30,7 +31,12 @@ func Tableau(ctx context.Context, cnfProblem *tpb.File, streamStdErr bool) (*spb
   if _,err := inBuf.WriteString(cnfProblem.String()); err!=nil {
     return nil,fmt.Errorf("inBuf.Write(): %v",err)
   }
-  cmd := exec.CommandContext(ctx,utils.Runfile(tableau_bin_path))
+  timeout := time.Hour
+  if deadline,ok := ctx.Deadline(); ok {
+    gracefulExitTimeout := 100*time.Millisecond
+    timeout = deadline.Sub(time.Now())-gracefulExitTimeout
+  }
+  cmd := exec.CommandContext(ctx,utils.Runfile(tableau_bin_path),fmt.Sprintf("--timeout=%v",timeout))
   cmd.Stdin = &inBuf
   cmd.Stdout = &outBuf
   if streamStdErr {

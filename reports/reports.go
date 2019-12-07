@@ -71,6 +71,7 @@ func summary(ctx context.Context) error {
   }
   fmt.Printf("solved %d/%d\n",solved,len(report.Cases))
   fmt.Printf("%v",stats)
+  fmt.Printf("-----------------------------\n")
 
   sort.Slice(report.Cases, func(i,j int) bool {
     /*ad,err := ptypes.Duration(report.Cases[i].Duration)
@@ -81,12 +82,16 @@ func summary(ctx context.Context) error {
     return report.Cases[i].Name < report.Cases[j].Name
   })
   for _,c := range report.Cases {
-    if c.GetOutput().GetProof()==nil {
-      fmt.Printf("%20q : UNSOLVED\n",c.Name)
+    if c.GetOutput()==nil {
+      fmt.Printf("%20q : ERROR\n",c.Name)
     } else {
+      status := ""
+      if c.GetOutput().GetProof()==nil {
+        status = "UNSOLVED"
+      }
       d,err := ptypes.Duration(c.Duration)
       if err!=nil { log.Printf("ptypes.Duration(%q): %v",c.Name,err); continue }
-      fmt.Printf("%20q : %05.2f cost=%3d cont=%d\n",c.Name,d.Seconds(),c.Output.Cost,c.Output.ContinuationCount)
+      fmt.Printf("%20q : %s %05.2f cost=%3d cont=%d\n",c.Name,status,d.Seconds(),c.Output.Cost,c.Output.ContinuationCount)
     }
   }
   return nil

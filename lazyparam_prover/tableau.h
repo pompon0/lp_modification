@@ -11,6 +11,7 @@
 #include "lazyparam_prover/parse.h"
 #include "lazyparam_prover/eq_axioms.h"
 #include "lazyparam_prover/alt.h"
+#include "lazyparam_prover/ctx.h"
 
 struct Branch {
   List<Atom> true_;
@@ -302,33 +303,36 @@ struct Cont {
   }
 };
 
-ProverOutput prove(OrForm form, size_t limit) { FRAME("prove()");
+ProverOutput prove(const Ctx &ctx, OrForm form, size_t limit) { FRAME("prove()");
   SCOPE("prove");
   SearchState s(form);
   Cont::StartFrame::Builder b;
   b->nodes_limit = limit;
-  auto res = alt::search(s,Cont{List<Cont::Frame>(Cont::Frame(b.build()))});
-  return {res.cont_count,res.found ? s.get_proof() : 0};
+  auto res = alt::search(ctx,s,Cont{List<Cont::Frame>(Cont::Frame(b.build()))});
+  return {res.cont_count,limit,res.found ? s.get_proof() : 0};
 }
 
-ProverOutput prove_loop(OrForm form, size_t limit) { FRAME("prove_loop()");
+ProverOutput prove_loop(const Ctx &ctx, OrForm form) { FRAME("prove_loop()");
   SCOPE("prove_loop");
   //form = reduce_monotonicity_and_append_eq_axioms(form);
   //form = append_eq_axioms_with_restricted_transitivity(form);
   form = append_eq_axioms(form);
-  ProverOutput out;
-  for(size_t i=1; i<=limit; ++i) {
-    DEBUG info("limit = %",i);
-    out = prove(form,i);
+  size_t cont_count = 0;
+  size_t limit = 1;
+  for(;!ctx.done(); ++limit) {
+    DEBUG info("limit = %",limit);
+    ProverOutput out = prove(ctx,form,limit);
+    out.cont_count += cont_count;
     if(out.proof) {
       DEBUG info("SUCCESS");
       DEBUG info("%",show(*out.proof));
       return out;
     }
-    std::cerr << "expands[" << i << "]: " << profile.scopes["expand"].count << std::endl;
+    cont_count = out.cont_count;
+    std::cerr << "expands[" << limit << "]: " << profile.scopes["expand"].count << std::endl;
   }
   DEBUG info("FAILURE");
-  return out;
+  return {cont_count,limit}; 
 }
 
 #endif  // TABLEAU_H_

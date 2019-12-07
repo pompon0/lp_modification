@@ -1,6 +1,8 @@
 #ifndef LAZYPARAM_PROVER_ALT_H_
 #define LAZYPARAM_PROVER_ALT_H_
 
+#include "lazyparam_prover/ctx.h"
+
 namespace alt {
 
 struct ExampleCont {
@@ -18,12 +20,13 @@ struct SearchResult {
   size_t cont_count;
 };
 
-template<typename Cont> SearchResult search(typename Cont::State &state, Cont c) {
+template<typename Cont> SearchResult search(const Ctx &ctx, typename Cont::State &state, Cont c) {
   SCOPE("alt::search");
   struct Alt { Cont cont; typename Cont::State::Snapshot snapshot; };
   size_t cont_count = 0;
   List<Alt> alts({c,state.snapshot()});
   for(size_t steps = 0; !alts.empty(); steps++) {
+    if(steps%100==0 && ctx.done()) return {0,cont_count};
     DEBUG if(steps%1000==0) info("steps = %",steps);
     auto a = alts.head(); alts = alts.tail();
     state.rewind(a.snapshot);

@@ -59,7 +59,9 @@ func worker(
         c.Duration = ptypes.DurationProto(time.Since(t0))
         if err==nil {
           c.Output = out
-          if _,err := tool.ValidateProof(ctx,&spb.CNF{Problem:c.CnfProblem,Proof:out.Proof}); err!=nil { return err }
+          if out.Proof!=nil {
+            if _,err := tool.ValidateProof(ctx,&spb.CNF{Problem:c.CnfProblem,Proof:out.Proof}); err!=nil { return err }
+          }
         }
         results <- Result{c,err}
         return nil
@@ -162,6 +164,8 @@ func run(ctx context.Context) error {
         report.Cases = append(report.Cases, r.case_)
         if r.err!=nil {
           log.Printf("cnfProblem[%q]: %v",r.case_.Name,r.err)
+          errCount++
+        } else if r.case_.Output.Proof==nil {
           errCount++
         } else {
           legacyProof := &spb.CNF{Problem:r.case_.CnfProblem, Proof:r.case_.Output.Proof}

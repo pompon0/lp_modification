@@ -76,6 +76,7 @@ DerOrClause cong_fun_axiom(u64 fun_name, u64 arg_count) {
 struct ArityCtx {
   ArityCtx(){ pred_arity[Atom::EQ] = 2; }
 
+  std::map<u64,size_t> pred_count;
   std::map<u64,u64> fun_arity;
   std::map<u64,u64> pred_arity;
 
@@ -95,6 +96,8 @@ struct ArityCtx {
   }
 
   void traverse(Atom a) {
+    if(!pred_count.count(a.pred())) pred_count[a.pred()] = 0;
+    pred_count[a.pred()]++;
     if(pred_arity.count(a.pred()) && pred_arity[a.pred()]!=a.arg_count())
       error("arity mismatch for p%, got % and %",a.pred(),pred_arity[a.pred()],a.arg_count());
     pred_arity[a.pred()] = a.arg_count();
@@ -106,6 +109,11 @@ struct ArityCtx {
   void traverse(const DerOrClause &c) { traverse(c.derived()); for(auto cla : c.source()) traverse(cla); }
   void traverse(const NotAndForm &f) { for(const auto &c : f.or_clauses) traverse(c); }
 };
+
+bool has_equality(OrForm f) {
+  ArityCtx ctx; ctx.traverse(NotAndForm(f));
+  return ctx.pred_count[Atom::EQ]>0;
+}
 
 
 OrForm append_eq_axioms(OrForm _f) {

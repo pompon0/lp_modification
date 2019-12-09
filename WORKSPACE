@@ -1,4 +1,4 @@
-load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive", "http_file")
 
 http_archive(
   name = "eprover",
@@ -27,11 +27,16 @@ http_archive(
     build_file = "//:third_party/leancop_prolog.BUILD",
 )
 
-http_archive(
-    name = "tptp_sample",
-    urls = ["https://storage.googleapis.com/tptp/tptp_sample.tgz"],
-    sha256 = "81909a2753f658edcd6f0a3b10b82178c845a58665c1f3d08a583e3e644c298c",
-    build_file = "//:third_party/tptp_sample.BUILD",
+http_file(
+    name = "mizar_problems",
+    urls = ["https://storage.googleapis.com/tptp/mizar_problems.zip"],
+    sha256 = "70a6e8467753395125f281ea371adc390585b667b84db79451fd0cc8780bd749",
+)
+
+http_file(
+    name = "tptp_problems",
+    urls = ["https://storage.googleapis.com/tptp/tptp_problems.zip"],
+    sha256 = "8a961c5771ee19e2ab849689c80839c8fdca59a3fab5f306a6c79724c69b3073",
 )
 
 http_archive(

@@ -25,8 +25,8 @@ var provers = []struct { name string; prover Prover } {
 }
 
 type Problem struct {
+  *problems.Problem
   name string
-  tptpFOFProblem []byte
 }
 
 type ProverResult struct {
@@ -50,13 +50,15 @@ func worker(
     case <-ctx.Done(): return nil
     case p,ok := <-problems:
       if !ok { return nil }
+      tptpFOFProblem,err := p.Get()
+      if err!=nil { return fmt.Errorf("p[%q].Get(): %v",p.name,err) }
       res := Result{p.name,map[string]ProverResult{}}
       for _,prover := range provers {
         func(){
           proverCtx,cancel := context.WithTimeout(ctx,timeout)
           defer cancel()
           start := time.Now()
-          err := prover.prover(proverCtx,p.tptpFOFProblem)
+          err := prover.prover(proverCtx,tptpFOFProblem)
           res.proverResults[prover.name] = ProverResult{time.Now().Sub(start),err}
         }()
       }
@@ -66,9 +68,9 @@ func worker(
 }
 
 func run(ctx context.Context, timeout time.Duration, cores int) error {
-  problems,err := problems.GetProblems(ctx)
+  problems,cancel,err := problems.MizarProblems()
   if err!=nil { return fmt.Errorf("getProblems(): %v",err) }
-  log.Printf("problems downloaded")
+  defer cancel()
 
   problemsChan := make(chan Problem,16)
   resultsChan := make(chan Result,16)
@@ -82,7 +84,7 @@ func run(ctx context.Context, timeout time.Duration, cores int) error {
     for _,name := range problemNames {
       select {
       case <-gCtx.Done(): return nil
-      case problemsChan <- Problem{name,problems[name]}:
+      case problemsChan <- Problem{problems[name],name}:
       }
     }
     close(problemsChan)

@@ -15,10 +15,13 @@ import (
 var caseName = flag.String("case_name","","")
 
 func run(ctx context.Context) error {
-  p,err := problems.GetProblems(ctx)
-  if err!=nil { return fmt.Errorf("problems.GetProblems(): %v",err) }
-  tptp,ok := p[*caseName]
+  ps,cancel,err := problems.MizarProblems()
+  if err!=nil { return fmt.Errorf("problems.MizarProblems(): %v",err) }
+  defer cancel()
+  p,ok := ps[*caseName]
   if !ok { return fmt.Errorf("case %q not found",*caseName) }
+  tptp,err := p.Get()
+  if err!=nil { return fmt.Errorf("p.Get(): %v",err) }
   fof,err := tool.TptpToProto(ctx,tool.FOF,tptp)
   if err!=nil { return fmt.Errorf("tool.TptpToProto(%q): %v",*caseName,err) }
   cnf,err := tool.FOFToCNF(ctx,fof)

@@ -23,8 +23,8 @@ import (
 type Prover func(ctx context.Context, cnfProblem *tpb.File, streamStdErr bool) (*spb.ProverOutput, error)
 
 type Problem struct {
+  *problems.Problem
   name string
-  tptpFOFProblem []byte
 }
 
 type Result struct {
@@ -44,7 +44,9 @@ func worker(
     case <-ctx.Done(): return nil
     case p,ok := <-problems:
       if !ok { return nil }
-      fofProblem,cnfProblem,err := convProblem(ctx,p.tptpFOFProblem)
+      tptpFOFProblem,err := p.Get()
+      if err!=nil { return fmt.Errorf("p[%q].Get(): %v",p.name,err) }
+      fofProblem,cnfProblem,err := convProblem(ctx,tptpFOFProblem)
       if err!=nil { return fmt.Errorf("convProblem(%q): %v",p.name,err) }
       if err := func() error {
         c := &spb.Case{
@@ -120,8 +122,9 @@ func run(ctx context.Context) error {
     Labels: strings.Split(*labels,","),
   }
 
-  prob,err := problems.GetProblems(ctx)
-  if err!=nil { return fmt.Errorf("getProblems(): %v",err) }
+  prob,cancel,err := problems.MizarProblems()
+  if err!=nil { return fmt.Errorf("MizarProblems(): %v",err) }
+  defer cancel()
   probCount := (len(prob)+mod-1)/mod
 
   probChan := make(chan Problem,16)
@@ -142,7 +145,7 @@ func run(ctx context.Context) error {
       if i%mod!=0 { continue }
       select {
       case <-gCtx.Done(): return nil
-      case probChan <- Problem{name,prob[name]}:
+      case probChan <- Problem{prob[name],name}:
       }
     }
     close(probChan)

@@ -30,7 +30,7 @@ func run(ctx context.Context) error {
   fmt.Printf("-- CNF BEGIN --\n%s-- CNF END--\n",tptpCnfProblem)
 
   if err!=nil { return fmt.Errorf("tool.FOFToCNF(%q): %v",*caseName,err) }
-  out,err := tableau.Tableau(ctx,cnf,true)
+  out,err := tableau.Tableau(ctx,cnf,true,true)
   if err!=nil { return fmt.Errorf("Tableau(%q): %v",*caseName,err) }
   _,err = tool.ValidateProof(ctx,&spb.CNF{Problem:cnf,Proof:out.Proof})
   if err!=nil { return fmt.Errorf("tool.Validate(%q): %v",*caseName,err) }

@@ -5,6 +5,7 @@ import (
   "log"
   "time"
   "context"
+  "flag"
   "sort"
   "strings"
 
@@ -67,24 +68,46 @@ func worker(
   }
 }
 
+////////////////////////////////////////////
+
+const (
+  problemSetMizar = "mizar"
+  problemSetTptp = "tptp"
+)
+var problemSets = []string{problemSetMizar,problemSetTptp}
+
+var problemSet = flag.String("problem_set",problemSetMizar,strings.Join(problemSets,"|"))
+
 func run(ctx context.Context, timeout time.Duration, cores int) error {
-  problems,cancel,err := problems.MizarProblems()
-  if err!=nil { return fmt.Errorf("getProblems(): %v",err) }
-  defer cancel()
+  var ps map[string]*problems.Problem
+  switch *problemSet {
+  case problemSetMizar:
+    x,cancel,err := problems.MizarProblems()
+    if err!=nil { return fmt.Errorf("problems.MizarProblems(): %v",err) }
+    defer cancel()
+    ps = x
+  case problemSetTptp:
+    x,cancel,err := problems.TptpProblems()
+    if err!=nil { return fmt.Errorf("problems.TptpProblems(): %v",err) }
+    defer cancel()
+    ps = x
+  default:
+    return fmt.Errorf("unknown problem set %q",*problemSet)
+  }
 
   problemsChan := make(chan Problem,16)
   resultsChan := make(chan Result,16)
   group,gCtx := errgroup.WithContext(ctx)
 
   var problemNames []string
-  for name,_ := range problems { problemNames = append(problemNames,name) }
+  for name,_ := range ps { problemNames = append(problemNames,name) }
   sort.Strings(problemNames)
 
   group.Go(func() error {
     for _,name := range problemNames {
       select {
       case <-gCtx.Done(): return nil
-      case problemsChan <- Problem{problems[name],name}:
+      case problemsChan <- Problem{ps[name],name}:
       }
     }
     close(problemsChan)
@@ -97,7 +120,7 @@ func run(ctx context.Context, timeout time.Duration, cores int) error {
 
   group.Go(func() error {
     okCount := map[string]int{}
-    for i:=0; i<len(problems); i++ {
+    for i:=0; i<len(ps); i++ {
       select {
       case <-gCtx.Done(): return nil
       case r := <-resultsChan:
@@ -113,7 +136,7 @@ func run(ctx context.Context, timeout time.Duration, cores int) error {
           }
           total = append(total,fmt.Sprintf("%4d",okCount[prover.name]))
         }
-        log.Printf("done %4d/%4d | %v | %v | %q",i+1,len(problems),strings.Join(total,"\t"),strings.Join(scores,"\t"),r.name)
+        log.Printf("done %4d/%4d | %v | %v | %q",i+1,len(ps),strings.Join(total,"\t"),strings.Join(scores,"\t"),r.name)
       }
     }
     return nil
@@ -127,6 +150,7 @@ func run(ctx context.Context, timeout time.Duration, cores int) error {
 }
 
 func main() {
+  flag.Parse()
   if err := run(context.Background(),4*time.Second,4); err!=nil {
     log.Fatalf("%v",err)
   }

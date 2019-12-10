@@ -9,6 +9,7 @@ import qualified Text.Parsec as P
 import Control.Lens
 import Data.ProtoLens(defMessage)
 import Data.ProtoLens.Labels()
+import Data.Char(ord)
 
 import Ctx
 import qualified Proto.Tptp as T
@@ -161,7 +162,7 @@ fof_arguments :: Parser [T.Term]
 fof_arguments = P.sepBy (P.choice [P.try fof_plain_term, P.try variable]) (char ',')
 
 name :: Parser String
-name = P.choice [P.try lower_word, P.try integer]
+name = P.choice [P.try lower_word, P.try single_quoted, P.try integer]
 
 connective :: Parser T.Formula'Operator'Type
 connective = do { C.spaces; P.choice [
@@ -197,6 +198,24 @@ lower_word = do
   h <- C.oneOf lower_alpha
   t <- P.many $ C.oneOf alpha_numeric
   return (h:t)
+
+-- '...'
+single_quoted :: Parser String
+single_quoted = do
+  C.spaces
+  l <- C.char '\''
+  s <- P.many1 $ sq_char
+  r <- C.char '\''
+  return ([l]++mconcat s++[r])
+
+sq_char :: Parser String
+sq_char = P.choice [
+  do {
+    c <- P.satisfy $ \c -> (0o40 <= ord c && ord c <= 0o176 && c/='\'' && c/= '\\');
+    return [c];
+  },
+  P.string "\\\\",
+  P.string "\\'"]
 
 -- +/-/0...
 integer :: Parser String

@@ -24,6 +24,7 @@ go_library(
 go_test(
     name = "go_default_test",
     srcs = ["problems_test.go"],
-    shard_count = 2,
     embed = [":go_default_library"],
+    shard_count = 2,
+    deps = ["//tool:go_default_library"],
 )

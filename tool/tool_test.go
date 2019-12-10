@@ -11,8 +11,33 @@ import (
   spb "github.com/pompon0/tptp_benchmark_go/tptp_parser/proto/solutions_go_proto"
 )
 
+const num845_2 = `
+fof('qu(ind(267), imp(267))',conjecture,( ! [Vd416] : ( vmul(vsucc(vd411),Vd416) = vplus(vmul(vd411,Vd416),Vd416) => vmul(vsucc(vd411),vsucc(Vd416)) = vplus(vmul(vd411,vsucc(Vd416)),vsucc(Vd416)) ) )).
+fof('ass(cond(conseq(263), 1), 0)',axiom,( ! [Vd413] : ( vmul(vsucc(vd411),Vd413) = vplus(vmul(vd411,Vd413),Vd413) => vplus(vplus(vmul(vd411,Vd413),vd411),vsucc(Vd413)) = vplus(vmul(vd411,vsucc(Vd413)),vsucc(Vd413)) ) )).
+fof('ass(cond(conseq(263), 1), 1)',axiom,( ! [Vd413] : ( vmul(vsucc(vd411),Vd413) = vplus(vmul(vd411,Vd413),Vd413) => vplus(vmul(vd411,Vd413),vplus(vd411,vsucc(Vd413))) = vplus(vplus(vmul(vd411,Vd413),vd411),vsucc(Vd413)) ) )).
+fof('ass(cond(conseq(263), 1), 2)',axiom,( ! [Vd413] : ( vmul(vsucc(vd411),Vd413) = vplus(vmul(vd411,Vd413),Vd413) => vplus(vmul(vd411,Vd413),vsucc(vplus(vd411,Vd413))) = vplus(vmul(vd411,Vd413),vplus(vd411,vsucc(Vd413))) ) )).
+fof('ass(cond(conseq(263), 1), 3)',axiom,( ! [Vd413] : ( vmul(vsucc(vd411),Vd413) = vplus(vmul(vd411,Vd413),Vd413) => vplus(vmul(vd411,Vd413),vplus(vsucc(vd411),Vd413)) = vplus(vmul(vd411,Vd413),vsucc(vplus(vd411,Vd413))) ) )).
+fof('ass(cond(conseq(263), 1), 4)',axiom,( ! [Vd413] : ( vmul(vsucc(vd411),Vd413) = vplus(vmul(vd411,Vd413),Vd413) => vplus(vmul(vd411,Vd413),vplus(Vd413,vsucc(vd411))) = vplus(vmul(vd411,Vd413),vplus(vsucc(vd411),Vd413)) ) )).
+fof('ass(cond(conseq(263), 1), 5)',axiom,( ! [Vd413] : ( vmul(vsucc(vd411),Vd413) = vplus(vmul(vd411,Vd413),Vd413) => vplus(vplus(vmul(vd411,Vd413),Vd413),vsucc(vd411)) = vplus(vmul(vd411,Vd413),vplus(Vd413,vsucc(vd411))) ) )).
+fof('ass(cond(conseq(263), 1), 6)',axiom,( ! [Vd413] : ( vmul(vsucc(vd411),Vd413) = vplus(vmul(vd411,Vd413),Vd413) => vplus(vmul(vsucc(vd411),Vd413),vsucc(vd411)) = vplus(vplus(vmul(vd411,Vd413),Vd413),vsucc(vd411)) ) )).
+fof('ass(cond(conseq(263), 1), 7)',axiom,( ! [Vd413] : ( vmul(vsucc(vd411),Vd413) = vplus(vmul(vd411,Vd413),Vd413) => vmul(vsucc(vd411),vsucc(Vd413)) = vplus(vmul(vsucc(vd411),Vd413),vsucc(vd411)) ) )).
+fof('holds(264, 412, 2)',axiom,( vsucc(vmul(vd411,v1)) = vplus(vmul(vd411,v1),v1) )).
+fof('qu(cond(conseq(axiom(3)), 32), and(holds(definiens(249), 399, 0), holds(definiens(249), 398, 0)))',axiom,( ! [Vd396] : ! [Vd397] : ( vmul(Vd396,vsucc(Vd397)) = vplus(vmul(Vd396,Vd397),Vd396) & vmul(Vd396,v1) = Vd396 ) )).
+fof('ass(cond(61, 0), 0)',axiom,( ! [Vd78] : ! [Vd79] : vplus(Vd79,Vd78) = vplus(Vd78,Vd79) )).
+fof('ass(cond(43, 0), 0)',axiom,( ! [Vd59] : vplus(v1,Vd59) = vsucc(Vd59) )).
+fof('ass(cond(33, 0), 0)',axiom,( ! [Vd46] : ! [Vd47] : ! [Vd48] : vplus(vplus(Vd46,Vd47),Vd48) = vplus(Vd46,vplus(Vd47,Vd48)) )).
+fof('qu(cond(conseq(axiom(3)), 3), and(holds(definiens(29), 45, 0), holds(definiens(29), 44, 0)))',axiom,( ! [Vd42] : ! [Vd43] : ( vplus(Vd42,vsucc(Vd43)) = vsucc(vplus(Vd42,Vd43)) & vplus(Vd42,v1) = vsucc(Vd42) ) )).
+`
+
+func parsingTestCases() map[string][]byte {
+  r := map[string][]byte{}
+  for k,v := range problems.SampleProblems { r[k] = v}
+  r["NUM845+2.p"] = []byte(num845_2)
+  return r
+}
+
 func TestTptpToProto(t *testing.T) {
-  for k,v := range problems.SampleProblems {
+  for k,v := range parsingTestCases() {
     _,err := TptpToProto(context.Background(),FOF,v)
     if err!=nil { t.Errorf("TptpToProto(%q): %v",k,err) }
   }

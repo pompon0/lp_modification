@@ -1,7 +1,9 @@
 package problems
 
 import (
+  "context"
   "testing"
+  "github.com/pompon0/tptp_benchmark_go/tool"
 )
 
 func TestTptpProblems(t *testing.T) {
@@ -12,7 +14,11 @@ func TestTptpProblems(t *testing.T) {
     t.Fatalf("len(ps) = %v, want %v)",got,want)
   }
   for n,p := range ps {
-    if _,err := p.Get(); err!=nil { t.Errorf("ps[%q].Get(): %v",n,err) }
+    tptp,err := p.Get()
+    if err!=nil { t.Fatalf("ps[%q].Get(): %v",n,err) }
+    if _,err := tool.TptpToProto(context.Background(),tool.FOF,tptp); err!=nil {
+      t.Fatalf("tool.TptpToProto(%q): %v",n,err)
+    }
   }
 }
 

@@ -83,7 +83,7 @@ func convProblemEprover(ctx context.Context, tptp []byte) (/*fof*/ *tpb.File, /*
 
 func run(ctx context.Context) error {
   port := os.Getenv("PORT")
-  lis, err := net.Listen("tcp",":"+port)
+  lis, err := net.Listen("tcp","0.0.0.0:"+port)
   if err!=nil { return fmt.Errorf("net.Listen(): %v",err) }
 
   s := grpc.NewServer()

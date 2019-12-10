@@ -186,7 +186,7 @@ func run(ctx context.Context) error {
   })
 
   if err := group.Wait(); err!=nil {
-    return fmt.Errorf("group.Wait(); %v",err)
+    return fmt.Errorf("group.Wait(): %v",err)
   }
 
   log.Printf("writing report...")

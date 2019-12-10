@@ -13,7 +13,7 @@ proto_library(
 go_proto_library(
     name = "worker_go_proto",
     compilers = ["@io_bazel_rules_go//proto:go_grpc"],
-    importpath = "github.com/pompon0/tptp_benchmark_go/worker/worker_go_proto",
+    importpath = "github.com/pompon0/tptp_benchmark_go/cloud/worker/worker_go_proto",
     proto = ":worker_proto",
     visibility = ["//visibility:public"],
     deps = ["//tptp_parser/proto:solutions_go_proto"],

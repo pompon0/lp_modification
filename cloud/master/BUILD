@@ -7,9 +7,11 @@ go_library(
     visibility = ["//visibility:private"],
     deps = [
         "//cloud/worker:worker_go_proto",
+        "//problems:go_default_library",
         "@org_golang_google_grpc//:go_default_library",
         "@org_golang_google_grpc//credentials:go_default_library",
         "@org_golang_google_grpc//credentials/oauth:go_default_library",
+        "@org_golang_x_sync//errgroup:go_default_library",
     ],
 )
 

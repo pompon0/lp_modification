@@ -9,14 +9,15 @@ import (
   "google.golang.org/grpc"
   "google.golang.org/grpc/credentials"
   "google.golang.org/grpc/credentials/oauth"
-  pb "github.com/pompon0/tptp_benchmark_go/worker/worker_go_proto"
+  "golang.org/x/sync/errgroup"
+  "github.com/pompon0/tptp_benchmark_go/problems"
+  pb "github.com/pompon0/tptp_benchmark_go/cloud/worker/worker_go_proto"
 )
 
 // run "gcloud auth application-default login" before executing this binary
 var workerAddr = flag.String("worker_addr","worker-su5lpnpdhq-uc.a.run.app:443","worker service address")
 
 func run(ctx context.Context) error {
-  //err := credentials
   creds,err := oauth.NewApplicationDefault(ctx)
   if err!=nil {
     return fmt.Errorf("oauth.NewApplicationDefault(): %v",err)
@@ -30,11 +31,23 @@ func run(ctx context.Context) error {
   }
   defer conn.Close()
   c := pb.NewWorkerClient(conn)
-  resp,err := c.Prove(ctx,&pb.Req{})
-  if err!=nil {
-    return fmt.Errorf("c.Prove(): %v",err)
+  group,gCtx := errgroup.WithContext(ctx)
+  for k,v := range problems.SampleProblems {
+    k,v := k,v
+    group.Go(func() error {
+      log.Printf("problem %q",k)
+      _,err := c.Prove(gCtx,&pb.Req{TptpProblem:v})
+      if err!=nil {
+        return fmt.Errorf("c.Prove(): %v",err)
+      }
+      log.Printf("OK")
+      //log.Printf("resp = %v",resp)
+      return nil
+    })
   }
-  log.Printf("resp = %v",resp)
+  if err := group.Wait(); err!=nil {
+    return fmt.Errorf("group.Wait(): %v",err)
+  }
   return nil
 }
 

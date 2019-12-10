@@ -96,5 +96,11 @@ cc_binary(
         "@abseil//absl/flags:flag",
         "@abseil//absl/flags:parse",
     ],
+    features = ["fully_static_link"],
+    linkopts = [
+        "-static-libstdc++",
+        "-static-libgcc",
+        "-l:libstdc++.a",
+    ],
     visibility = ["//visibility:public"],
 )

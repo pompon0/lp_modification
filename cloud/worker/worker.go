@@ -17,7 +17,7 @@ import (
   "github.com/pompon0/tptp_benchmark_go/eprover"
   "github.com/pompon0/tptp_benchmark_go/lazyparam_prover/tableau"
   "github.com/pompon0/tptp_benchmark_go/tool"
-  pb "github.com/pompon0/tptp_benchmark_go/worker/worker_go_proto"
+  pb "github.com/pompon0/tptp_benchmark_go/cloud/worker/worker_go_proto"
   tpb "github.com/pompon0/tptp_benchmark_go/tptp_parser/proto/tptp_go_proto"
   spb "github.com/pompon0/tptp_benchmark_go/tptp_parser/proto/solutions_go_proto"
 )

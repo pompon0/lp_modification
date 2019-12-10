@@ -7,18 +7,20 @@ import (
 )
 
 func TestTptpProblems(t *testing.T) {
-  ps,cancel,err := TptpProblems()
+  ps,_,err := TptpProblems()
   if err!=nil { t.Fatalf("TptpProblems(): %v",err) }
-  defer cancel()
   if want,got := tptpProblemsCount,len(ps); got!=want {
     t.Fatalf("len(ps) = %v, want %v)",got,want)
   }
   for n,p := range ps {
-    tptp,err := p.Get()
-    if err!=nil { t.Fatalf("ps[%q].Get(): %v",n,err) }
-    if _,err := tool.TptpToProto(context.Background(),tool.FOF,tptp); err!=nil {
-      t.Fatalf("tool.TptpToProto(%q): %v",n,err)
-    }
+    t.Run(n, func(t *testing.T) {
+      t.Parallel()
+      tptp,err := p.Get()
+      if err!=nil { t.Fatalf("ps[%q].Get(): %v",n,err) }
+      if _,err := tool.TptpToProto(context.Background(),tool.FOF,tptp); err!=nil {
+        t.Fatalf("tool.TptpToProto(%q): %v",n,err)
+      }
+    })
   }
 }
 

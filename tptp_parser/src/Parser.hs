@@ -147,7 +147,7 @@ fof_variable_list = P.sepBy variable (char ',')
 -- a...
 fof_plain_term :: Parser T.Term
 fof_plain_term = do
-  name <- lower_word -- a...
+  name <- P.choice [P.try atomic_word, P.try distinct_object]
   maybeArgs <- P.optionMaybe $ P.try $ do
     char '('
     args <- fof_arguments
@@ -162,7 +162,10 @@ fof_arguments :: Parser [T.Term]
 fof_arguments = P.sepBy (P.choice [P.try fof_plain_term, P.try variable]) (char ',')
 
 name :: Parser String
-name = P.choice [P.try lower_word, P.try single_quoted, P.try integer]
+name = P.choice [P.try atomic_word, P.try integer]
+
+atomic_word :: Parser String
+atomic_word = P.choice [P.try lower_word, P.try single_quoted]
 
 connective :: Parser T.Formula'Operator'Type
 connective = do { C.spaces; P.choice [
@@ -204,7 +207,7 @@ single_quoted :: Parser String
 single_quoted = do
   C.spaces
   l <- C.char '\''
-  s <- P.many1 $ sq_char
+  s <- P.many1 sq_char
   r <- C.char '\''
   return ([l]++mconcat s++[r])
 
@@ -216,6 +219,24 @@ sq_char = P.choice [
   },
   P.string "\\\\",
   P.string "\\'"]
+
+-- "..."
+distinct_object :: Parser String
+distinct_object = do
+  C.spaces
+  l <- C.char '"'
+  s <- P.many do_char
+  r <- C.char '"'
+  return ([l]++mconcat s++[r])
+
+do_char :: Parser String
+do_char = P.choice [
+  do {
+    c <- P.satisfy $ \c -> (0o40 <= ord c && ord c <= 0x176 && c/='"' && c/='\\');
+    return [c];
+  },
+  P.string "\\\\",
+  P.string "\\\""]
 
 -- +/-/0...
 integer :: Parser String

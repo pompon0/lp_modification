@@ -11,6 +11,7 @@
 #include "lazyparam_prover/parse.h"
 #include "lazyparam_prover/eq_axioms.h"
 #include "lazyparam_prover/alt.h"
+#include "lazyparam_prover/lazy.h"
 
 struct Branch {
   List<Atom> true_;
@@ -315,7 +316,10 @@ ProverOutput prove_loop(OrForm form, size_t limit) { FRAME("prove_loop()");
   SCOPE("prove_loop");
   //form = reduce_monotonicity_and_append_eq_axioms(form);
   //form = append_eq_axioms_with_restricted_transitivity(form);
-  form = append_eq_axioms(form);
+  //form = append_eq_axioms(form);
+  info("before =\n%",show(form));
+  form = lazy::conv_and_append_axioms(form);
+  info("lazy =\n%",show(form));
   ProverOutput out;
   for(size_t i=1; i<=limit; ++i) {
     DEBUG info("limit = %",i);

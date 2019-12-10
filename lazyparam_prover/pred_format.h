@@ -12,7 +12,11 @@ str show(Term t) {
     case Term::VAR: return util::fmt("v%",Var(t).id());
     case Term::FUN: {
       Fun fun(t);
-      if(fun.fun()==u64(Fun::EXTRA_CONST)) return "c";
+      switch(fun.fun()) {
+        case Fun::EXTRA_CONST: return "c";
+        case Fun::VAR_WRAP: return "v";
+        case Fun::FUN_WRAP: return "f";
+      }
       vec<str> args(fun.arg_count());
       for(size_t i=0; i<fun.arg_count(); ++i) args[i] = show(fun.arg(i));
       return util::fmt("f%(%)",Fun(t).fun(),util::join(",",args));
@@ -27,6 +31,9 @@ str show_pred_name(u64 pred) {
   case Atom::EQ_TRANS_POS: return "[eq]";
   case Atom::EQ_TRANS_NEG: return "{eq}";
   case Atom::EQ_SYMM: return "symm";
+  case Atom::TRANS_TARGET: return "trans_target";
+  case Atom::TRANS_RED: return "trans_red";
+  case Atom::MONO_RED: return "mono_red";
   }
   return util::fmt("p%",pred);
 }

@@ -26,6 +26,7 @@ cc_library(
         "parse.h",
         "tableau.h",
         "eq_axioms.h",
+        "lazy.h"
     ],
     deps = [
         "//tptp_parser/proto:tptp_cc_proto",

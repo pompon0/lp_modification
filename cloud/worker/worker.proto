@@ -1,12 +1,14 @@
 syntax = "proto3";
 package worker;
 
+import "solutions.proto";
+
 message Req {
-  
+  bytes tptp_problem = 1;    
 }
 
 message Resp {
-
+  solutions.Case case = 1;
 }
 
 service Worker {

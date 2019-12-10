@@ -7,6 +7,7 @@ proto_library(
     name = "worker_proto",
     srcs = ["worker.proto"],
     visibility = ["//visibility:public"],
+    deps = ["//tptp_parser/proto:solutions_proto"],
 )
 
 go_proto_library(
@@ -15,6 +16,7 @@ go_proto_library(
     importpath = "github.com/pompon0/tptp_benchmark_go/worker/worker_go_proto",
     proto = ":worker_proto",
     visibility = ["//visibility:public"],
+    deps = ["//tptp_parser/proto:solutions_go_proto"],
 )
 
 go_library(
@@ -24,7 +26,16 @@ go_library(
     visibility = ["//visibility:private"],
     deps = [
         ":worker_go_proto",
+        "//eprover:go_default_library",
+        "//lazyparam_prover/tableau:go_default_library",
+        "//tool:go_default_library",
+        "//tptp_parser/proto:solutions_go_proto",
+        "//tptp_parser/proto:tptp_go_proto",
+        "@com_github_golang_protobuf//ptypes:go_default_library_gen",
         "@org_golang_google_grpc//:go_default_library",
+        "@org_golang_google_grpc//codes:go_default_library",
+        "@org_golang_google_grpc//status:go_default_library",
+        "@org_golang_x_sync//semaphore:go_default_library",
     ],
 )
 

@@ -23,9 +23,9 @@ go_library(
 
 go_test(
     name = "go_default_test",
+    size = "large",
     srcs = ["problems_test.go"],
     embed = [":go_default_library"],
-    size = "large",
     tags = ["manual"],
     deps = ["//tool:go_default_library"],
 )

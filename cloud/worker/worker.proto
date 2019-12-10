@@ -1,0 +1,14 @@
+syntax = "proto3";
+package worker;
+
+message Req {
+  
+}
+
+message Resp {
+
+}
+
+service Worker {
+  rpc Prove(Req) returns (Resp);
+}

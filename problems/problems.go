@@ -1,77 +1,52 @@
 package problems
 
 import (
-  "os"
   "fmt"
-  "context"
-  //"net/http"
-  "path"
-  "path/filepath"
-  //"io"
   "io/ioutil"
-  "compress/gzip"
-  "archive/tar"
+  "archive/zip"
+  "strings"
 
   "github.com/pompon0/tptp_benchmark_go/utils"
 )
 
-//const problemsUrl = "https://storage.googleapis.com/tptp/tptp_sample.tgz";
+const tptpProblemsPath = "tptp_problems/file/downloaded"
+const tptpProblemsCount = 8630
 
-const problemsPath = "tptp_sample/f/"
-const problemsCount = 2003
-
-func GetProblems(ctx context.Context) (map[string][]byte,error) {
-  problems := map[string][]byte{}
-  if err := filepath.Walk(utils.Runfile(problemsPath),func(p string, f os.FileInfo, err error) error {
-    if err!=nil { return err }
-    if f.IsDir() { return nil }
-    tptp,err := ioutil.ReadFile(p)
-    if err!=nil { return fmt.Errorf("ioutil.ReadFile(%q): %v",p,err) }
-    problems[path.Base(p)] = tptp
-    return nil
-  }); err!=nil { return nil,err }
-  if got,want := len(problems),problemsCount; got!=want {
-    return nil,fmt.Errorf("len(problems) = %v, want %v",got,want)
-  }
-  return problems,nil
+func TptpProblems() (map[string]*Problem,func(),error) {
+  return openZip(utils.Runfile(tptpProblemsPath))
 }
 
-/*func GetProblems(ctx context.Context) (map[string][]byte,error) {
-  req,err := http.NewRequest("GET",problemsUrl,nil)
-  if err!=nil { return nil,fmt.Errorf("http.NewRequest(): %v",err) }
-  resp,err := http.DefaultClient.Do(req.WithContext(ctx))
-  defer resp.Body.Close()
+const mizarProblemsPath = "mizar_problems/file/downloaded"
+const mizarProblemsCount = 2003
 
-  gzipReader,err := gzip.NewReader(resp.Body)
-  if err!=nil { return nil,fmt.Errorf("gzip.NewReader(): %v",err) }
-  tarReader := tar.NewReader(gzipReader)
-  problems := map[string][]byte{}
-  for {
-    h,err := tarReader.Next()
-    if err==io.EOF { break }
-    if err!=nil { return nil,fmt.Errorf("tarReader.Next(): %v",err) }
-    problems[h.Name],err = ioutil.ReadAll(tarReader)
-    if err!=nil { return nil,fmt.Errorf("ioutil.ReadAll(): %v",err) }
-  }
-  return problems,nil
-}*/
+func MizarProblems() (map[string]*Problem,func(),error) {
+  return openZip(utils.Runfile(mizarProblemsPath))
+}
 
-func WriteProblemSet(problems map[string][]byte, filepath string) error {
-  f,err := os.Create(filepath)
-  defer f.Close()
-  if err!=nil { return fmt.Errorf("os.Create(): %v",err) }
-  gzipWriter := gzip.NewWriter(f)
-  defer gzipWriter.Close()
-  tarWriter := tar.NewWriter(gzipWriter)
-  defer tarWriter.Close()
-  for k,v := range problems {
-    if err := tarWriter.WriteHeader(&tar.Header{
-      Typeflag: tar.TypeReg,
-      Name: k,
-      Size: int64(len(v)),
-      Mode: 0666,
-    }); err!=nil { return fmt.Errorf("tarWriter.WriteHeader(): %v",err) }
-    if _,err:=tarWriter.Write(v); err!=nil { return fmt.Errorf("tarWriter.Write(): %v",err) }
+type Problem struct {
+  file *zip.File
+}
+
+func (p *Problem) Get() ([]byte,error) {
+  r,err := p.file.Open()
+  if err!=nil { return nil,fmt.Errorf("p.file.Open(): %v",err) }
+  defer r.Close()
+  data,err := ioutil.ReadAll(r)
+  if err!=nil { return nil,fmt.Errorf("ioutil.ReadAll(): %v",err) }
+  return data,nil
+}
+
+// zip format is preferred over tar.gz, because it provides random access to files.
+// if zip (per-file) compression is insufficient, consider switching to LZMA.
+func openZip(path string) (map[string]*Problem,func(),error) {
+  r,err := zip.OpenReader(path)
+  if err != nil { return nil,nil,fmt.Errorf("zip.OpenReader(): %v",err) }
+  files := map[string]*Problem{}
+  for _,f := range r.File {
+    if !strings.HasSuffix(f.Name,"/") {
+      // f is not a directory
+      files[f.Name] = &Problem{f}
+    }
   }
-  return nil
+  return files,func(){ r.Close() },nil
 }

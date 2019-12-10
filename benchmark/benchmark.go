@@ -20,11 +20,11 @@ import (
   spb "github.com/pompon0/tptp_benchmark_go/tptp_parser/proto/solutions_go_proto"
 )
 
-type Prover func(ctx context.Context, cnfProblem *tpb.File, streamStdErr bool) (*spb.ProverOutput, error)
+type Prover func(ctx context.Context, cnfProblem *tpb.File, streamStdErr bool, graceful bool) (*spb.ProverOutput, error)
 
 type Problem struct {
+  *problems.Problem
   name string
-  tptpFOFProblem []byte
 }
 
 type Result struct {
@@ -44,7 +44,9 @@ func worker(
     case <-ctx.Done(): return nil
     case p,ok := <-problems:
       if !ok { return nil }
-      fofProblem,cnfProblem,err := convProblem(ctx,p.tptpFOFProblem)
+      tptpFOFProblem,err := p.Get()
+      if err!=nil { return fmt.Errorf("p[%q].Get(): %v",p.name,err) }
+      fofProblem,cnfProblem,err := convProblem(ctx,tptpFOFProblem)
       if err!=nil { return fmt.Errorf("convProblem(%q): %v",p.name,err) }
       if err := func() error {
         c := &spb.Case{
@@ -55,11 +57,13 @@ func worker(
         proverCtx,cancel := context.WithTimeout(ctx,timeout)
         defer cancel()
         t0 := time.Now()
-        out,err := prover(proverCtx,c.CnfProblem,false)
+        out,err := prover(proverCtx,c.CnfProblem,false,true)
         c.Duration = ptypes.DurationProto(time.Since(t0))
         if err==nil {
           c.Output = out
-          if _,err := tool.ValidateProof(ctx,&spb.CNF{Problem:c.CnfProblem,Proof:out.Proof}); err!=nil { return err }
+          if out.Proof!=nil {
+            if _,err := tool.ValidateProof(ctx,&spb.CNF{Problem:c.CnfProblem,Proof:out.Proof}); err!=nil { return err }
+          }
         }
         results <- Result{c,err}
         return nil
@@ -118,8 +122,9 @@ func run(ctx context.Context) error {
     Labels: strings.Split(*labels,","),
   }
 
-  prob,err := problems.GetProblems(ctx)
-  if err!=nil { return fmt.Errorf("getProblems(): %v",err) }
+  prob,cancel,err := problems.MizarProblems()
+  if err!=nil { return fmt.Errorf("MizarProblems(): %v",err) }
+  defer cancel()
   probCount := (len(prob)+mod-1)/mod
 
   probChan := make(chan Problem,16)
@@ -140,7 +145,7 @@ func run(ctx context.Context) error {
       if i%mod!=0 { continue }
       select {
       case <-gCtx.Done(): return nil
-      case probChan <- Problem{name,prob[name]}:
+      case probChan <- Problem{prob[name],name}:
       }
     }
     close(probChan)
@@ -162,6 +167,8 @@ func run(ctx context.Context) error {
         report.Cases = append(report.Cases, r.case_)
         if r.err!=nil {
           log.Printf("cnfProblem[%q]: %v",r.case_.Name,r.err)
+          errCount++
+        } else if r.case_.Output.Proof==nil {
           errCount++
         } else {
           legacyProof := &spb.CNF{Problem:r.case_.CnfProblem, Proof:r.case_.Output.Proof}

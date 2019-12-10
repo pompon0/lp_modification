@@ -326,6 +326,7 @@ inline OrForm::OrForm(const NotAndForm &f) {
 
 struct ProverOutput {
   size_t cont_count;
+  size_t cost;
   ptr<DerAndClause> proof;
 };
 

@@ -16,6 +16,7 @@ cc_library(
 cc_library(
     name = "prover",
     hdrs = [
+        "ctx.h",
         "alt.h",
         "mgu.h",
         "ground.h",

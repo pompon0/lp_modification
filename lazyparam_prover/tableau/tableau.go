@@ -6,6 +6,7 @@ import (
   "os/exec"
   "os"
   "context"
+  "time"
 
   "github.com/pompon0/tptp_benchmark_go/utils"
   tpb "github.com/pompon0/tptp_benchmark_go/tptp_parser/proto/tptp_go_proto"
@@ -21,16 +22,28 @@ func Prove(ctx context.Context, tptpFOFProblem []byte) error {
   if err!=nil { return fmt.Errorf("tool.TptpToProto(): %v",err) }
   cnf,err := tool.FOFToCNF(ctx,fof)
   if err!=nil { return fmt.Errorf("tool.FOFToCNF(): %v",err) }
-  _,err = Tableau(ctx,cnf,false)
+  out,err := Tableau(ctx,cnf,false,false)
+  if err!=nil { return err }
+  if out.Proof==nil { panic("proof not found") }
   return err
 }
 
-func Tableau(ctx context.Context, cnfProblem *tpb.File, streamStdErr bool) (*spb.ProverOutput,error) {
+func Tableau(ctx context.Context, cnfProblem *tpb.File, streamStdErr bool, graceful bool) (*spb.ProverOutput,error) {
   var inBuf,outBuf,errBuf bytes.Buffer
   if _,err := inBuf.WriteString(cnfProblem.String()); err!=nil {
     return nil,fmt.Errorf("inBuf.Write(): %v",err)
   }
-  cmd := exec.CommandContext(ctx,utils.Runfile(tableau_bin_path))
+  timeout := time.Hour
+  if deadline,ok := ctx.Deadline(); ok {
+    timeout = deadline.Sub(time.Now())
+  }
+  if graceful {
+    gracefulExitTimeout := 100*time.Millisecond
+    timeout -= gracefulExitTimeout
+  } else {
+    timeout += time.Hour
+  }
+  cmd := exec.CommandContext(ctx,utils.Runfile(tableau_bin_path),fmt.Sprintf("--timeout=%v",timeout))
   cmd.Stdin = &inBuf
   cmd.Stdout = &outBuf
   if streamStdErr {

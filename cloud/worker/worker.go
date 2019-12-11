@@ -32,12 +32,16 @@ func NewServer() *server {
   }
 }
 
-const timeout = 30*time.Second
+const maxTimeout = 30*time.Second
 
 func (s *server) Prove(ctx context.Context, req *pb.Req) (*pb.Resp,error) {
   ok := s.sem.TryAcquire(1)
   if !ok { return nil,status.New(codes.ResourceExhausted,"too many requests").Err() }
   defer s.sem.Release(1)
+
+  timeout,err := ptypes.Duration(req.Timeout)
+  if err!=nil { return nil,status.Newf(codes.InvalidArgument,"ptypes.Duration(req.Timeout): %v",err).Err() }
+  if timeout>=maxTimeout { return nil,status.Newf(codes.InvalidArgument,"req.Timeout > %v",maxTimeout).Err() }
 
   prover := tableau.Tableau
   fofProblem,cnfProblem,err := convProblem(ctx,req.TptpProblem)
@@ -51,13 +55,12 @@ func (s *server) Prove(ctx context.Context, req *pb.Req) (*pb.Resp,error) {
   }
   t0 := time.Now()
   out,err := prover(proverCtx,cnfProblem,false,true)
+  if err!=nil { return nil,status.Newf(codes.Internal,"prover(): %v",err).Err() }
   c.Duration = ptypes.DurationProto(time.Since(t0))
-  if err==nil {
-    c.Output = out
-    if out.Proof!=nil {
-      if _,err := tool.ValidateProof(ctx,&spb.CNF{Problem:c.CnfProblem,Proof:out.Proof}); err!=nil {
-        return nil,status.Newf(codes.Internal,"tool.ValidateProof(): %v",err).Err()
-      }
+  c.Output = out
+  if out.Proof!=nil {
+    if _,err := tool.ValidateProof(ctx,&spb.CNF{Problem:c.CnfProblem,Proof:out.Proof}); err!=nil {
+      return nil,status.Newf(codes.Internal,"tool.ValidateProof(): %v",err).Err()
     }
   }
   return &pb.Resp{Case:c},nil

@@ -2,9 +2,11 @@ syntax = "proto3";
 package worker;
 
 import "solutions.proto";
+import "google/protobuf/duration.proto";
 
 message Req {
-  bytes tptp_problem = 1;    
+  bytes tptp_problem = 1;
+  google.protobuf.Duration timeout = 2;
 }
 
 message Resp {

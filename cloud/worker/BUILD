@@ -7,7 +7,10 @@ proto_library(
     name = "worker_proto",
     srcs = ["worker.proto"],
     visibility = ["//visibility:public"],
-    deps = ["//tptp_parser/proto:solutions_proto"],
+    deps = [
+        "//tptp_parser/proto:solutions_proto",
+        "@com_google_protobuf//:duration_proto",
+    ],
 )
 
 go_proto_library(

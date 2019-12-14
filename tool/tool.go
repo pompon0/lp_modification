@@ -24,12 +24,14 @@ const CNF Language = "cnf"
 func WriteTmp(data []byte) (path string, cleanup func(), err error) {
   tmpFile,err := ioutil.TempFile("",tmp_prefix)
   if err!=nil { return "",nil,fmt.Errorf("ioutil.TempFile(): %v",err) }
-  if _,err := tmpFile.Write(data); err!=nil { return "",nil,fmt.Errorf("tmpFile.WriteString(): %v",err) }
+  if _,err := tmpFile.Write(data); err!=nil { return "",nil,fmt.Errorf("tmpFile.Write(): %v",err) }
   return tmpFile.Name(),func(){ os.Remove(tmpFile.Name()) },nil
 }
 
 func ProtoToTptp(ctx context.Context, f *tpb.File) ([]byte,error) {
-  tmp,cleanup,err := WriteTmp([]byte(f.String()))
+  fBytes,err := proto.Marshal(f)
+  if err!=nil { return nil,fmt.Errorf("proto.Marshal(): %v",err) }
+  tmp,cleanup,err := WriteTmp(fBytes)
   if err!=nil { return nil,fmt.Errorf("WriteTmp(): %v",err) }
   defer cleanup()
 
@@ -50,17 +52,21 @@ func TptpToProto(ctx context.Context, lang Language, tptp []byte) (*tpb.File,err
   cmd := exec.CommandContext(ctx,utils.Runfile(tool_bin_path),"conv",string(lang),tmp)
   cmd.Stdout = &outBuf
   cmd.Stderr = os.Stderr
-  if err = cmd.Run(); err!=nil { return nil,fmt.Errorf("cmd.Run(): %v",err) }
-
+  if err := cmd.Run(); err!=nil {
+    if ctx.Err()!=nil { return nil,ctx.Err() }
+    return nil,fmt.Errorf("cmd.Run(): %v",err)
+  }
   pbFile := &tpb.File{}
-  if err:=proto.UnmarshalText(outBuf.String(),pbFile); err!=nil {
-    return nil,fmt.Errorf("proto.UnmarshalText(): %v",err)
+  if err:=proto.Unmarshal(outBuf.Bytes(),pbFile); err!=nil {
+    return nil,fmt.Errorf("proto.Unmarshal(): %v",err)
   }
   return pbFile,nil
 }
 
 func FOFToCNF(ctx context.Context, fof *tpb.File) (*tpb.File,error) {
-  tmp,cleanup,err := WriteTmp([]byte(fof.String()))
+  fofBytes,err := proto.Marshal(fof)
+  if err!=nil { return nil,fmt.Errorf("proto.Marshal(): %v",err) }
+  tmp,cleanup,err := WriteTmp(fofBytes)
   if err!=nil { return nil,fmt.Errorf("WriteTmp(): %v",err) }
   defer cleanup()
 
@@ -71,14 +77,16 @@ func FOFToCNF(ctx context.Context, fof *tpb.File) (*tpb.File,error) {
   if err = cmd.Run(); err!=nil { return nil,fmt.Errorf("cmd.Run(): %v",err) }
 
   cnf := &tpb.File{}
-  if err:=proto.UnmarshalText(outBuf.String(),cnf); err!=nil {
-    return nil,fmt.Errorf("proto.UnmarshalText(): %v",err)
+  if err:=proto.Unmarshal(outBuf.Bytes(),cnf); err!=nil {
+    return nil,fmt.Errorf("proto.Unmarshal(): %v",err)
   }
   return cnf,nil
 }
 
 func ValidateProof(ctx context.Context, sol *spb.CNF) (*spb.Stats,error) {
-  tmpSol,cleanup,err := WriteTmp([]byte(sol.String()))
+  solBytes,err := proto.Marshal(sol)
+  if err!=nil { return nil,fmt.Errorf("proto.Marshal(): %v",err) }
+  tmpSol,cleanup,err := WriteTmp(solBytes)
   if err!=nil { return nil,fmt.Errorf("WriteTmp(): %v",err) }
   defer cleanup()
 
@@ -90,8 +98,8 @@ func ValidateProof(ctx context.Context, sol *spb.CNF) (*spb.Stats,error) {
     return nil,fmt.Errorf("cmd.Run(): [%v]\n%v",err,errBuf.String())
   }
   stats := &spb.Stats{}
-  if err:=proto.UnmarshalText(outBuf.String(),stats); err!=nil {
-    return nil,fmt.Errorf("proto.UnmarshalText(): %v",err)
+  if err:=proto.Unmarshal(outBuf.Bytes(),stats); err!=nil {
+    return nil,fmt.Errorf("proto.Unmarshal(): %v",err)
   }
   return stats,nil
 }

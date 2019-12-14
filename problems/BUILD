@@ -27,5 +27,5 @@ go_test(
     srcs = ["problems_test.go"],
     embed = [":go_default_library"],
     tags = ["manual"],
-    deps = ["//tool:go_default_library"],
+    deps = ["//eprover:go_default_library"],
 )

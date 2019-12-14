@@ -90,9 +90,12 @@ input'fof glob i = do
   let f3 = lambda Forall stack'empty (vars,f2)
   case i^. #role of {
     T.Input'AXIOM -> return (Neg f3);
+    T.Input'LEMMA -> return (Neg f3);
     T.Input'PLAIN -> return (Neg f3);
+    T.Input'DEFINITION -> return (Neg f3);
     T.Input'NEGATED_CONJECTURE -> return (Neg f3);
     T.Input'CONJECTURE -> return f3; 
+    T.Input'HYPOTHESIS -> return f3;
   };
 
 formula'fof :: Local -> T.Formula'Formula -> Err FOF

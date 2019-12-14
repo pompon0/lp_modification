@@ -28,6 +28,12 @@ http_archive(
 )
 
 http_file(
+    name = "tptp4X",
+    executable = 1,
+    urls = ["https://storage.googleapis.com/tptp/tptp4X"],
+)
+
+http_file(
     name = "mizar_problems",
     urls = ["https://storage.googleapis.com/tptp/mizar_problems.zip"],
     sha256 = "70a6e8467753395125f281ea371adc390585b667b84db79451fd0cc8780bd749",
@@ -185,6 +191,10 @@ stack_snapshot(
         "array",
         "vector",
         "proto-lens-protoc",
+        "attoparsec",
+        "prettyprinter",
+        "scientific",
+        "semigroups",
     ],
     snapshot = "lts-14.2",
     tools = ["@happy"],
@@ -196,6 +206,13 @@ http_archive(
     urls = ["https://github.com/giorgidze/set-monad/archive/master.zip"],
     sha256 = "64079a9dd5d59b92ceaf7c79768ccbcb753c9bc4a9935cfb8e430519d32ca468",
     build_file = "//:third_party/set-monad.BUILD",
+)
+
+http_archive(
+    name = "tptp",
+    urls = ["https://hackage.haskell.org/package/tptp-0.1.1.0/tptp-0.1.1.0.tar.gz"],
+    build_file = "//:third_party/tptp.BUILD",
+    sha256 = "2ec3a5fd1c290f68aed82600299c17a3a698b24c189efb6a4df4ff300aa29233",
 )
 
 http_archive(

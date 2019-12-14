@@ -43,7 +43,8 @@ func TestTptpToProto(t *testing.T) {
   }
 }
 
-func TestProtoToTptpt(t *testing.T) {
+
+func TestProtoToTptp(t *testing.T) {
   ctx := context.Background()
   for k,v := range problems.SampleProblems {
     fof,err := TptpToProto(ctx,FOF,v)

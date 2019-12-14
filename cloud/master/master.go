@@ -8,6 +8,7 @@ import (
   "time"
   "os"
   "sort"
+  "strings"
 
   "google.golang.org/grpc"
   "google.golang.org/grpc/credentials"
@@ -36,6 +37,14 @@ var maxInFlight = flag.Int("max_in_flight",10,"")
 var problemLimit = flag.Int("problem_limit",-1,"number of problems to solve (-1 for all problems)")
 var unsolvedOnly = flag.Bool("unsolved_only",false,"process only unsolved problems")
 var timeout = flag.Duration("timeout",16*time.Second,"timeout per problem")
+
+const (
+  problemSetMizar = "mizar"
+  problemSetTptp = "tptp"
+)
+var problemSets = []string{problemSetMizar,problemSetTptp}
+
+var problemSet = flag.String("problem_set",problemSetMizar,strings.Join(problemSets,"|"))
 
 func run(ctx context.Context) error {
   // connect to worker pool
@@ -70,9 +79,21 @@ func run(ctx context.Context) error {
     Commit: "(worker)",
   }
 
-  prob,cancel,err := problems.MizarProblems()
-  if err!=nil { return fmt.Errorf("MizarProblems(): %v",err) }
-  defer cancel()
+  var prob map[string]*problems.Problem
+  switch *problemSet {
+  case problemSetMizar:
+    x,cancel,err := problems.MizarProblems()
+    if err!=nil { return fmt.Errorf("problems.MizarProblems(): %v",err) }
+    defer cancel()
+    prob = x
+  case problemSetTptp:
+    x,cancel,err := problems.TptpProblems()
+    if err!=nil { return fmt.Errorf("problems.TptpProblems(): %v",err) }
+    defer cancel()
+    prob = x
+  default:
+    return fmt.Errorf("unknown problem set %q",*problemSet)
+  }
 
   resultsChan := make(chan *spb.Case,16)
   group,gCtx := errgroup.WithContext(ctx)

@@ -37,6 +37,8 @@ int main(int argc, char **argv) {
     for(auto cla : out.proof->source) proof_form.and_clauses.push_back(DerAndClause(1,cla));
     *outProto.mutable_proof() = pctx.proto_notAndForm(NotAndForm(proof_form));
   }
-  std::cout << outProto.DebugString() << std::endl;
+  if(!outProto.SerializeToOstream(&std::cout)) {
+    error("outProto.SerializeToOstream() failed");  
+  }
   return 0;
 }

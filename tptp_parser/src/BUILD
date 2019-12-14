@@ -19,6 +19,7 @@ haskell_library(
         "Tptp.hs",
         "TptpLens.hs",
         "Parser.hs",
+        "Parser2.hs",
     ],
     deps = [
         ":Ctx",
@@ -28,6 +29,8 @@ haskell_library(
         "@stackage//:proto-lens",
         "@stackage//:parsec",
         "@stackage//:text",
+        "@stackage//:attoparsec",
+        "@tptp//:tptp",
         "//tptp_parser/proto:tptp_haskell_proto",
     ],
 )
@@ -173,6 +176,7 @@ haskell_binary(
         ":Valid",
         ":IO",
         "@stackage//:base",
+        "@stackage//:bytestring",
         "@stackage//:containers",
         "@stackage//:lens",
         "@stackage//:proto-lens",

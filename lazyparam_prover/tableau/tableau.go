@@ -30,7 +30,9 @@ func Prove(ctx context.Context, tptpFOFProblem []byte) error {
 
 func Tableau(ctx context.Context, cnfProblem *tpb.File, streamStdErr bool, graceful bool) (*spb.ProverOutput,error) {
   var inBuf,outBuf,errBuf bytes.Buffer
-  if _,err := inBuf.WriteString(cnfProblem.String()); err!=nil {
+  cnfProblemBytes, err := proto.Marshal(cnfProblem)
+  if err!=nil { return nil,fmt.Errorf("proto.Marshal(): %v",err) }
+  if _,err := inBuf.Write(cnfProblemBytes); err!=nil {
     return nil,fmt.Errorf("inBuf.Write(): %v",err)
   }
   timeout := time.Hour
@@ -56,7 +58,7 @@ func Tableau(ctx context.Context, cnfProblem *tpb.File, streamStdErr bool, grace
   }
 
   output := &spb.ProverOutput{}
-  if err:=proto.UnmarshalText(outBuf.String(),output); err!=nil {
+  if err:=proto.Unmarshal(outBuf.Bytes(),output); err!=nil {
     return nil,fmt.Errorf("proto.UnmarshalText(): %v",err)
   }
   return output,nil

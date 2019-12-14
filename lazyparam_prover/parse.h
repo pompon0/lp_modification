@@ -133,7 +133,7 @@ struct ParseCtx {
 
   NotAndForm parse_notAndForm(const str &file_raw) {
     tptp::File file;
-    if(!google::protobuf::TextFormat::ParseFromString(file_raw,&file)) {
+    if(!file.ParseFromString(file_raw)) {
       error("failed to parse input");
     }
     return parse_notAndForm(file);

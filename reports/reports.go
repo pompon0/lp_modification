@@ -12,15 +12,18 @@ import (
   "github.com/golang/protobuf/ptypes"
   "github.com/pompon0/tptp_benchmark_go/problems"
   "github.com/pompon0/tptp_benchmark_go/tool"
+  spb "github.com/pompon0/tptp_benchmark_go/tptp_parser/proto/solutions_go_proto"
 )
 
 const (
   cmdSummary = "summary"
   cmdPrint = "print"
+  cmdDiff = "diff"
 )
-var cmds = []string{cmdSummary,cmdPrint}
+var cmds = []string{cmdSummary,cmdPrint,cmdDiff}
 
 var reportPath = flag.String("report_path","","")
+var reportPath2 = flag.String("report_path_2","","")
 var cmd = flag.String("cmd",cmdSummary,strings.Join(cmds,"|"))
 var caseName = flag.String("case_name","","")
 
@@ -55,6 +58,19 @@ func (s Stats) String() string {
   return strings.Join(out,"")
 }
 
+func caseSummary(c *spb.Case) string {
+  if c.GetOutput()==nil {
+    return fmt.Sprintf("%20q : ERROR",c.Name)
+  }
+  status := ""
+  if c.GetOutput().GetProof()==nil {
+    status = "UNSOLVED"
+  }
+  d,err := ptypes.Duration(c.Duration)
+  if err!=nil { return fmt.Sprintf("ptypes.Duration(%q): %v",c.Name,err); }
+  return fmt.Sprintf("%20q : %s %05.2f cost=%3d cont=%d",c.Name,status,d.Seconds(),c.Output.Cost,c.Output.ContinuationCount)
+}
+
 func summary(ctx context.Context) error {
   report,err := problems.ReadReport(*reportPath)
   if err!=nil { return fmt.Errorf("problems.ReadReport(report_path=%q): %v",*reportPath,err) }
@@ -73,25 +89,35 @@ func summary(ctx context.Context) error {
   fmt.Printf("%v",stats)
   fmt.Printf("-----------------------------\n")
 
-  sort.Slice(report.Cases, func(i,j int) bool {
-    /*ad,err := ptypes.Duration(report.Cases[i].Duration)
-    if err!=nil { panic("ptypes.Duration()"); }
-    bd,err := ptypes.Duration(report.Cases[j].Duration)
-    if err!=nil { panic("ptypes.Duration()"); }
-    return ad < bd*/
-    return report.Cases[i].Name < report.Cases[j].Name
-  })
-  for _,c := range report.Cases {
-    if c.GetOutput()==nil {
-      fmt.Printf("%20q : ERROR\n",c.Name)
-    } else {
-      status := ""
-      if c.GetOutput().GetProof()==nil {
-        status = "UNSOLVED"
-      }
-      d,err := ptypes.Duration(c.Duration)
-      if err!=nil { log.Printf("ptypes.Duration(%q): %v",c.Name,err); continue }
-      fmt.Printf("%20q : %s %05.2f cost=%3d cont=%d\n",c.Name,status,d.Seconds(),c.Output.Cost,c.Output.ContinuationCount)
+  sort.Slice(report.Cases, func(i,j int) bool { return report.Cases[i].Name < report.Cases[j].Name })
+  for _,c := range report.Cases { fmt.Printf("%s\n",caseSummary(c)) }
+  return nil
+}
+
+func diff(ctx context.Context) error {
+  report1,err := problems.ReadReport(*reportPath)
+  if err!=nil { return fmt.Errorf("problems.ReadReport(report_path=%q): %v",*reportPath,err) }
+  report2,err := problems.ReadReport(*reportPath2)
+  if err!=nil { return fmt.Errorf("problems.ReadReport(report_path=%q): %v",*reportPath2,err) }
+
+  sort.Slice(report1.Cases, func(i,j int) bool { return report1.Cases[i].Name < report1.Cases[j].Name })
+  sort.Slice(report2.Cases, func(i,j int) bool { return report2.Cases[i].Name < report2.Cases[j].Name })
+  cc1 := len(report1.Cases)
+  cc2 := len(report2.Cases)
+  if cc1!=cc2 {
+    return fmt.Errorf("number of cases mismatch len(report1) = %d, len(report2) = %d",cc1,cc2)
+  }
+
+  for i:=0; i<cc1; i++ {
+    c1 := report1.Cases[i]
+    c2 := report2.Cases[i]
+    if c1.Name!=c2.Name {
+      //return fmt.Errorf("case name mismatch: report1.Cases[%d] = %q, report2.Cases[%d] = %q",i,c1.Name,i,c2.Name)
+    }
+    c1s := c1.GetOutput().GetProof()!=nil
+    c2s := c2.GetOutput().GetProof()!=nil
+    if c1s!=c2s {
+      fmt.Printf("%s  |  %s\n",caseSummary(c1),caseSummary(c2))
     }
   }
   return nil
@@ -119,6 +145,7 @@ func run(ctx context.Context) error {
   switch *cmd {
     case cmdSummary: return summary(ctx)
     case cmdPrint: return print_(ctx)
+    case cmdDiff: return diff(ctx)
     default: return fmt.Errorf("unknown command = %q",*cmd)
   }
 }

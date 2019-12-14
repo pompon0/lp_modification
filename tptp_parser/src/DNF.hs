@@ -21,6 +21,7 @@ import Control.Monad(foldM,when)
 import Control.Lens
 import qualified Data.List as List
 import Data.ProtoLens(defMessage)
+import Tptp(formula'assert)
 
 data Atom = Atom { _atom'sign :: Bool, _atom'pred :: Pred } deriving(Eq,Ord)
 makeLenses ''Atom
@@ -98,9 +99,11 @@ isInstance a b = andClause'mgu (a,b) MGU.empty /= Nothing
 -----------------------------------------------------
 
 fromProto'File :: GlobalVar -> T.File -> Err OrForm
-fromProto'File gv f = OrForm <$> mapM (fmap notOrClause. fromProto'Input gv) (f^. #input)
+fromProto'File gv f = do
+  i' <- mapM (fromProto'Input gv) (f^. #input)
+  return $ OrForm $ i'^..traverse.traverse.to notOrClause
 
-fromProto'Input :: GlobalVar -> T.Input -> Err OrClause
+fromProto'Input :: GlobalVar -> T.Input -> Err (Maybe OrClause)
 fromProto'Input gv i = do
   case i^. #language of { T.Input'CNF -> return (); }
   case i^. #role of {
@@ -108,23 +111,32 @@ fromProto'Input gv i = do
     T.Input'PLAIN -> return ();
     T.Input'NEGATED_CONJECTURE -> return ();
   }
-  fromProto'Form gv =<< FOF.getFormula (i^. #formula)
+  fromProto'Form gv (i^. #formula.formula'assert)
 
-fromProto'Form :: GlobalVar -> T.Formula'Formula -> Err OrClause
+isOp :: T.Formula'Operator'Type -> T.Formula'Formula -> Bool 
+isOp o f = case f of { T.Formula'Op op -> (op^. #type') == o; _ -> False}
+
+fromProto'Form :: GlobalVar -> T.Formula'Formula -> Err (Maybe OrClause)
 fromProto'Form gv f = case f of
-  T.Formula'Pred' pred -> do { a <- fromProto'Atom gv f; return (OrClause [a]) }
+  T.Formula'Pred' _ -> (\a -> return $ Just $ OrClause [a]) =<< fromProto'Atom gv f
   T.Formula'Op op -> case (op^. #type') of
-    T.Formula'Operator'OR -> OrClause <$> mapM (\f -> FOF.getFormula f >>= fromProto'Atom gv) (op^. #args)
-    T.Formula'Operator'FALSE -> return (OrClause [])
-    _ -> do { a <- fromProto'Atom gv f; return (OrClause [a]) }
+    T.Formula'Operator'OR ->
+      if any (isOp T.Formula'Operator'TRUE) (op^.. #args.traverse.formula'assert) then return Nothing
+      else (Just . OrClause) <$> mapM (fromProto'Atom gv) (op^.. #args.traverse.formula'assert.filtered (not . isOp T.Formula'Operator'FALSE))
+    T.Formula'Operator'FALSE -> return $ Just $ OrClause []
+    T.Formula'Operator'TRUE -> return Nothing
+    T.Formula'Operator'NEG -> (\a -> return $ Just $ OrClause [a]) =<< fromProto'Atom gv f
+
 
 fromProto'Atom :: GlobalVar -> T.Formula'Formula -> Err Atom
 fromProto'Atom gv f = case f of
   T.Formula'Op op -> do
-    case op^. #type' of { T.Formula'Operator'NEG -> return () }
-    [f'] <- mapM FOF.getFormula (op^. #args)
-    a <- fromProto'Atom gv f'
-    return (a & atom'sign %~ not)
+    case op^. #type' of {
+      T.Formula'Operator'NEG -> do
+        [f'] <- mapM FOF.getFormula (op^. #args)
+        a <- fromProto'Atom gv f'
+        return (a & atom'sign %~ not)
+    }
   T.Formula'Pred' pred -> Atom True <$> FOF.fromProto'Pred (FOF.Local (gv^.global') (gv^.existsVars)) pred
 
 toProto'File :: OrForm -> T.File

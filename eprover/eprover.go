@@ -3,7 +3,7 @@ package eprover
 import (
   "bytes"
   "fmt"
-  //"log"
+  "log"
   "context"
   "os/exec"
   "strings"
@@ -45,8 +45,9 @@ func FOFToCNF(ctx context.Context, tptpFOF []byte) ([]byte,error) {
   cmd.Stdout = &outBuf
   cmd.Stderr = &errBuf
   if err := cmd.Run(); err!=nil {
-    //log.Printf("out = %q",outBuf.String())
-    //log.Printf("err = %q",errBuf.String())
+    log.Printf("in = %q",tptpFOF)
+    log.Printf("out = %q",outBuf.String())
+    log.Printf("err = %q",errBuf.String())
     return nil,fmt.Errorf("cmd.Run(): %v",err)
   }
   var buf bytes.Buffer

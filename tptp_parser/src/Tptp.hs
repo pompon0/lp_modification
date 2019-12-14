@@ -9,6 +9,7 @@ import qualified Proto.Tptp as T
 import Control.Lens
 import Control.Exception
 import Data.Text.Lens
+import Data.ProtoLens(defMessage)
 import Data.ProtoLens.Labels()
 import qualified Data.Map as Map
 import Data.Maybe
@@ -42,12 +43,14 @@ file'string :: T.File -> String
 file'string f = mconcat (((++"\n").input'string) <$> f^. #input)
 
 input'string :: T.Input -> String
-input'string i = printf "%s(%s,%s,%s)." lang (i^. #name) role (formula'string $ formula'assert $ i^. #formula) where
+input'string i = printf "%s(%s,%s,%s)." lang (i^. #name) role (i^. #formula.formula'assert.to formula'string) where
   role = (Map.fromList role'string'list)^.at (i^. #role).non (error "invalid role")
   lang = (Map.fromList language'string'list)^.at (i^. #language).non (error "invalid language")
 
-formula'assert :: T.Formula -> T.Formula'Formula
-formula'assert f = f^. #maybe'formula.non (error "empty formula")
+formula'assert :: Iso' T.Formula T.Formula'Formula
+formula'assert = iso
+  (^. #maybe'formula.non (error "empty formula"))
+  (\f -> defMessage & #maybe'formula ?~ f)
 
 varName'assert :: String -> String
 varName'assert vn = vn
@@ -66,8 +69,8 @@ formula'string f = case f of
   T.Formula'Quant' quant -> printf "%s[%s]: (%s)"
     (case quant^. #type' of { T.Formula'Quant'FORALL -> "!"; T.Formula'Quant'EXISTS -> "?" })
     (intercalate "," $ quant^..quant'varName.to varName'assert)
-    (formula'string $ formula'assert $ quant^. #sub)
-  T.Formula'Op op -> let args = (printf "(%s)".formula'string.formula'assert) <$> op^. #args in
+    (quant^. #sub.formula'assert.to formula'string)
+  T.Formula'Op op -> let args = printf "(%s)" <$> op^.. #args.traverse.formula'assert.to formula'string in
     case op^. #type' of
       T.Formula'Operator'TRUE -> "$true" where [] = args
       T.Formula'Operator'FALSE -> "$false" where [] = args

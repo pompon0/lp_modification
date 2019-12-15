@@ -11,6 +11,13 @@ http_archive(
 )
 
 http_archive(
+    name = "vampire_lib",
+    strip_prefix = "vampire-3267e536135d0a9ac0691ee43153353cb130ca8e",
+    urls = ["https://github.com/vprover/vampire/archive/3267e536135d0a9ac0691ee43153353cb130ca8e.tar.gz"],
+    build_file = "//:third_party/vampire.BUILD",
+)
+
+http_archive(
     name = "leancop",
     urls = ["https://storage.googleapis.com/tptp/leancop_bin.tgz"],
     sha256 = "c8c154c7f694ffd5eee7453bb50bd07f5eac0b4c564a5b9a0cb548e802ed7bbf",

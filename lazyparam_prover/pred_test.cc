@@ -4,6 +4,8 @@
 #include "lazyparam_prover/pred_format.h"
 #include "lazyparam_prover/util/string.h"
 
+using namespace tableau;
+
 TEST(pred,neg) {
   bool sign = true;
   size_t pred_name = 7;

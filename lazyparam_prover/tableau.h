@@ -13,6 +13,8 @@
 #include "lazyparam_prover/alt.h"
 #include "lazyparam_prover/ctx.h"
 
+namespace tableau {
+
 struct Branch {
   List<Atom> true_;
   List<Atom> false_;
@@ -49,7 +51,7 @@ struct SearchState {
 
   struct Snapshot {
     KBO::Snapshot val;
-    ::Snapshot stack;
+    tableau::Snapshot stack;
     size_t nodes_used;
     List<DerOrClause> clauses_used;
   };
@@ -338,5 +340,7 @@ ProverOutput prove_loop(const Ctx &ctx, OrForm form) { FRAME("prove_loop()");
   DEBUG info("FAILURE");
   return {cont_count,limit}; 
 }
+
+} // namespace tableau
 
 #endif  // TABLEAU_H_

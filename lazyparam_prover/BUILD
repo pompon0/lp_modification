@@ -14,23 +14,55 @@ cc_library(
 )
 
 cc_library(
+  name = "pred",
+  hdrs = [
+    "alloc.h",
+    "pred.h",
+  ],
+  deps = [
+    ":log",
+    ":types",
+  ],
+)
+
+cc_library(
+  name = "parse2",
+  hdrs = ["parse2.h"],
+  deps = [
+    ":types",
+    ":pred",
+    "@vampire//:lib",
+    "@com_google_protobuf//:protobuf"
+  ],
+)
+
+cc_binary(
+  name = "tool",
+  srcs = ["tool.cc"],
+  deps = [
+    ":parse2",
+    "@abseil//absl/flags:parse",
+    "@abseil//absl/flags:flag",
+  ],
+)
+
+cc_library(
     name = "prover",
     hdrs = [
         "ctx.h",
         "alt.h",
         "mgu.h",
         "ground.h",
-        "alloc.h",
-        "pred.h",
+        "parse.h",
         "pred_format.h",
         "kbo.h",
-        "parse.h",
         "tableau.h",
         "eq_axioms.h",
     ],
     deps = [
         "//tptp_parser/proto:tptp_cc_proto",
         "//tptp_parser/proto:solutions_cc_proto",
+        ":pred",
         ":log",
         ":types",
         "//lazyparam_prover/util:util",

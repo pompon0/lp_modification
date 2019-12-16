@@ -5,7 +5,7 @@
 #include "lazyparam_prover/types.h"
 #include "lazyparam_prover/util/string.h"
 
-namespace {
+namespace tableau {
 
 str show(Term t) {
   switch(t.type()) {
@@ -70,7 +70,7 @@ str show(const OrForm &f) {
   return util::join("",clauses);
 }
 
-}
+} // namespace tableau
 
 #endif // PRED_FORMAT_H_
 

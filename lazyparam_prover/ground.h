@@ -3,7 +3,7 @@
 
 #include "lazyparam_prover/pred.h"
 
-namespace {
+namespace tableau {
 
 // clears offset (it doesnt' matter, because result contains no vars)
 inline Term ground(Term t) {
@@ -35,6 +35,6 @@ inline OrClause ground(OrClause cla) {
   return b.build();
 }
 
-}
+}  // namespace tableau
 
 #endif  // GROUND_H_

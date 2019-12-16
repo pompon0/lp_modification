@@ -11,7 +11,7 @@ import (
   "github.com/pompon0/tptp_benchmark_go/utils"
 )
 
-const vampireBinPath = "__main__/vampire/vampire"
+const vampireBinPath = "vampire/vampire"
 const resultOk = "% SZS status Theorem for"
 
 func Prove(ctx context.Context, tptpFOFProblem []byte) error {

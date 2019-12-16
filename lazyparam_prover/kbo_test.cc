@@ -3,6 +3,8 @@
 #include "lazyparam_prover/kbo.h"
 #include "lazyparam_prover/util/log.h"
 
+using namespace tableau;
+
 TEST(KBO,simple) {
   StreamLogger _(std::cerr);
   KBO kbo;

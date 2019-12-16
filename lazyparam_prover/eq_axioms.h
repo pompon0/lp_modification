@@ -7,7 +7,7 @@
 #include "lazyparam_prover/types.h"
 #include "lazyparam_prover/pred_format.h"
 
-namespace {
+namespace tableau {
 
 DerOrClause refl_axiom() {
   size_t var_count = 0;
@@ -133,7 +133,6 @@ OrForm append_eq_axioms(OrForm _f) {
   return OrForm(f);
 }
 
-}
 
 /////////////////////////////////////////////////////////////////////////////
 
@@ -249,8 +248,6 @@ struct FlatClauseBuilder {
   }
 };
 
-namespace {
-
 inline OrForm flatten_OrForm(OrForm f) {
   OrForm f2;
   for(auto cla : f.and_clauses) f2.and_clauses.push_back(FlatClauseBuilder(cla).build());
@@ -335,7 +332,6 @@ OrForm append_eq_axioms_with_restricted_transitivity(OrForm _f) {
   return OrForm(f);
 }
 
-}
 
 /////////////////////////////////////////////////////////////////////////////
 
@@ -367,5 +363,7 @@ public:
     return h>=map.size() ? empty : max_cost<map[h].size() ? map[h][max_cost] : map[h].back();
   }
 };
+
+} // namespace tableau
 
 #endif  // EQ_AXIOMS_H_

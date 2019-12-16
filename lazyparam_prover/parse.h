@@ -5,6 +5,8 @@
 #include "google/protobuf/text_format.h"
 #include "lazyparam_prover/pred.h"
 
+namespace tableau {
+
 template<typename T> struct IntDict {
   size_t operator()(const T &v) {
     if(!m.count(v)){ auto x = m.size(); m[v] = x; }
@@ -205,6 +207,8 @@ struct ProtoCtx {
     return file;
   }
 };
+
+}  // namespace tableau
 
 #endif  // PARSE_H_
 

@@ -6,6 +6,8 @@
 #include "lazyparam_prover/util/log.h"
 
 using namespace util;
+using namespace tableau;
+
 TEST(congruence_axioms,all) {
   StreamLogger _(std::cerr);
   u64 pred = 1;

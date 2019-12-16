@@ -11,9 +11,10 @@ http_archive(
 )
 
 http_archive(
-    name = "vampire_lib",
+    name = "vampire",
     strip_prefix = "vampire-3267e536135d0a9ac0691ee43153353cb130ca8e",
     urls = ["https://github.com/vprover/vampire/archive/3267e536135d0a9ac0691ee43153353cb130ca8e.tar.gz"],
+    sha256 = "5459de1b1db951c8522b3b2e4af607c376da7e9cf41f2841b40e8271bd2abd14",
     build_file = "//:third_party/vampire.BUILD",
 )
 

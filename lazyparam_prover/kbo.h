@@ -10,6 +10,8 @@
 #include "lazyparam_prover/log.h"
 #include <algorithm>
 
+namespace tableau {
+
 struct Constraint {
   enum Type { NEQ, LT };
   Type type;
@@ -192,5 +194,7 @@ private:
     }
   };
 };
+
+}  // tableau
 
 #endif // KBO_H_

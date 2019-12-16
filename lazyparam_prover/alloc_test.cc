@@ -3,6 +3,8 @@
 #include "lazyparam_prover/alloc.h"
 #include "lazyparam_prover/util/log.h"
 
+using namespace tableau;
+
 TEST(RewindArray,simple) {
   StreamLogger _(std::cerr);
   RewindArray<int> a;

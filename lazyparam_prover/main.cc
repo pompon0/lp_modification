@@ -7,6 +7,7 @@
 #include "lazyparam_prover/tableau.h"
 #include "lazyparam_prover/pred.h"
 #include "lazyparam_prover/ctx.h"
+#include "lazyparam_prover/log.h"
 #include "solutions.pb.h"
 
 #include "absl/flags/flag.h"
@@ -15,8 +16,11 @@
 
 ABSL_FLAG(absl::Duration,timeout,absl::Seconds(4),"spend timeout+eps time on searching");
 
+using namespace tableau;
+
 StreamLogger _(std::cerr);
 int main(int argc, char **argv) {
+  std::ios::sync_with_stdio(0);
   absl::ParseCommandLine(argc, argv);
 
   str file_raw((std::istreambuf_iterator<char>(std::cin)), (std::istreambuf_iterator<char>()));

@@ -3,6 +3,8 @@
 #include "lazyparam_prover/mgu.h"
 #include "lazyparam_prover/util/log.h"
 
+using namespace tableau;
+
 TEST(MGU,flat_loop) {
   StreamLogger _(std::cerr);
   Term var0(Var::make(0));

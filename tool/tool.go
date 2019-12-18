@@ -15,6 +15,7 @@ import (
 )
 
 const tool_bin_path = "__main__/tptp_parser/src/tool"
+const cc_tool_bin_path = "__main__/lazyparam_prover/tool"
 const tmp_prefix = "tptp_benchmark_go_"
 
 type Language string
@@ -44,6 +45,26 @@ func ProtoToTptp(ctx context.Context, f *tpb.File) ([]byte,error) {
 }
 
 func TptpToProto(ctx context.Context, lang Language, tptp []byte) (*tpb.File,error) {
+  var inBuf,outBuf bytes.Buffer
+  if _,err := inBuf.Write(tptp); err!=nil {
+    return nil,fmt.Errorf("inbuf.Write(): %v",err)
+  }
+  cmd := exec.CommandContext(ctx,utils.Runfile(cc_tool_bin_path))
+  cmd.Stdin = &inBuf
+  cmd.Stdout = &outBuf
+  cmd.Stderr = os.Stderr
+  if err := cmd.Run(); err!=nil {
+    if ctx.Err()!=nil { return nil,ctx.Err() }
+    return nil,fmt.Errorf("cmd.Run(): %v",err)
+  }
+  pbFile := &tpb.File{}
+  if err:=proto.Unmarshal(outBuf.Bytes(),pbFile); err!=nil {
+    return nil,fmt.Errorf("proto.Unmarshal(): %v",err)
+  }
+  return pbFile,nil
+}
+
+func TptpToProto2(ctx context.Context, lang Language, tptp []byte) (*tpb.File,error) {
   tmp,cleanup,err := WriteTmp(tptp)
   if err!=nil { return nil,fmt.Errorf("WriteTmp(): %v",err) }
   defer cleanup()

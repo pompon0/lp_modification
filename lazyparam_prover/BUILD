@@ -14,36 +14,46 @@ cc_library(
 )
 
 cc_library(
-  name = "pred",
-  hdrs = [
-    "alloc.h",
-    "pred.h",
-  ],
-  deps = [
-    ":log",
-    ":types",
-  ],
+    name = "pred",
+    hdrs = [
+        "alloc.h",
+        "pred.h",
+    ],
+    deps = [
+        ":log",
+        ":types",
+    ],
 )
 
 cc_library(
-  name = "parse2",
-  hdrs = ["parse2.h"],
-  deps = [
-    ":types",
-    ":pred",
-    "@vampire//:lib",
-    "@com_google_protobuf//:protobuf"
-  ],
+    name = "parse2",
+    hdrs = ["parse2.h"],
+    deps = [
+        ":types",
+        ":pred",
+        "//tptp_parser/proto:tptp_cc_proto",
+        "@vampire//:lib",
+        "@com_google_protobuf//:protobuf",
+    ],
 )
 
 cc_binary(
-  name = "tool",
-  srcs = ["tool.cc"],
-  deps = [
-    ":parse2",
-    "@abseil//absl/flags:parse",
-    "@abseil//absl/flags:flag",
-  ],
+    name = "tool",
+    srcs = ["tool.cc"],
+    deps = [
+        "//tptp_parser/proto:tptp_cc_proto",
+        ":parse2",
+        ":log",
+        # "@abseil//absl/flags:parse",
+        # "@abseil//absl/flags:flag",
+    ],
+    visibility = ["//visibility:public"],
+    features = ["fully_static_link"],
+    linkopts = [
+        "-static-libstdc++",
+        "-static-libgcc",
+        "-l:libstdc++.a",
+    ],
 )
 
 cc_library(

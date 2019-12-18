@@ -11,6 +11,7 @@ import (
   "flag"
   "regexp"
   "strings"
+  "errors"
   "log"
   "path"
   "path/filepath"
@@ -24,14 +25,42 @@ import (
 
 const tptp4XBinPath = "tptp4X/file/downloaded"
 
-func inlineImports(ctx context.Context, rootPath string, problemPath string) ([]byte,error) {
-  var inBuf,outBuf,errBuf bytes.Buffer
+var errBufferFull = errors.New("Buffer full")
+
+type BoundedBuffer struct {
+  bound int
+  buf bytes.Buffer
+  err error
+}
+
+func NewBoundedBuffer(bound int) *BoundedBuffer {
+  return &BoundedBuffer{bound: bound}
+}
+
+func (b *BoundedBuffer) Err() error { return b.err }
+
+func (b *BoundedBuffer) Write(p []byte) (int,error) {
+  if b.buf.Len()+len(p)>b.bound {
+    b.err = errBufferFull
+    return 0,b.Err()
+  }
+  //log.Printf("Write() len = %d + %d",b.buf.Len(),len(p))
+  return b.buf.Write(p)
+}
+
+func (b *BoundedBuffer) String() string { return b.buf.String() }
+
+func inlineImports(ctx context.Context, rootPath string, problemPath string, maxOutput int) ([]byte,error) {
+  outBuf := NewBoundedBuffer(maxOutput)
+  var inBuf bytes.Buffer
   cmd := exec.CommandContext(ctx,utils.Runfile(tptp4XBinPath),"-x","-umachine","-ftptp","-tshorten",problemPath)
   cmd.Dir = rootPath
   cmd.Stdin = &inBuf
-  cmd.Stdout = &outBuf
-  cmd.Stderr = &errBuf
+  cmd.Stdout = outBuf
+  cmd.Stderr = os.Stderr
   if err := cmd.Run(); err!=nil {
+    if ctx.Err()!=nil { return nil,ctx.Err() }
+    if outBuf.Err()!=nil { return nil,outBuf.Err(); }
     return nil,fmt.Errorf("cmd.Run(): %v",err)
   }
   var lines []string
@@ -45,9 +74,9 @@ func inlineImports(ctx context.Context, rootPath string, problemPath string) ([]
 
 //////////////////////////////////////
 
-const inlineImportsTimeout = 3*time.Second
-const eproverCNFTimeout = time.Second
-const toProtoTimeout = 4*time.Second
+const inlineImportsMaxOutput = 1*1024*1024
+const eproverCNFTimeout = 3*time.Second
+const toProtoTimeout = 3*time.Second
 
 
 var fofFileRegexp = regexp.MustCompile("^.*\\+.*\\.p$")
@@ -69,6 +98,7 @@ func run(ctx context.Context) error {
   }
   zipWriter := zip.NewWriter(bufio.NewWriter(zipFile))
   defer zipWriter.Close()
+  log.Printf("%q",problemsPath)
   return filepath.Walk(problemsPath,func(p string, f os.FileInfo, err error) error {
     if err!=nil { return err }
     if f.IsDir() { return nil }
@@ -76,11 +106,17 @@ func run(ctx context.Context) error {
     if err!=nil { return fmt.Errorf("filepath.Rel(%q,%q): %v",problemsPath,p,err) }
     if !fofFileRegexp.MatchString(relPath) { return nil }
 
+    // skip if too large
+    if f.Size()>inlineImportsMaxOutput {
+      log.Printf("Skipping %q; file too large",relPath)
+      return nil
+    }
+
     // inline imports or skip
-    inlineImportsCtx,cancel := context.WithTimeout(ctx,inlineImportsTimeout)
-    defer cancel()
-    tptpFOF,err := inlineImports(inlineImportsCtx,*tptpRoot,p)
-    if err==context.DeadlineExceeded {
+    // inlineImportsCtx,cancel := context.WithTimeout(ctx,inlineImportsTimeout)
+    // defer cancel()
+    tptpFOF,err := inlineImports(ctx,*tptpRoot,p,inlineImportsMaxOutput)
+    if err==errBufferFull {
       log.Printf("Skipping %q; inlineImports(): %v",relPath,err)
       return nil
     } else if err!=nil {
@@ -99,26 +135,6 @@ func run(ctx context.Context) error {
       return fmt.Errorf("eprover.FOFToCNF(%q): %v",relPath,err)
     }
     log.Printf("len(tptpCNF) = %v",len(tptpCNF))
-
-    {
-      tptpFOFProto,err := tool.TptpToProto(ctx,tool.FOF,tptpFOF)
-      if err!=nil {
-        return fmt.Errorf("tool.TptpToProto(%q): %v",relPath,err)
-      }
-
-      // convert to CNF or skip
-      eproverCtx2,cancel := context.WithTimeout(ctx,eproverCNFTimeout)
-      defer cancel()
-      tptpCNF2,err := tool.FOFToCNF(eproverCtx2,tptpFOFProto)
-      if err==context.DeadlineExceeded {
-      } else if err!=nil {
-        return fmt.Errorf("tool.FOFToCNF(%q): %v",relPath,err)
-      }
-      tptpCNF2Raw,err := proto.Marshal(tptpCNF2)
-      if err!=nil { return fmt.Errorf("proto.Marshal(): %v") }
-      log.Printf("len(tptpCNF2Raw) = %v",len(tptpCNF2Raw))
-    }
-
 
     // convert to proto or die
     toProtoCtx,cancel := context.WithTimeout(ctx,toProtoTimeout)

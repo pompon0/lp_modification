@@ -36,6 +36,7 @@ int main(int argc, char **argv) {
   outProto.set_cost(out.cost);
   outProto.set_continuation_count(out.cont_count);
   if(out.proof){
+    outProto.set_solved(true);
     ProtoCtx pctx(parse_ctx);
     OrForm proof_form;
     for(auto cla : out.proof->source) proof_form.and_clauses.push_back(DerAndClause(1,cla));

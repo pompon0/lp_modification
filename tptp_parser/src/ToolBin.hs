@@ -59,6 +59,7 @@ help = do
 tptp [proto_path] = do
   file <- readProtoFile proto_path
   putStrLn $ Parser2.prettyPrint file
+  --putStrLn $ Tptp.file'string file
 
 conv [language,tptp_path] = do
   case language of {

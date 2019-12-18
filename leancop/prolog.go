@@ -9,14 +9,15 @@ import (
 
   "github.com/pompon0/tptp_benchmark_go/utils"
   "github.com/pompon0/tptp_benchmark_go/tool"
+  spb "github.com/pompon0/tptp_benchmark_go/tptp_parser/proto/solutions_go_proto"
 )
 
 const swiplBinPath = "/usr/bin/swipl"
 const leancopMainPath = "leancop_prolog/leancop21/leancop_main.pl"
 
-func PrologProve(ctx context.Context, tptpFOFProblem []byte) error {
+func PrologProve(ctx context.Context, tptpFOFProblem []byte) (*spb.ProverOutput,error) {
   tmp,cleanup,err := tool.WriteTmp(tptpFOFProblem)
-  if err!=nil { return fmt.Errorf("WriteTmp(): %v",err) }
+  if err!=nil { return nil,fmt.Errorf("WriteTmp(): %v",err) }
   defer cleanup()
   var inBuf,outBuf,errBuf bytes.Buffer
   program := `
@@ -41,12 +42,15 @@ func PrologProve(ctx context.Context, tptpFOFProblem []byte) error {
   cmd.Stdout = &outBuf
   cmd.Stderr = &errBuf
   if err := cmd.Run(); err!=nil {
-    return fmt.Errorf("cmd.Run(): %v",err)
+    if ctx.Err()==context.DeadlineExceeded {
+      return &spb.ProverOutput{Solved:false},nil
+    }
+    return nil,fmt.Errorf("cmd.Run(): %v",err)
   }
   lines := strings.Split(strings.TrimSpace(outBuf.String()),"\n")
   want := fmt.Sprintf("%s is a Theorem",tmp)
   if len(lines)<1 || lines[0]!=want {
-    return fmt.Errorf("%s",lines[0])
+    return nil,fmt.Errorf("%s",lines[0])
   }
-  return nil
+  return &spb.ProverOutput{Solved:true},nil
 }

@@ -4,7 +4,7 @@ import (
   "log"
   "context"
   "testing"
-  //"github.com/pompon0/tptp_benchmark_go/tool"
+  "github.com/pompon0/tptp_benchmark_go/tool"
   "github.com/pompon0/tptp_benchmark_go/eprover"
 )
 
@@ -23,10 +23,9 @@ func TestTptpProblems(t *testing.T) {
       if err!=nil { t.Fatalf("ps[%q].Get(): %v",n,err) }
       defer log.Printf("%q DONE",n)
       tptpCNF,err := eprover.FOFToCNF(ctx,tptp)
-      if err!=nil { t.Fatalf("eprover.FOFToCNF(%q): %v",n,err) }
-      _ = tptpCNF
-      //_,err = tool.TptpToProto(ctx,tool.CNF,tptpCNF)
-      //if err!=nil { t.Fatalf("tool.TptpToProto(%q): %v",n,err) }
+      if err!=nil { t.Errorf("eprover.FOFToCNF(%q): %v",n,err); return }
+      _,err = tool.TptpToProto(ctx,tool.CNF,tptpCNF)
+      if err!=nil { t.Errorf("tool.TptpToProto(%q): %v",n,err); return }
     })
   }
 }

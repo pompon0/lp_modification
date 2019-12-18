@@ -9,15 +9,16 @@ import (
   "strings"
 
   "github.com/pompon0/tptp_benchmark_go/utils"
+  spb "github.com/pompon0/tptp_benchmark_go/tptp_parser/proto/solutions_go_proto"
 )
 
 const eproverBinPath = "eprover/prover_bin"
 const resultOk = "# SZS status Theorem"
 
-func Prove(ctx context.Context, tptpFOFProblem []byte) error {
+func Prove(ctx context.Context, tptpFOFProblem []byte) (*spb.ProverOutput,error) {
   var inBuf,outBuf,errBuf bytes.Buffer
   if _,err := inBuf.Write(tptpFOFProblem); err!=nil {
-    return fmt.Errorf("inBuf.Write(): %v",err)
+    return nil,fmt.Errorf("inBuf.Write(): %v",err)
   }
 
   cmd := exec.CommandContext(ctx,utils.Runfile(eproverBinPath),"-s")
@@ -25,14 +26,17 @@ func Prove(ctx context.Context, tptpFOFProblem []byte) error {
   cmd.Stdout = &outBuf
   cmd.Stderr = &errBuf
   if err := cmd.Run(); err!=nil {
+    if ctx.Err()==context.DeadlineExceeded {
+      return &spb.ProverOutput{Solved:false},nil
+    }
     //log.Printf("out = %q",outBuf.String())
     //log.Printf("err = %q",errBuf.String())
-    return fmt.Errorf("cmd.Run(): %v",err)
+    return nil,fmt.Errorf("cmd.Run(): %v",err)
   }
   lines := strings.Split(strings.TrimSpace(outBuf.String()),"\n")
   last := lines[len(lines)-1]
-  if last!=resultOk { return fmt.Errorf("%s",last) }
-  return nil
+  if last!=resultOk { return nil,fmt.Errorf("%s",last) }
+  return &spb.ProverOutput{Solved:true},nil
 }
 
 func FOFToCNF(ctx context.Context, tptpFOF []byte) ([]byte,error) {
@@ -45,6 +49,7 @@ func FOFToCNF(ctx context.Context, tptpFOF []byte) ([]byte,error) {
   cmd.Stdout = &outBuf
   cmd.Stderr = &errBuf
   if err := cmd.Run(); err!=nil {
+    if ctx.Err()!=nil { return nil,ctx.Err() }
     log.Printf("in = %q",tptpFOF)
     log.Printf("out = %q",outBuf.String())
     log.Printf("err = %q",errBuf.String())

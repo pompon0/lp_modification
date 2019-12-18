@@ -6,7 +6,10 @@ go_library(
     data = ["@eprover//:prover_bin"],
     importpath = "github.com/pompon0/tptp_benchmark_go/eprover",
     visibility = ["//visibility:public"],
-    deps = ["//utils:go_default_library"],
+    deps = [
+        "//tptp_parser/proto:solutions_go_proto",
+        "//utils:go_default_library",
+    ],
 )
 
 go_test(

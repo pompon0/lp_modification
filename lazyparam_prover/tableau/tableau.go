@@ -8,24 +8,26 @@ import (
   "context"
   "time"
 
+  "github.com/pompon0/tptp_benchmark_go/eprover"
+  "github.com/pompon0/tptp_benchmark_go/tool"
   "github.com/pompon0/tptp_benchmark_go/utils"
+  "github.com/golang/protobuf/proto"
   tpb "github.com/pompon0/tptp_benchmark_go/tptp_parser/proto/tptp_go_proto"
   spb "github.com/pompon0/tptp_benchmark_go/tptp_parser/proto/solutions_go_proto"
-  "github.com/pompon0/tptp_benchmark_go/tool"
-  "github.com/golang/protobuf/proto"
 )
 
 const tableau_bin_path = "__main__/lazyparam_prover/main"
 
-func Prove(ctx context.Context, tptpFOFProblem []byte) error {
-  fof,err := tool.TptpToProto(ctx,tool.FOF,tptpFOFProblem)
-  if err!=nil { return fmt.Errorf("tool.TptpToProto(): %v",err) }
-  cnf,err := tool.FOFToCNF(ctx,fof)
-  if err!=nil { return fmt.Errorf("tool.FOFToCNF(): %v",err) }
+func Prove(ctx context.Context, tptpFOFProblem []byte) (*spb.ProverOutput,error) {
+  tptpCNF,err := eprover.FOFToCNF(ctx,tptpFOFProblem)
+  if err!=nil { return nil,fmt.Errorf("eprover.FOFToCNF(): %v",err) }
+  cnf,err := tool.TptpToProto(ctx,tool.CNF,tptpCNF)
+  if err!=nil { return nil,fmt.Errorf("tool.TptpToProto(): %v",err) }
   out,err := Tableau(ctx,cnf,false,false)
-  if err!=nil { return err }
-  if out.Proof==nil { panic("proof not found") }
-  return err
+  if err==context.DeadlineExceeded {
+    return &spb.ProverOutput{Solved:false},nil
+  }
+  return out,err
 }
 
 func Tableau(ctx context.Context, cnfProblem *tpb.File, streamStdErr bool, graceful bool) (*spb.ProverOutput,error) {
@@ -54,6 +56,7 @@ func Tableau(ctx context.Context, cnfProblem *tpb.File, streamStdErr bool, grace
     cmd.Stderr = &errBuf
   }
   if err := cmd.Run(); err!=nil {
+    if ctx.Err()==context.DeadlineExceeded { return nil,ctx.Err() }
     return nil,fmt.Errorf("cmd.Run(): %v",err)
   }
 

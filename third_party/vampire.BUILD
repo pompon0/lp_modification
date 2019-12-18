@@ -113,4 +113,11 @@ cc_binary(
   copts = COPTS,
   defines = DEFINES,
   visibility = ["//visibility:public"],
+  features = ["fully_static_link"],
+  linkopts = [
+      "-static-libstdc++",
+      "-static-libgcc",
+      "-l:libstdc++.a",
+      "-lm",
+  ],
 )

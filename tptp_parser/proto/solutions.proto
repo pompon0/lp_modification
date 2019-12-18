@@ -24,6 +24,7 @@ message ProverOutput {
   int64 cost = 1;
   int64 continuation_count = 2;
   int64 extension_count = 3;
+  bool solved = 5;
   tptp.File proof = 4;
 }
 

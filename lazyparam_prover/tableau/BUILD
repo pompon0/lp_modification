@@ -9,6 +9,7 @@ go_library(
     importpath = "github.com/pompon0/tptp_benchmark_go/lazyparam_prover/tableau",
     visibility = ["//visibility:public"],
     deps = [
+        "//eprover:go_default_library",
         "//tool:go_default_library",
         "//tptp_parser/proto:solutions_go_proto",
         "//tptp_parser/proto:tptp_go_proto",
@@ -22,6 +23,7 @@ go_test(
     srcs = ["tableau_test.go"],
     embed = [":go_default_library"],
     deps = [
+        "//eprover:go_default_library",
         "//problems:go_default_library",
         "//tool:go_default_library",
         "//tptp_parser/proto:solutions_go_proto",

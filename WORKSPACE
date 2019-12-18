@@ -50,7 +50,7 @@ http_file(
 http_file(
     name = "tptp_problems",
     urls = ["https://storage.googleapis.com/tptp/tptp_problems.zip"],
-    sha256 = "51a06fc21feafb9601a9891f98ef51f848091ea4b9ee434032d27d1bd34e7499",
+    sha256 = "330cb17e7c5c3e1655fee35d214a0d7eee32fab63129e59cd6169f9be949ecdd",
 )
 
 http_archive(

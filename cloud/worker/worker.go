@@ -34,7 +34,7 @@ func NewServer() *server {
   }
 }
 
-const maxTimeout = 30*time.Second
+const maxTimeout = 31*time.Second
 
 func (s *server) Prove(ctx context.Context, req *pb.Req) (*pb.Resp,error) {
   ok := s.sem.TryAcquire(1)

@@ -109,6 +109,10 @@ func run(ctx context.Context) error {
   report := &spb.Report {
     Date: date,
     Commit: "(worker)",
+    Labels: []string {
+      fmt.Sprintf("--problem_set=%s",*problemSet),
+      fmt.Sprintf("--prover=%s",prover),
+    },
   }
 
   var prob map[string]*problems.Problem
@@ -164,6 +168,7 @@ func run(ctx context.Context) error {
           log.Printf("detail: %+v\n",d)
         }
         switch st.Code() {
+        case codes.Unknown:
         case codes.Unavailable:
         case codes.Internal:
         default: return fmt.Errorf("c.Prove(%q): %v",name,err)

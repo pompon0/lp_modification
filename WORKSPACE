@@ -134,6 +134,18 @@ load(
 
 _go_image_repos()
 
+load(
+  "@io_bazel_rules_docker//container:container.bzl",
+  "container_pull",
+)
+
+container_pull(
+  name = "swipl",
+  registry = "index.docker.io",
+  repository = "amd64/swipl",
+  digest = "sha256:b6f51e9cbccc55386bfa3381336c70bda145405cc258055fc8cc2afaddb9a35b",
+)
+
 ######################################################
 # haskell
 

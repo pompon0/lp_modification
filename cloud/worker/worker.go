@@ -14,6 +14,8 @@ import (
   "golang.org/x/sync/semaphore"
   "github.com/golang/protobuf/ptypes"
 
+  "github.com/pompon0/tptp_benchmark_go/vampire"
+  "github.com/pompon0/tptp_benchmark_go/leancop"
   "github.com/pompon0/tptp_benchmark_go/eprover"
   "github.com/pompon0/tptp_benchmark_go/lazyparam_prover/tableau"
   "github.com/pompon0/tptp_benchmark_go/tool"
@@ -42,36 +44,33 @@ func (s *server) Prove(ctx context.Context, req *pb.Req) (*pb.Resp,error) {
   timeout,err := ptypes.Duration(req.Timeout)
   if err!=nil { return nil,status.Newf(codes.InvalidArgument,"ptypes.Duration(req.Timeout): %v",err).Err() }
   if timeout>=maxTimeout { return nil,status.Newf(codes.InvalidArgument,"req.Timeout > %v",maxTimeout).Err() }
-
-  prover := tableau.Tableau
-  fofProblem,cnfProblem,err := convProblem(ctx,req.TptpProblem)
-  if err!=nil { return nil,status.Newf(codes.InvalidArgument,"convProblem(): %v",err).Err() }
   proverCtx,cancel := context.WithTimeout(ctx,timeout)
   defer cancel()
 
-  c := &spb.Case{
-    FofProblem: fofProblem,
-    CnfProblem: cnfProblem,
-  }
+  c := &spb.Case{}
   t0 := time.Now()
-  out,err := prover(proverCtx,cnfProblem,false,true)
-  if err!=nil { return nil,status.Newf(codes.Internal,"prover(): %v",err).Err() }
+  switch req.Prover {
+    case pb.Prover_VAMPIRE:
+      c.Output,err = vampire.Prove(proverCtx,req.TptpProblem)
+    case pb.Prover_EPROVER:
+      c.Output,err = eprover.Prove(proverCtx,req.TptpProblem)
+    case pb.Prover_LEANCOP:
+      c.Output,err = leancop.Prove(proverCtx,req.TptpProblem)
+    case pb.Prover_LEANCOP_PROLOG:
+      c.Output,err = leancop.PrologProve(proverCtx,req.TptpProblem)
+    case pb.Prover_LAZY_PARAMODULATION:
+      c.Output,err = tableau.Prove(proverCtx,req.TptpProblem)
+    default:
+      return nil,status.New(codes.InvalidArgument,"unknown prover").Err()
+  }
+  if err!=nil { return nil,status.Newf(codes.Internal,"prove(): %v",err).Err() }
   c.Duration = ptypes.DurationProto(time.Since(t0))
-  c.Output = out
-  if out.Proof!=nil {
-    if _,err := tool.ValidateProof(ctx,&spb.CNF{Problem:c.CnfProblem,Proof:out.Proof}); err!=nil {
+  if c.Output.Proof!=nil {
+    if _,err := tool.ValidateProof(ctx,&spb.CNF{Problem:c.Output.CnfProblem,Proof:c.Output.Proof}); err!=nil {
       return nil,status.Newf(codes.Internal,"tool.ValidateProof(): %v",err).Err()
     }
   }
   return &pb.Resp{Case:c},nil
-}
-
-func convProblem(ctx context.Context, tptp []byte) (/*fof*/ *tpb.File, /*cnf*/ *tpb.File, error) {
-  fof,err := tool.TptpToProto(ctx,tool.FOF,tptp)
-  if err!=nil { return nil,nil,fmt.Errorf("tool.TptpToProto(): %v",err) }
-  cnf,err := tool.FOFToCNF(ctx,fof)
-  if err!=nil { return nil,nil,fmt.Errorf("tool.FOFTOCNF(): %v",err) }
-  return fof,cnf,nil
 }
 
 func convProblemEprover(ctx context.Context, tptp []byte) (/*fof*/ *tpb.File, /*cnf*/ *tpb.File, error) {

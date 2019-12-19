@@ -31,9 +31,11 @@ go_library(
         ":worker_go_proto",
         "//eprover:go_default_library",
         "//lazyparam_prover/tableau:go_default_library",
+        "//leancop:go_default_library",
         "//tool:go_default_library",
         "//tptp_parser/proto:solutions_go_proto",
         "//tptp_parser/proto:tptp_go_proto",
+        "//vampire:go_default_library",
         "@com_github_golang_protobuf//ptypes:go_default_library_gen",
         "@org_golang_google_grpc//:go_default_library",
         "@org_golang_google_grpc//codes:go_default_library",
@@ -49,6 +51,7 @@ go_binary(
 )
 
 go_image(
+    base = "@swipl//image",
     name = "worker_img",
     binary = ":worker",
     args = [],

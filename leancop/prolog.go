@@ -6,6 +6,7 @@ import (
   "context"
   "os/exec"
   "strings"
+  "log"
 
   "github.com/pompon0/tptp_benchmark_go/utils"
   "github.com/pompon0/tptp_benchmark_go/tool"
@@ -45,6 +46,7 @@ func PrologProve(ctx context.Context, tptpFOFProblem []byte) (*spb.ProverOutput,
     if ctx.Err()==context.DeadlineExceeded {
       return &spb.ProverOutput{Solved:false},nil
     }
+    log.Printf("swipl: %s",errBuf.String())
     return nil,fmt.Errorf("cmd.Run(): %v",err)
   }
   lines := strings.Split(strings.TrimSpace(outBuf.String()),"\n")

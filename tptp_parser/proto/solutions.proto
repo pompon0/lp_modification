@@ -26,6 +26,7 @@ message ProverOutput {
   int64 extension_count = 3;
   bool solved = 5;
   tptp.File proof = 4;
+  tptp.File cnf_problem = 6;
 }
 
 message Stats {

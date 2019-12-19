@@ -29,14 +29,45 @@ import (
 // run "gcloud auth application-default login" before executing this binary
 var workerAddr = flag.String("worker_addr","worker-su5lpnpdhq-uc.a.run.app:443","worker service address")
 
-var proofDir = flag.String("proof_dir","/tmp/benchmark_proofs","output directory to write proofs to")
+//var proofDir = flag.String("proof_dir","/tmp/benchmark_proofs","output directory to write proofs to")
 
 var reportDir = flag.String("report_dir","","")
 
 var maxInFlight = flag.Int("max_in_flight",10,"")
 var problemLimit = flag.Int("problem_limit",-1,"number of problems to solve (-1 for all problems)")
-var unsolvedOnly = flag.Bool("unsolved_only",false,"process only unsolved problems")
+//var unsolvedOnly = flag.Bool("unsolved_only",false,"process only unsolved problems")
 var timeout = flag.Duration("timeout",16*time.Second,"timeout per problem")
+
+
+type EnumFlag struct {
+  fromString map[string]int32
+  Value int32
+}
+
+func NewEnumFlag(fromString map[string]int32) *EnumFlag {
+  return &EnumFlag{fromString: fromString}
+}
+
+func (f *EnumFlag) Desc() string {
+  var names []string
+  for k,_ := range f.fromString { names = append(names,k) }
+  sort.Slice(names,func(i,j int) bool { return f.fromString[names[i]] < f.fromString[names[j]] })
+  return strings.Join(names,"|")
+}
+
+func (f *EnumFlag) Set(name string) error {
+  v,ok := f.fromString[name]
+  if !ok { return fmt.Errorf("unknown %q",name) }
+  f.Value = v
+  return nil
+}
+
+func (f *EnumFlag) String() string {
+  for k,v := range f.fromString { if v==f.Value { return k } }
+  // For some reason we need to support execution on nil
+  // (https://golang.org/pkg/flag/#Value)
+  return ""
+}
 
 const (
   problemSetMizar = "mizar"
@@ -45,6 +76,7 @@ const (
 var problemSets = []string{problemSetMizar,problemSetTptp}
 
 var problemSet = flag.String("problem_set",problemSetMizar,strings.Join(problemSets,"|"))
+var prover = NewEnumFlag(pb.Prover_value)
 
 func run(ctx context.Context) error {
   // connect to worker pool
@@ -67,9 +99,9 @@ func run(ctx context.Context) error {
   if _,err := os.Stat(*reportDir); os.IsNotExist(err) {
     return fmt.Errorf("report_dir = %q doesn't exist",*reportDir)
   }
-  if _,err := os.Stat(*proofDir); os.IsNotExist(err) {
+  /*if _,err := os.Stat(*proofDir); os.IsNotExist(err) {
     return fmt.Errorf("proof_dir = %q doesn't exist",*proofDir)
-  }
+  }*/
   date,err := ptypes.TimestampProto(time.Now())
   if err!=nil {
     return fmt.Errorf("ptypes.TimestampProto(): %v",err)
@@ -108,11 +140,6 @@ func run(ctx context.Context) error {
   for _,name := range probNames {
     name := name
     group.Go(func() error {
-      if *unsolvedOnly {
-        sols,err := problems.ReadProofs(*proofDir,name)
-        if err!=nil { return fmt.Errorf("readProofs(%q): %v",name,err) }
-        if len(sols)>0 { return nil }
-      }
       tptp,err := prob[name].Get()
       if err!=nil { return fmt.Errorf("prob[%q].Get(): %v",err) }
 
@@ -125,7 +152,11 @@ func run(ctx context.Context) error {
       var resp *pb.Resp
       for {
         var err error
-        resp,err = c.Prove(gCtx,&pb.Req{TptpProblem:tptp, Timeout:timeoutProto})
+        resp,err = c.Prove(gCtx,&pb.Req{
+          Prover: pb.Prover(prover.Value),
+          TptpProblem: tptp,
+          Timeout: timeoutProto,
+        })
         if err==nil { break }
         st := status.Convert(err)
         log.Printf("%+v\n",st.Proto())
@@ -153,24 +184,23 @@ func run(ctx context.Context) error {
   group.Go(func() error {
     okCount := 0
     failCount := 0
-    newCount := 0
     for i:=0; i<len(probNames); i++ {
       select {
       case <-gCtx.Done(): return nil
       case r := <-resultsChan:
         report.Cases = append(report.Cases, r)
-        if r.Output.Proof==nil {
+        if !r.Output.Solved {
           failCount++
         } else {
-          legacyProof := &spb.CNF{Problem:r.CnfProblem, Proof:r.Output.Proof}
-          isNew,err := problems.WriteProof(*proofDir,r.Name,legacyProof)
+          //legacyProof := &spb.CNF{Problem:r.CnfProblem, Proof:r.Output.Proof}
+          /*isNew,err := problems.WriteProof(*proofDir,r.Name,legacyProof)
           if err!=nil {
             return fmt.Errorf("writeProof(): %v",err)
           }
-          if isNew { newCount++ }
+          if isNew { newCount++ }*/
           okCount++
         }
-        log.Printf("done %v/%v fail=%v ok=%v new=%v",i+1,len(probNames),failCount,okCount,newCount)
+        log.Printf("done %v/%v fail=%v ok=%v",i+1,len(probNames),failCount,okCount)
       }
     }
     return nil
@@ -187,6 +217,7 @@ func run(ctx context.Context) error {
 }
 
 func main() {
+  flag.Var(prover,"prover",prover.Desc())
   flag.Parse()
   if err:=run(context.Background()); err!=nil {
     log.Fatalf("%v",err)

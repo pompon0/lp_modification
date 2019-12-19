@@ -23,10 +23,11 @@ func Prove(ctx context.Context, tptpFOFProblem []byte) (*spb.ProverOutput,error)
   if err!=nil { return nil,fmt.Errorf("eprover.FOFToCNF(): %v",err) }
   cnf,err := tool.TptpToProto(ctx,tool.CNF,tptpCNF)
   if err!=nil { return nil,fmt.Errorf("tool.TptpToProto(): %v",err) }
-  out,err := Tableau(ctx,cnf,false,false)
+  out,err := Tableau(ctx,cnf,false,true)
   if err==context.DeadlineExceeded {
     return &spb.ProverOutput{Solved:false},nil
   }
+  out.CnfProblem = cnf
   return out,err
 }
 

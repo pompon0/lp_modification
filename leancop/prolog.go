@@ -50,9 +50,15 @@ func PrologProve(ctx context.Context, tptpFOFProblem []byte) (*spb.ProverOutput,
     return nil,fmt.Errorf("cmd.Run(): %v",err)
   }
   lines := strings.Split(strings.TrimSpace(outBuf.String()),"\n")
-  want := fmt.Sprintf("%s is a Theorem",tmp)
-  if len(lines)<1 || lines[0]!=want {
-    return nil,fmt.Errorf("%s",lines[0])
+  wantTheorem := fmt.Sprintf("%s is a Theorem",tmp)
+  wantUnsatisfiable := fmt.Sprintf("%s is Unsatisfiable",tmp)
+  for _,l := range lines {
+    switch l {
+      case wantTheorem:
+        return &spb.ProverOutput{Solved:true},nil
+      case wantUnsatisfiable:
+        return &spb.ProverOutput{Solved:true},nil
+    }
   }
-  return &spb.ProverOutput{Solved:true},nil
+  return nil,fmt.Errorf("status line not found: %q",outBuf.String())
 }

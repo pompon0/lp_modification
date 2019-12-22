@@ -13,6 +13,14 @@ import (
 )
 
 const eproverBinPath = "eprover/prover_bin"
+const statusPrefix = "# SZS status "
+// proved
+const statusTheorem = "Theorem"
+const statusUnsatisfiable = "Unsatisfiable"
+const statusContradictoryAxioms = "ContradictoryAxioms"
+// refuted
+const statusCounterSatisfiable = "CounterSatisfiable"
+
 const resultOk = "# SZS status Theorem"
 
 func Prove(ctx context.Context, tptpFOFProblem []byte) (*spb.ProverOutput,error) {
@@ -33,10 +41,18 @@ func Prove(ctx context.Context, tptpFOFProblem []byte) (*spb.ProverOutput,error)
     //log.Printf("err = %q",errBuf.String())
     return nil,fmt.Errorf("cmd.Run(): %v",err)
   }
-  lines := strings.Split(strings.TrimSpace(outBuf.String()),"\n")
-  last := lines[len(lines)-1]
-  if last!=resultOk { return nil,fmt.Errorf("%s",last) }
-  return &spb.ProverOutput{Solved:true},nil
+  for _,l := range strings.Split(strings.TrimSpace(outBuf.String()),"\n") {
+    if strings.HasPrefix(l,statusPrefix) {
+      switch status := strings.Split(strings.TrimPrefix(l,statusPrefix)," ")[0]; status {
+      case statusTheorem:
+      case statusUnsatisfiable:
+      case statusContradictoryAxioms:
+      default: return nil,fmt.Errorf("unknown status %q",status)
+      }
+      return &spb.ProverOutput{Solved:true},nil
+    }
+  }
+  return nil,fmt.Errorf("status line not found")
 }
 
 func FOFToCNF(ctx context.Context, tptpFOF []byte) ([]byte,error) {

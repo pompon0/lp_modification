@@ -16,6 +16,7 @@ import (
   "path"
   "path/filepath"
   "archive/zip"
+  "io/ioutil"
 
   "github.com/golang/protobuf/proto"
   "github.com/pompon0/tptp_benchmark_go/utils"
@@ -50,10 +51,37 @@ func (b *BoundedBuffer) Write(p []byte) (int,error) {
 
 func (b *BoundedBuffer) String() string { return b.buf.String() }
 
+var renameRegexp = regexp.MustCompile("^(fof|cnf)\\(([^,\\\"\\']*|\\'[^\\'\\\\]*\\')(,.*)$")
+var commentRegexp = regexp.MustCompile("(?s)//.*?\n|/\\*.*?\\*/")
+var unwantedRegexp = regexp.MustCompile("\\\"|\\W\\d|\\s\\d|^\\d")
+
+var excludedProblems = map[string]bool{
+ // contain numbers
+ "CSR/CSR117+1.p": true,
+ "LCL/LCL888+1.p": true,
+ "LCL/LCL889+1.p": true,
+ "LCL/LCL890+1.p": true,
+ "LCL/LCL891+1.p": true,
+ "LCL/LCL892+1.p": true,
+ "LCL/LCL893+1.p": true,
+ "LCL/LCL894+1.p": true,
+ "LCL/LCL895+1.p": true,
+ "LCL/LCL896+1.p": true,
+ "LCL/LCL897+1.p": true,
+ "LCL/LCL898+1.p": true,
+ "LCL/LCL899+1.p": true,
+ "LCL/LCL900+1.p": true,
+ "LCL/LCL901+1.p": true,
+ "LCL/LCL902+1.p": true,
+ "LCL/LCL903+1.p": true,
+ // contain distinct objects
+ "SYO/SYO561+1.p": true,
+}
+
 func inlineImports(ctx context.Context, rootPath string, problemPath string, maxOutput int) ([]byte,error) {
   outBuf := NewBoundedBuffer(maxOutput)
   var inBuf bytes.Buffer
-  cmd := exec.CommandContext(ctx,utils.Runfile(tptp4XBinPath),"-x","-umachine","-ftptp","-tshorten",problemPath)
+  cmd := exec.CommandContext(ctx,utils.Runfile(tptp4XBinPath),"-x","-umachine","-ftptp",problemPath)
   cmd.Dir = rootPath
   cmd.Stdin = &inBuf
   cmd.Stdout = outBuf
@@ -63,13 +91,64 @@ func inlineImports(ctx context.Context, rootPath string, problemPath string, max
     if outBuf.Err()!=nil { return nil,outBuf.Err(); }
     return nil,fmt.Errorf("cmd.Run(): %v",err)
   }
+  // tptp4X happily produces duplicate lines, but then complains when reading 
+  // them back.
   var lines []string
-  for _,l := range strings.Split(outBuf.String(),"\n") {
+  for i,l := range strings.Split(commentRegexp.ReplaceAllString(outBuf.String(),""),"\n") {
     if !strings.HasPrefix(l,"%") {
-      lines = append(lines,l+"\n")
+      lines = append(lines,renameRegexp.ReplaceAllString(l,fmt.Sprintf("${1}(l%d${3}",i)))
     }
   }
-  return []byte(strings.Join(lines,"")),nil
+  return []byte(strings.Join(lines,"\n")),nil
+}
+
+// due to a bug in tptp4X, you cannot inline and shorted in one step.
+func shorten(ctx context.Context, tptp []byte) ([]byte,error) {
+  var inBuf,outBuf bytes.Buffer
+  if _,err := inBuf.Write(tptp); err!=nil {
+    return nil,fmt.Errorf("inBuf.Write(): %v",err)
+  }
+  cmd := exec.CommandContext(ctx,utils.Runfile(tptp4XBinPath),"-umachine","-ftptp","-tshorten","--")
+  cmd.Stdin = &inBuf
+  cmd.Stdout = &outBuf
+  cmd.Stderr = os.Stderr
+  if err := cmd.Run(); err!=nil {
+    if ctx.Err()!=nil { return nil,ctx.Err() }
+    log.Printf("in = %v",string(tptp))
+    log.Printf("out = %v",outBuf.String())
+    return nil,fmt.Errorf("cmd.Run(): %v",err)
+  }
+  return outBuf.Bytes(),nil
+}
+
+const statusTheorem = "Theorem"
+const statusContradictoryAxioms = "ContradictoryAxioms"
+const statusUnsatisfiable = "Unsatisfiable"
+const statusCounterSatisfiable = "CounterSatisfiable"
+const statusSatisfiable = "Satisfiable"
+const statusUnknown = "Unknown"
+const statusOpen = "Open"
+
+func isTheorem(problemPath string) (bool,error) {
+  data,err := ioutil.ReadFile(problemPath)
+  if err!=nil { return false,fmt.Errorf("ioutil.ReadFile(%q): %v",problemPath,err) }
+  for _,l := range strings.Split(string(data),"\n") {
+    l := strings.ReplaceAll(l," ","")
+    const statusPrefix = "%Status:"
+    if strings.HasPrefix(l,statusPrefix) {
+      switch status := strings.TrimPrefix(l,statusPrefix); status {
+        case statusTheorem: return true,nil
+        case statusContradictoryAxioms: return true,nil
+        case statusUnsatisfiable: return true,nil
+        case statusCounterSatisfiable: return false,nil
+        case statusSatisfiable: return false,nil
+        case statusUnknown: return false,nil
+        case statusOpen: return false,nil
+        default: return false,fmt.Errorf("unexpected status %q",status)
+      }
+    }
+  }
+  return false,fmt.Errorf("problem status not found")
 }
 
 //////////////////////////////////////
@@ -106,21 +185,38 @@ func run(ctx context.Context) error {
     if err!=nil { return fmt.Errorf("filepath.Rel(%q,%q): %v",problemsPath,p,err) }
     if !fofFileRegexp.MatchString(relPath) { return nil }
 
+    // skip if excluded
+    if excludedProblems[relPath] {
+      log.Printf("Skipping %q; excluded",relPath)
+      return nil
+    }
+
     // skip if too large
     if f.Size()>inlineImportsMaxOutput {
       log.Printf("Skipping %q; file too large",relPath)
       return nil
     }
 
+    // skip if not a theorem
+    if ok,err := isTheorem(p); err!=nil {
+      log.Printf("isTheorem(%q): %v",relPath,err)
+      return fmt.Errorf("isTheorem(%q): %v",relPath,err)
+    } else if !ok {
+      log.Printf("Skipping %q; not a theorem",relPath)
+      return nil
+    }
+
     // inline imports or skip
-    // inlineImportsCtx,cancel := context.WithTimeout(ctx,inlineImportsTimeout)
-    // defer cancel()
-    tptpFOF,err := inlineImports(ctx,*tptpRoot,p,inlineImportsMaxOutput)
+    tptpFOFLong,err := inlineImports(ctx,*tptpRoot,p,inlineImportsMaxOutput)
     if err==errBufferFull {
       log.Printf("Skipping %q; inlineImports(): %v",relPath,err)
       return nil
     } else if err!=nil {
       return fmt.Errorf("inlineImports(%q): %v",relPath,err)
+    }
+    tptpFOF,err := shorten(ctx,tptpFOFLong)
+    if err!=nil {
+      return fmt.Errorf("shorten(%q): %v",relPath,err)
     }
     log.Printf("len(tptpFOF) = %v",len(tptpFOF))
 
@@ -146,6 +242,10 @@ func run(ctx context.Context) error {
     tptpProtoRaw,err := proto.Marshal(tptpProto)
     if err!=nil { return fmt.Errorf("proto.Marshal(): %v") }
     log.Printf("len(tptpProto) = %v",len(tptpProtoRaw))
+
+    if unwantedRegexp.Find(tptpFOF)!=nil {
+      return fmt.Errorf("unwanted problem %q",relPath)
+    }
 
     // append problem to zip
     log.Printf("appending %q\n",relPath)

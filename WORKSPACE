@@ -1,5 +1,15 @@
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive", "http_file")
 
+# "com_google_protobuf" declares some terribly old version of skylib,
+# forcing the newest version beforehead
+http_archive(
+  name = "bazel_skylib",
+  sha256 = "e5d90f0ec952883d56747b7604e2a15ee36e288bb556c3d0ed33e818a4d971f2",
+  strip_prefix = "bazel-skylib-1.0.2",
+  urls = ["https://github.com/bazelbuild/bazel-skylib/archive/1.0.2.tar.gz"],
+)
+
+
 http_archive(
     name = "eprover",
     urls = [
@@ -39,6 +49,7 @@ http_file(
     name = "tptp4X",
     executable = 1,
     urls = ["https://storage.googleapis.com/tptp/tptp4X"],
+    sha256 = "2418cb42c0f9013289ef7653c4ad9cd4d9b7d7ac67bbf5687dbb1ef1639e590e",
 )
 
 http_file(
@@ -50,16 +61,15 @@ http_file(
 http_file(
     name = "tptp_problems",
     urls = ["https://storage.googleapis.com/tptp/tptp_problems.zip"],
-    sha256 = "330cb17e7c5c3e1655fee35d214a0d7eee32fab63129e59cd6169f9be949ecdd",
+    sha256 = "f56cd27648898713e83e2e0dc69e295b316ba4b7acad0e41d7667610b666c5f0",
 )
 
 http_archive(
-    name = "com_google_protobuf",
-    strip_prefix = "protobuf-3.9.0",
-    urls = ["https://github.com/google/protobuf/archive/v3.9.0.zip"],
-    sha256 = "8eb5ca331ab8ca0da2baea7fc0607d86c46c80845deca57109a5d637ccb93bb4",
+  name = "com_google_protobuf",
+  strip_prefix = "protobuf-3.11.2",
+  urls = ["https://github.com/google/protobuf/archive/v3.11.2.zip"],
+  sha256 = "e4f8bedb19a93d0dccc359a126f51158282e0b24d92e0cad9c76a9699698268d",
 )
-
 load("@com_google_protobuf//:protobuf_deps.bzl", "protobuf_deps")
 
 protobuf_deps()
@@ -79,25 +89,12 @@ http_archive(
 )
 
 http_archive(
-    name = "rules_cc",
-    sha256 = "67412176974bfce3f4cf8bdaff39784a72ed709fc58def599d1f68710b58d68b",
-    strip_prefix = "rules_cc-b7fe9697c0c76ab2fd431a891dbb9a6a32ed7c3e",
-    urls = [
-        "https://mirror.bazel.build/github.com/bazelbuild/rules_cc/archive/b7fe9697c0c76ab2fd431a891dbb9a6a32ed7c3e.zip",
-        "https://github.com/bazelbuild/rules_cc/archive/b7fe9697c0c76ab2fd431a891dbb9a6a32ed7c3e.zip",
-    ],
-)
-
-http_archive(
     name = "io_bazel_rules_go",
-    urls = ["https://github.com/bazelbuild/rules_go/releases/download/0.19.1/rules_go-0.19.1.tar.gz"],
-    sha256 = "8df59f11fb697743cbb3f26cfb8750395f30471e9eabde0d174c3aebc7a1cd39",
+    urls = ["https://github.com/bazelbuild/rules_go/releases/download/v0.20.0/rules_go-v0.20.0.tar.gz"],
+    sha256 = "078f2a9569fa9ed846e60805fb5fb167d6f6c4ece48e6d409bf5fb2154eaf0d8",
 )
-
 load("@io_bazel_rules_go//go:deps.bzl", "go_rules_dependencies", "go_register_toolchains")
-
 go_rules_dependencies()
-
 go_register_toolchains()
 
 http_archive(
@@ -112,12 +109,11 @@ gazelle_dependencies()
 
 ######################################################
 
-# Download the rules_docker repository at release v0.12.1
 http_archive(
     name = "io_bazel_rules_docker",
-    sha256 = "14ac30773fdb393ddec90e158c9ec7ebb3f8a4fd533ec2abbfd8789ad81a284b",
-    strip_prefix = "rules_docker-0.12.1",
-    urls = ["https://github.com/bazelbuild/rules_docker/releases/download/v0.12.1/rules_docker-v0.12.1.tar.gz"],
+    sha256 = "df13123c44b4a4ff2c2f337b906763879d94871d16411bf82dcfeba892b58607",
+    strip_prefix = "rules_docker-0.13.0",
+    urls = ["https://github.com/bazelbuild/rules_docker/releases/download/v0.13.0/rules_docker-v0.13.0.tar.gz"],
 )
 
 load(
@@ -150,16 +146,15 @@ container_pull(
 # haskell
 
 http_archive(
-    name = "rules_haskell",
-    strip_prefix = "rules_haskell-master",
-    urls = ["https://github.com/pompon0/rules_haskell/archive/master.tar.gz"],
-    sha256 = "7690ae05d794f98724bd353ffc8600fd76b578db858818eb6645a7680708d22d",
+  name = "rules_haskell",
+  strip_prefix = "rules_haskell-master",
+  urls = ["https://github.com/pompon0/rules_haskell/archive/master.tar.gz"],
+  sha256 = "bb1444e628c09e3cd76578602b823493a531d3753eff31b696bf6ef3ad57116f",
 )
 
-load("@rules_haskell//haskell:repositories.bzl", "rules_haskell_dependencies", "rules_haskell_toolchains")
-
+load("@rules_haskell//haskell:repositories.bzl", "rules_haskell_dependencies")
 rules_haskell_dependencies()
-
+load("@rules_haskell//haskell:toolchain.bzl", "rules_haskell_toolchains")
 rules_haskell_toolchains()
 
 http_archive(

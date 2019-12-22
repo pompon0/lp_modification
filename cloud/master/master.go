@@ -9,6 +9,7 @@ import (
   "os"
   "sort"
   "strings"
+  "sync/atomic"
 
   "google.golang.org/grpc"
   "google.golang.org/grpc/credentials"
@@ -73,27 +74,50 @@ const (
   problemSetMizar = "mizar"
   problemSetTptp = "tptp"
 )
+
+var inFlight int64
 var problemSets = []string{problemSetMizar,problemSetTptp}
 
 var problemSet = flag.String("problem_set",problemSetMizar,strings.Join(problemSets,"|"))
 var prover = NewEnumFlag(pb.Prover_value)
 
-func run(ctx context.Context) error {
+type ConnPool struct {
+  conn []*grpc.ClientConn
+  next int64
+}
+
+func (p *ConnPool) Get() *grpc.ClientConn {
+  return p.conn[atomic.AddInt64(&p.next,1)%int64(len(p.conn))]
+}
+
+func NewConnPool(ctx context.Context, addr string, n int) (*ConnPool,func(),error) {
+  if n<1 { return nil,nil,fmt.Errorf("n = %d",n) }
+  p := &ConnPool{}
+  cancel := func() { for _,c := range p.conn { c.Close() } }
   // connect to worker pool
   creds,err := oauth.NewApplicationDefault(ctx)
   if err!=nil {
-    return fmt.Errorf("oauth.NewApplicationDefault(): %v",err)
+    cancel()
+    return nil,nil,fmt.Errorf("oauth.NewApplicationDefault(): %v",err)
   }
   tc := credentials.NewTLS(nil)
-  conn, err := grpc.Dial(*workerAddr,
-    grpc.WithPerRPCCredentials(creds),
-    grpc.WithTransportCredentials(tc))
-  if err != nil {
-    return fmt.Errorf("grpc.Dial(): %v", err)
+  for i:=0; i<n; i++ {
+    conn, err := grpc.Dial(addr,
+      grpc.WithPerRPCCredentials(creds),
+      grpc.WithTransportCredentials(tc))
+    if err != nil {
+      cancel()
+      return nil,nil,fmt.Errorf("grpc.Dial(): %v", err)
+    }
+    p.conn = append(p.conn,conn)
   }
-  defer conn.Close()
-  c := pb.NewWorkerClient(conn)
+  return p,cancel,nil
+}
 
+func run(ctx context.Context) error {
+  pool,cancel,err := NewConnPool(ctx,*workerAddr,15)
+  if err!=nil { return fmt.Errorf("NewConnPool(%q): %v",*workerAddr,err) }
+  defer cancel()
 
   // start a report
   if _,err := os.Stat(*reportDir); os.IsNotExist(err) {
@@ -131,7 +155,7 @@ func run(ctx context.Context) error {
     return fmt.Errorf("unknown problem set %q",*problemSet)
   }
 
-  resultsChan := make(chan *spb.Case,16)
+  resultsChan := make(chan *spb.Case,1000)
   group,gCtx := errgroup.WithContext(ctx)
 
   var probNames []string
@@ -156,21 +180,31 @@ func run(ctx context.Context) error {
       var resp *pb.Resp
       for {
         var err error
+        atomic.AddInt64(&inFlight,1)
+        c := pb.NewWorkerClient(pool.Get())
+        //t := time.Now()
         resp,err = c.Prove(gCtx,&pb.Req{
           Prover: pb.Prover(prover.Value),
           TptpProblem: tptp,
           Timeout: timeoutProto,
         })
+        // log.Printf("latency = %v",time.Now().Sub(t))
+        atomic.AddInt64(&inFlight,-1)
         if err==nil { break }
         st := status.Convert(err)
-        log.Printf("%+v\n",st.Proto())
+        log.Printf("c.Prove(%q): %+v\n",name,st.Proto())
         for _,d := range st.Details() {
           log.Printf("detail: %+v\n",d)
         }
         switch st.Code() {
         case codes.Unknown:
+        /*case codes.Unknown: // probably OOM, TODO: add OOM as a possible output
+          resp = &pb.Resp{Case: &spb.Case{
+            Duration: timeoutProto,
+            Output: &spb.ProverOutput{Solved:false},
+          }}*/
         case codes.Unavailable:
-        case codes.Internal:
+        case codes.Internal: // probably bug
         default: return fmt.Errorf("c.Prove(%q): %v",name,err)
         }
         time.Sleep(2)

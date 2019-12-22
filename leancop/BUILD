@@ -7,6 +7,7 @@ go_library(
         "prolog.go",
     ],
     data = [
+        "//tool:limit",
         "@leancop//:leancop_bin",
         "@leancop_prolog//:leancop_src",
     ],

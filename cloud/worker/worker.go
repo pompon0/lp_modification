@@ -70,6 +70,10 @@ func (s *server) Prove(ctx context.Context, req *pb.Req) (*pb.Resp,error) {
       return nil,status.Newf(codes.Internal,"tool.ValidateProof(): %v",err).Err()
     }
   }
+  // clear the heavy fields, because response size limit is 32MB
+  // You can store heavy response in GCS if needed.
+  c.Output.CnfProblem = nil
+  c.Output.Proof = nil
   return &pb.Resp{Case:c},nil
 }
 

@@ -29,3 +29,17 @@ go_test(
         "@com_github_golang_protobuf//proto:go_default_library",
     ],
 )
+
+cc_binary(
+  name = "limit",
+  srcs = ["limit.cc"],
+  deps = ["//lazyparam_prover/util:util"],
+  visibility = ["//visibility:public"],
+  #features = ["fully_static_link"],
+  linkopts = [
+    "-static-libstdc++",
+    "-static-libgcc",
+    "-l:libstdc++.a",
+    "-l:libgcc.a",
+  ],
+)

@@ -335,7 +335,7 @@ ProverOutput prove_loop(const Ctx &ctx, OrForm form) { FRAME("prove_loop()");
       return out;
     }
     cont_count = out.cont_count;
-    std::cerr << "expands[" << limit << "]: " << profile.scopes["expand"].count << std::endl;
+    //std::cerr << "expands[" << limit << "]: " << profile.scopes["expand"].count << std::endl;
   }
   DEBUG info("FAILURE");
   return {cont_count,limit}; 

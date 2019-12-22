@@ -9,6 +9,7 @@
 #include "Kernel/FormulaUnit.hpp"
 #include "Kernel/Unit.hpp"
 #include "Parse/TPTP.hpp"
+#include "Shell/TPTPPrinter.hpp"
 
 #include "lazyparam_prover/util/string.h"
 #include "lazyparam_prover/pred.h"
@@ -120,7 +121,7 @@ void parse_formula(tptp::Formula *out, const Kernel::Formula *in) { FRAME("parse
 }
 
 // TODO: add tests for clause parsing
-void parse_clause(tptp::Formula *out, const Kernel::Clause *cla) { FRAME("parse_clause");
+void parse_clause(tptp::Formula *out, const Kernel::Clause *cla) { FRAME("parse_clause(%)",cla->toString());
   auto *op = out->mutable_op();
   op->set_type(tptp::Formula::Operator::OR);
   auto *args = op->mutable_args();
@@ -167,6 +168,22 @@ void parse_file(tptp::File *file, std::istream &is) { FRAME("parse_file");
       input->set_language(tptp::Input::FOF);
       parse_formula(input->mutable_formula(),fu->formula());
     }
+  }
+}
+
+// TODO: requires tuning: curently outputs tff with not shortened names
+void inline_imports(std::ostream &os, std::istream &is) { FRAME("inline_imports");
+  Lib::env.options->setOutputAxiomNames(true);
+  UnitList *units;
+  try {
+    units = Parse::TPTP::parse(is);
+  } catch(Parse::TPTP::ParseErrorException &e) {
+    e.cry(std::cerr);
+    error("%",e.msg());
+  }
+  Shell::TPTPPrinter p(&os);
+  for(; UnitList::isNonEmpty(units); units = units->tail()) {
+    p.print(units->head());
   }
 }
 

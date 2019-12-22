@@ -129,7 +129,7 @@ OrForm append_eq_axioms(OrForm _f) {
   f.or_clauses.push_back(trans_axiom());
   for(auto pa : ctx.pred_arity) if(pa.first!=Atom::EQ && pa.second) f.or_clauses.push_back(cong_pred_axiom(pa.first,pa.second));
   for(auto fa : ctx.fun_arity) if(fa.second) f.or_clauses.push_back(cong_fun_axiom(fa.first,fa.second));
-  info("f + axioms = \n%",show(OrForm(f)));
+  //info("f + axioms = \n%",show(OrForm(f)));
   return OrForm(f);
 }
 
@@ -259,8 +259,8 @@ OrForm reduce_monotonicity_and_append_eq_axioms(OrForm _f) {
   f.or_clauses.push_back(refl_axiom());
   f.or_clauses.push_back(symm_axiom());
   f.or_clauses.push_back(trans_axiom());
-  info("f = \n%",show(_f));
-  info("m(f) + axioms = \n%",show(OrForm(f)));
+  //info("f = \n%",show(_f));
+  //info("m(f) + axioms = \n%",show(OrForm(f)));
   return OrForm(f);
 }
 
@@ -328,7 +328,7 @@ OrForm append_eq_axioms_with_restricted_transitivity(OrForm _f) {
   }
   f.or_clauses.push_back(refl_axiom());
   f = append_restricted_transitivity_axioms(f);
-  info("f + axioms = \n%",show(OrForm(f)));
+  //info("f + axioms = \n%",show(OrForm(f)));
   return OrForm(f);
 }
 

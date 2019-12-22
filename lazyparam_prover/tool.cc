@@ -18,6 +18,7 @@ int main(int argc, char **argv) {
   tptp::File file;
   parse_file(&file,std::cin);
   file.SerializeToOstream(&std::cout);
+  //inline_imports(std::cout,std::cin);
   std::cout << std::flush;
   return 0;
 }

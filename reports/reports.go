@@ -8,6 +8,8 @@ import (
   "sort"
   "strings"
   "time"
+  "os"
+  "path/filepath"
 
   "github.com/golang/protobuf/ptypes"
   "github.com/pompon0/tptp_benchmark_go/problems"
@@ -19,9 +21,11 @@ const (
   cmdSummary = "summary"
   cmdPrint = "print"
   cmdDiff = "diff"
+  cmdMultiDiff = "multidiff"
 )
-var cmds = []string{cmdSummary,cmdPrint,cmdDiff}
+var cmds = []string{cmdSummary,cmdPrint,cmdDiff,cmdMultiDiff}
 
+var reportDir = flag.String("report_dir","","")
 var reportPath = flag.String("report_path","","")
 var reportPath2 = flag.String("report_path_2","","")
 var cmd = flag.String("cmd",cmdSummary,strings.Join(cmds,"|"))
@@ -123,6 +127,72 @@ func diff(ctx context.Context) error {
   return nil
 }
 
+type Result struct {
+  solved int
+  total int
+  totalTime time.Duration
+}
+
+func (r *Result) String() string { return fmt.Sprintf("%3d/%3d",r.solved,r.total) }
+
+func accumByPrefix(r *spb.Report) (map[string]*Result,error) {
+  res := map[string]*Result{}
+  for _,c := range r.Cases {
+    labels := strings.Split(c.Name,"/")
+    for i:=0; i<=len(labels); i++ {
+      p := strings.Join(labels[:i],"/")
+      if res[p]==nil { res[p] = &Result{} }
+      if c.GetOutput().GetSolved() { res[p].solved++ }
+      res[p].total++
+      d,err := ptypes.Duration(c.Duration)
+      if err!=nil { return nil,err }
+      res[p].totalTime += d
+    }
+  }
+  return res,nil
+}
+
+func multidiff(ctx context.Context) error {
+  var reports []*spb.Report
+  if err := filepath.Walk(*reportDir,func(p string, fi os.FileInfo, err error) error {
+    if err!=nil { return err }
+    if fi.IsDir() { return nil }
+    r,err := problems.ReadReport(p)
+    if err!=nil { return fmt.Errorf("problems.ReadReport(%q): %v",p,err) }
+    reports = append(reports,r)
+    return nil
+  }); err!=nil { return fmt.Errorf("filepath.Walk(): %v",err) }
+  if len(reports)==0 {
+    return fmt.Errorf("no reports found under %q",*reportDir)
+  }
+  lines := map[string]string{}
+  for i,r := range reports {
+    fmt.Printf("[%d] labes = %v\n",i,r.Labels)
+    res,err := accumByPrefix(r)
+    if err!=nil { return err }
+    for k,v := range res {
+      if v.total==1 {
+        var t string
+        if v.solved==1 {
+          t = fmt.Sprintf("%05.2f",v.totalTime.Seconds())
+        } else {
+          t = "-----"
+        }
+        lines[k] += fmt.Sprintf(" |     %s",t)
+      } else {
+        lines[k] += fmt.Sprintf(" | %4d/%4d",v.solved,v.total)
+      }
+    }
+  }
+  var keys []string
+  for k,_ := range lines { keys = append(keys,k) }
+  sort.Strings(keys)
+  for _,k := range keys {
+    fmt.Printf("%25s%s\n",k,lines[k])
+  }
+  return nil
+}
+
 func print_(ctx context.Context) error {
   report,err := problems.ReadReport(*reportPath)
   if err!=nil { return fmt.Errorf("problems.ReadReport(report_path=%q): %v",*reportPath,err) }
@@ -146,6 +216,7 @@ func run(ctx context.Context) error {
     case cmdSummary: return summary(ctx)
     case cmdPrint: return print_(ctx)
     case cmdDiff: return diff(ctx)
+    case cmdMultiDiff: return multidiff(ctx)
     default: return fmt.Errorf("unknown command = %q",*cmd)
   }
 }

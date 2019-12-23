@@ -57,6 +57,7 @@ message Formula {
       AND = 3;
       IFF = 4;
       IMPL = 5;
+      RIMPL = 11;
       XOR = 6;
       NOR = 7;
       NAND = 8;

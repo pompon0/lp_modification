@@ -5,6 +5,8 @@ import (
   "log"
   "fmt"
   "flag"
+  "os"
+  "io/ioutil"
 
   "github.com/pompon0/tptp_benchmark_go/tool"
   "github.com/pompon0/tptp_benchmark_go/problems"
@@ -15,28 +17,39 @@ import (
 var caseName = flag.String("case_name","","")
 
 func run(ctx context.Context) error {
-  ps,cancel,err := problems.MizarProblems()
+  mp,cancel,err := problems.MizarProblems()
   if err!=nil { return fmt.Errorf("problems.MizarProblems(): %v",err) }
   defer cancel()
-  p,ok := ps[*caseName]
-  if !ok { return fmt.Errorf("case %q not found",*caseName) }
-  tptp,err := p.Get()
-  if err!=nil { return fmt.Errorf("p.Get(): %v",err) }
-  fof,err := tool.TptpToProto(ctx,tool.FOF,tptp)
-  if err!=nil { return fmt.Errorf("tool.TptpToProto(%q): %v",*caseName,err) }
-  cnf,err := tool.FOFToCNF(ctx,fof)
-  tptpCnfProblem,err := tool.ProtoToTptp(ctx,cnf)
-  if err!=nil { return fmt.Errorf("tool.ProtoToTptp(): %v",err) }
-  fmt.Printf("-- CNF BEGIN --\n%s-- CNF END--\n",tptpCnfProblem)
-
-  if err!=nil { return fmt.Errorf("tool.FOFToCNF(%q): %v",*caseName,err) }
-  out,err := tableau.Tableau(ctx,cnf,true,true)
+  tp,cancel,err := problems.TptpProblems()
+  if err!=nil { return fmt.Errorf("problems.TptpProblems(): %v",err) }
+  defer cancel()
+  var tptp []byte
+  if *caseName!="" {
+    p,ok := mp[*caseName]
+    if !ok {
+      p,ok = tp[*caseName]
+    }
+    if !ok { return fmt.Errorf("case %q not found",*caseName) }
+    if tptp,err = p.Get(); err!=nil {
+      return fmt.Errorf("p.Get(): %v",err)
+    }
+  } else {
+    if tptp,err = ioutil.ReadAll(os.Stdin); err!=nil {
+      return fmt.Errorf("ioutil.ReadAll(): %v",err)
+    }
+  }
+  //fmt.Printf("%s",string(tptp))
+  out,err := tableau.Prove(ctx,tptp)
   if err!=nil { return fmt.Errorf("Tableau(%q): %v",*caseName,err) }
-  _,err = tool.ValidateProof(ctx,&spb.CNF{Problem:cnf,Proof:out.Proof})
+  if !out.Solved {
+    log.Printf("not solved")
+    return nil
+  }
+  log.Printf("out = %v",out)
+  _,err = tool.ValidateProof(ctx,&spb.CNF{Problem:out.CnfProblem,Proof:out.Proof})
   if err!=nil { return fmt.Errorf("tool.Validate(%q): %v",*caseName,err) }
-
   tptpProof,err := tool.ProtoToTptp(ctx,out.Proof)
-  if err!=nil { return fmt.Errorf("tool.ProtoToTptp(): %v",err) }
+  if err!=nil { return fmt.Errorf("tool.ProtoToTptp(%q): %v",*caseName,err) }
   fmt.Printf("-- PROOF BEGIN --\n%s-- PROOF END--\n",tptpProof)
 
   return nil

@@ -2,8 +2,10 @@
 #define PARSE_H_
 
 #include "tptp.pb.h"
-#include "google/protobuf/text_format.h"
+#include "google/protobuf/io/coded_stream.h"
 #include "lazyparam_prover/pred.h"
+
+namespace tableau {
 
 template<typename T> struct IntDict {
   size_t operator()(const T &v) {
@@ -133,7 +135,9 @@ struct ParseCtx {
 
   NotAndForm parse_notAndForm(const str &file_raw) {
     tptp::File file;
-    if(!google::protobuf::TextFormat::ParseFromString(file_raw,&file)) {
+    auto stream = new google::protobuf::io::CodedInputStream((const uint8_t*)(&file_raw[0]),file_raw.size());
+    stream->SetRecursionLimit(100000000);
+    if(!file.ParseFromCodedStream(stream)) {
       error("failed to parse input");
     }
     return parse_notAndForm(file);
@@ -196,8 +200,10 @@ struct ProtoCtx {
 
   tptp::File proto_notAndForm(const NotAndForm &f) const {
     tptp::File file;
+    size_t i = 0;
     for(const auto &cla : f.or_clauses) {
       auto input = file.add_input();
+      input->set_name(util::fmt("a%",i++));
       input->set_role(tptp::Input::PLAIN);
       input->set_language(tptp::Input::CNF);
       *(input->mutable_formula()) = proto_orClause(cla.derived());
@@ -205,6 +211,8 @@ struct ProtoCtx {
     return file;
   }
 };
+
+}  // namespace tableau
 
 #endif  // PARSE_H_
 

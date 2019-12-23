@@ -1,12 +1,26 @@
 syntax = "proto3";
 package worker;
 
+import "solutions.proto";
+import "google/protobuf/duration.proto";
+
+enum Prover{
+  UNKNOWN = 0;
+  VAMPIRE = 1;
+  EPROVER = 2;
+  LEANCOP = 3;
+  LEANCOP_PROLOG = 4;
+  LAZY_PARAMODULATION = 5;
+}
+
 message Req {
-  
+  Prover prover = 3;
+  bytes tptp_problem = 1;
+  google.protobuf.Duration timeout = 2;
 }
 
 message Resp {
-
+  solutions.Case case = 1;
 }
 
 service Worker {

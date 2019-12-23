@@ -12,7 +12,7 @@ func TestProve(t *testing.T) {
   for name,tptp := range problems.SampleProblems {
     // leancop doesn't understand the trivial example 
     if name == "trivial" { continue }
-    if err := Prove(ctx,tptp); err!=nil {
+    if out,err := Prove(ctx,tptp); err!=nil || !out.Solved {
       t.Fatalf("Prover(%q): %v",name,err)
     }
   }

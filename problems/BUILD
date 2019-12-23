@@ -23,8 +23,12 @@ go_library(
 
 go_test(
     name = "go_default_test",
+    size = "large",
     srcs = ["problems_test.go"],
     embed = [":go_default_library"],
-    shard_count = 2,
-    deps = ["//tool:go_default_library"],
+    tags = ["manual"],
+    deps = [
+        "//eprover:go_default_library",
+        "//tool:go_default_library",
+    ],
 )

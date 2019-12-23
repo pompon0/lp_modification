@@ -14,17 +14,58 @@ cc_library(
 )
 
 cc_library(
+    name = "pred",
+    hdrs = [
+        "alloc.h",
+        "pred.h",
+    ],
+    deps = [
+        ":log",
+        ":types",
+    ],
+)
+
+cc_library(
+    name = "parse2",
+    hdrs = ["parse2.h"],
+    deps = [
+        ":types",
+        ":pred",
+        "//tptp_parser/proto:tptp_cc_proto",
+        "@vampire//:lib",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_binary(
+    name = "tool",
+    srcs = ["tool.cc"],
+    deps = [
+        "//tptp_parser/proto:tptp_cc_proto",
+        ":parse2",
+        ":log",
+        # "@abseil//absl/flags:parse",
+        # "@abseil//absl/flags:flag",
+    ],
+    visibility = ["//visibility:public"],
+    features = ["fully_static_link"],
+    linkopts = [
+        "-static-libstdc++",
+        "-static-libgcc",
+        "-l:libstdc++.a",
+    ],
+)
+
+cc_library(
     name = "prover",
     hdrs = [
         "ctx.h",
         "alt.h",
         "mgu.h",
         "ground.h",
-        "alloc.h",
-        "pred.h",
+        "parse.h",
         "pred_format.h",
         "kbo.h",
-        "parse.h",
         "tableau.h",
         "eq_axioms.h",
         "lazy.h"
@@ -32,6 +73,7 @@ cc_library(
     deps = [
         "//tptp_parser/proto:tptp_cc_proto",
         "//tptp_parser/proto:solutions_cc_proto",
+        ":pred",
         ":log",
         ":types",
         "//lazyparam_prover/util:util",
@@ -96,6 +138,12 @@ cc_binary(
         ":prover",
         "@abseil//absl/flags:flag",
         "@abseil//absl/flags:parse",
+    ],
+    features = ["fully_static_link"],
+    linkopts = [
+        "-static-libstdc++",
+        "-static-libgcc",
+        "-l:libstdc++.a",
     ],
     visibility = ["//visibility:public"],
 )

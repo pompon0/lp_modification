@@ -3,6 +3,7 @@
 
 #include "lazyparam_prover/ctx.h"
 
+namespace tableau {
 namespace alt {
 
 struct ExampleCont {
@@ -40,5 +41,6 @@ template<typename Cont> SearchResult search(const Ctx &ctx, typename Cont::State
 }
 
 } // namespace alt
+} // namespace tableau
 
 #endif  // LAZYPARAM_PROVER_ALT_H_

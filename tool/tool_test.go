@@ -6,6 +6,7 @@ import (
   "log"
 
   "github.com/golang/protobuf/proto"
+  "github.com/pompon0/tptp_benchmark_go/eprover"
   "github.com/pompon0/tptp_benchmark_go/problems"
   tpb "github.com/pompon0/tptp_benchmark_go/tptp_parser/proto/tptp_go_proto"
   spb "github.com/pompon0/tptp_benchmark_go/tptp_parser/proto/solutions_go_proto"
@@ -43,7 +44,8 @@ func TestTptpToProto(t *testing.T) {
   }
 }
 
-func TestProtoToTptpt(t *testing.T) {
+
+func TestProtoToTptp(t *testing.T) {
   ctx := context.Background()
   for k,v := range problems.SampleProblems {
     fof,err := TptpToProto(ctx,FOF,v)
@@ -58,7 +60,7 @@ func TestProtoToTptpt(t *testing.T) {
   }
 }
 
-func TestFOFToCNF(t *testing.T) {
+func TestProtoFOFToCNF(t *testing.T) {
   for k,v := range problems.SampleProblems {
     log.Printf("%s",k)
     log.Printf("tptp -> fof")
@@ -69,6 +71,22 @@ func TestFOFToCNF(t *testing.T) {
     if err!=nil { t.Fatalf("FOFToCNF(%q): %v",k,err) }
     log.Printf("iterating over inputs")
     for _,i := range cnf.Input {
+      if got,want := i.Language,tpb.Input_CNF; got!=want {
+        t.Errorf("i.Language = %v, want %v",got,want)
+      }
+    }
+  }
+}
+
+func TestTPTPFOFToCNF(t *testing.T) {
+  for k,v := range problems.SampleProblems {
+    log.Printf("%s",k)
+    cnf,err := eprover.FOFToCNF(context.Background(),v)
+    if err!=nil { t.Fatalf("FOFToCNF(%q): %v",k,err) }
+    log.Printf("cnf = %s",string(cnf))
+    cnfProto,err := TptpToProto(context.Background(),CNF,cnf)
+    if err!=nil { t.Fatalf("TptpToProto(%q): %v",k,err) }
+    for _,i := range cnfProto.Input {
       if got,want := i.Language,tpb.Input_CNF; got!=want {
         t.Errorf("i.Language = %v, want %v",got,want)
       }

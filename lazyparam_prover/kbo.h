@@ -10,6 +10,8 @@
 #include "lazyparam_prover/log.h"
 #include <algorithm>
 
+namespace tableau {
+
 struct Constraint {
   enum Type { NEQ, LT };
   Type type;
@@ -79,7 +81,7 @@ private:
   bool check_and_push_constraint_with_log(List<Constraint> &constraints, Constraint c) {
     if(check_and_push_constraint(constraints,c)) return 1;
     DEBUG {
-      info("val = %",val.DebugString());
+      /*info("val = %",val.DebugString());
       for(auto c = constraints; !c.empty(); c = c.tail()) { 
         vec<str> ps;
         for(auto p = c.head().or_; !p.empty(); p = p.tail()) {
@@ -87,7 +89,7 @@ private:
         }
         str ts = c.head().type==Constraint::NEQ ? "!=" : "<";
         info("% :: %",ts,util::join(" ",ps));
-      }
+      }*/
     }
     return 0;
   }
@@ -192,5 +194,7 @@ private:
     }
   };
 };
+
+}  // tableau
 
 #endif // KBO_H_

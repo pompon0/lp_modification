@@ -12,7 +12,7 @@ func TestPrologProve(t *testing.T) {
   for name,tptp := range problems.SampleProblems {
     // leancop doesn't understand the trivial example 
     if name == "trivial" { continue }
-    if err := PrologProve(ctx,tptp); err!=nil {
+    if out,err := PrologProve(ctx,tptp); err!=nil || !out.Solved {
       t.Fatalf("Prover(%q): %v",name,err)
     }
   }

@@ -8,6 +8,8 @@
 #include "lazyparam_prover/pred_format.h"
 #include "lazyparam_prover/util/string.h"
 
+namespace tableau {
+
 struct Valuation {
 private:
   // there is NO cycles in valuation, even x -> x
@@ -166,6 +168,6 @@ public:
   }
 };
 
-
+} // tableau
 
 #endif // MGU_H_

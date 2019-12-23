@@ -8,6 +8,7 @@ go_library(
     deps = [
         "//problems:go_default_library",
         "//tool:go_default_library",
+        "//tptp_parser/proto:solutions_go_proto",
         "@com_github_golang_protobuf//ptypes:go_default_library_gen",
     ],
 )

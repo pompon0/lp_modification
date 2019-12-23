@@ -7,6 +7,7 @@ go_library(
         "prolog.go",
     ],
     data = [
+        "//tool:limit",
         "@leancop//:leancop_bin",
         "@leancop_prolog//:leancop_src",
     ],
@@ -14,6 +15,7 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//tool:go_default_library",
+        "//tptp_parser/proto:solutions_go_proto",
         "//utils:go_default_library",
     ],
 )

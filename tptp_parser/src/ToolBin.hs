@@ -2,9 +2,14 @@
 {-# LANGUAGE OverloadedLabels #-}
 module Main where
 
+import Prelude hiding(readFile)
+import System.IO(stdout)
 import System.Environment(getArgs)
 import qualified Data.ProtoLens.TextFormat as TextFormat
 import Data.ProtoLens.Message(Message)
+import Data.ProtoLens.Encoding(encodeMessage,decodeMessage)
+import Data.ByteString(hPut,ByteString,readFile)
+import qualified Data.ByteString.Char8 as Char8
 import qualified Proto.Tptp as T
 import qualified Proto.Solutions as SPB
 import qualified Proof
@@ -15,7 +20,7 @@ import NNF
 import DNF
 import DefDNF
 import Valid(counterExample)
-import qualified Parser
+import qualified Parser2
 import IO
 import qualified Tptp
 
@@ -28,7 +33,7 @@ assert :: Err a -> IO a
 assert (Err ea) = case ea of { Left e -> fail e; Right a -> return a }
 
 readProtoFile :: Message a => String -> IO a
-readProtoFile path = readFile path >>= assert . Err . TextFormat.readMessage . Text.pack 
+readProtoFile path = assert . Err . decodeMessage =<< readFile path
 
 --------------------------------
 
@@ -43,7 +48,7 @@ fof'dnf'def (g,fof) = (gv,simplify dnf) where
 readAndParse :: String -> IO T.File
 readAndParse tptp_path = do
   content <- readFile tptp_path
-  assert (Parser.parse content)
+  assert (Parser2.parse $ Char8.unpack content)
 
 help = do
   putStrLn "tptp [proto_file] > [tptp_file]"
@@ -53,16 +58,17 @@ help = do
 
 tptp [proto_path] = do
   file <- readProtoFile proto_path
-  putStrLn $ Tptp.file'string file
+  putStrLn $ Parser2.prettyPrint file
+  --putStrLn $ Tptp.file'string file
 
 conv [language,tptp_path] = do
   case language of {
-    "fof" -> readAndParse tptp_path >>= putStrLn . TextFormat.showMessage;
+    "fof" -> readAndParse tptp_path >>= hPut stdout . encodeMessage;
     "cnf" -> do {
       file <- readAndParse tptp_path;
       let { gv = FOF.globalVar'make [file] };
       dnf <- assert $ fromProto'File gv file;
-      putStrLn $ TextFormat.showMessage $ toProto'File dnf;
+      hPut stdout $ encodeMessage $ toProto'File dnf;
     };
     _ -> help;
   }
@@ -73,7 +79,7 @@ cnf [mode,fof_proto_file] = do
   fof <- assert $ FOF.fromProto'File g file
   let f = case mode of { "reg" -> fof'dnf; "def" -> fof'dnf'def }
   let (gv,dnf) = f (g,fof)
-  putStrLn $ TextFormat.showMessage $ toProto'File dnf
+  hPut stdout $ encodeMessage $ toProto'File dnf
 
 validate [solution_proto_file] = do
   solutionProto :: SPB.CNF <- readProtoFile solution_proto_file
@@ -88,7 +94,7 @@ validate [solution_proto_file] = do
     return (problem,proof,stats)
   putStrLnE ("problem = " ++ show problem)
   putStrLnE ("proof = " ++ show proof)
-  putStrLn (TextFormat.showMessage stats)
+  hPut stdout $ encodeMessage stats
 
 main = do
   cmd:args <- getArgs

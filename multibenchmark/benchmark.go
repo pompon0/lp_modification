@@ -12,14 +12,18 @@ import (
   "golang.org/x/sync/errgroup"
   "github.com/pompon0/tptp_benchmark_go/problems"
   "github.com/pompon0/tptp_benchmark_go/lazyparam_prover/tableau"
+  "github.com/pompon0/tptp_benchmark_go/vampire"
   "github.com/pompon0/tptp_benchmark_go/eprover"
   "github.com/pompon0/tptp_benchmark_go/leancop"
+  "github.com/golang/protobuf/ptypes"
+  spb "github.com/pompon0/tptp_benchmark_go/tptp_parser/proto/solutions_go_proto"
 )
 
-type Prover func(ctx context.Context, fofProblem []byte) error
+type Prover func(ctx context.Context, fofProblem []byte) (*spb.ProverOutput,error)
 
 var provers = []struct { name string; prover Prover } {
   {"tableau", tableau.Prove},
+  {"vampire", vampire.Prove},
   {"eprover", eprover.Prove},
   {"leancop", leancop.Prove},
   {"leancop_prolog", leancop.PrologProve},
@@ -30,14 +34,9 @@ type Problem struct {
   name string
 }
 
-type ProverResult struct {
-  latency time.Duration
-  err error
-}
-
 type Result struct {
   name string
-  proverResults map[string]ProverResult
+  proverResults map[string]*spb.Case
 }
 
 func worker(
@@ -53,15 +52,23 @@ func worker(
       if !ok { return nil }
       tptpFOFProblem,err := p.Get()
       if err!=nil { return fmt.Errorf("p[%q].Get(): %v",p.name,err) }
-      res := Result{p.name,map[string]ProverResult{}}
+      res := Result{p.name,map[string]*spb.Case{}}
       for _,prover := range provers {
-        func(){
+        if err := func() error {
           proverCtx,cancel := context.WithTimeout(ctx,timeout)
           defer cancel()
           start := time.Now()
-          err := prover.prover(proverCtx,tptpFOFProblem)
-          res.proverResults[prover.name] = ProverResult{time.Now().Sub(start),err}
-        }()
+          out,err := prover.prover(proverCtx,tptpFOFProblem)
+          if err!=nil { return fmt.Errorf("prover[%q].prover(%q): %v",prover.name,p.name,err) }
+          res.proverResults[prover.name] = &spb.Case{
+            Name: p.name,
+            Duration: ptypes.DurationProto(time.Now().Sub(start)),
+            Output: out,
+          }
+          return nil
+        }(); err!=nil {
+          return err
+        }
       }
       results <- res
     }
@@ -128,9 +135,11 @@ func run(ctx context.Context, timeout time.Duration, cores int) error {
         total := []string{}
         for _,prover := range provers {
           res := r.proverResults[prover.name]
-          if res.err==nil {
+          if res.Output.Solved {
             okCount[prover.name]++
-            scores = append(scores,fmt.Sprintf("%04.2fs",res.latency.Seconds()))
+            duration,err := ptypes.Duration(res.Duration)
+            if err!=nil { return fmt.Errorf("ptypes.Duration(): %v",err) }
+            scores = append(scores,fmt.Sprintf("%04.2fs",duration.Seconds()))
           } else {
             scores = append(scores,"-----")
           }
@@ -143,7 +152,7 @@ func run(ctx context.Context, timeout time.Duration, cores int) error {
   })
 
   if err := group.Wait(); err!=nil {
-    return fmt.Errorf("group.Wait(); %v",err)
+    return fmt.Errorf("group.Wait(): %v",err)
   }
 
   return nil

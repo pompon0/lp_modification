@@ -19,6 +19,7 @@
 // generate signature aware symmetry axiom
 //   [1] (x,xs) = (y,ys) /\ (y,ys) != (x,xs) [y>x]
 
+namespace tableau {
 namespace lazy {
 
 struct ClauseConverter {
@@ -312,6 +313,7 @@ OrForm conv_and_append_axioms(OrForm f) {
   return f;
 }
 
-}
+} // namespace lazy
+} // namespace tableau
 
 #endif  // LAZY_H_

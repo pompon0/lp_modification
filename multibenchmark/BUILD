@@ -10,6 +10,9 @@ go_library(
         "//lazyparam_prover/tableau:go_default_library",
         "//leancop:go_default_library",
         "//problems:go_default_library",
+        "//tptp_parser/proto:solutions_go_proto",
+        "//vampire:go_default_library",
+        "@com_github_golang_protobuf//ptypes:go_default_library_gen",
         "@org_golang_x_sync//errgroup:go_default_library",
     ],
 )

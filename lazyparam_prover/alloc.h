@@ -4,6 +4,8 @@
 #include "lazyparam_prover/types.h"
 #include "lazyparam_prover/log.h"
 
+namespace tableau {
+
 struct Snapshot {
   size_t blocks_used;
   u8 *begin,*end;
@@ -176,5 +178,6 @@ public:
   };
 };
 
+} // namespace tableau
 
 #endif // ALLOC_H_

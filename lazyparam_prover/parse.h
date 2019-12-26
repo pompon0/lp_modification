@@ -133,7 +133,7 @@ struct ParseCtx {
     return form;
   }
 
-  NotAndForm parse_notAndForm(const str &file_raw) {
+  NotAndForm parse_notAndForm(const str &file_raw) { FRAME("parse_notAndForm()");
     tptp::File file;
     auto stream = new google::protobuf::io::CodedInputStream((const uint8_t*)(&file_raw[0]),file_raw.size());
     stream->SetRecursionLimit(100000000);
@@ -151,7 +151,7 @@ struct ProtoCtx {
   std::map<size_t,str> pred_names;
   std::map<size_t,str> fun_names;
 
-  tptp::Term proto_term(Term t) const {
+  tptp::Term proto_term(Term t) const { FRAME("proto_term()");
     tptp::Term pt;
     switch(t.type()) {
       case Term::VAR: {
@@ -162,6 +162,7 @@ struct ProtoCtx {
       case Term::FUN: {
         Fun f(t);
         pt.set_type(tptp::Term::EXP);
+        DEBUG if(!fun_names.count(f.fun())) error("pred_names.count(%) = 0",f.fun());
         pt.set_name(fun_names.at(f.fun()));
         for(size_t i=0; i<f.arg_count(); ++i)
           *(pt.add_args()) = proto_term(f.arg(i));
@@ -171,13 +172,14 @@ struct ProtoCtx {
     return pt;
   }
 
-  tptp::Formula proto_atom(Atom a) const {
+  tptp::Formula proto_atom(Atom a) const { FRAME("proto_atom()");
     tptp::Formula f;
     //TODO: error if a.pred() not in pred_names
     if(a.pred()==Atom::EQ) {
       f.mutable_pred()->set_type(tptp::Formula::Pred::EQ);
     } else {
       f.mutable_pred()->set_type(tptp::Formula::Pred::CUSTOM);
+      DEBUG if(!pred_names.count(a.pred())) error("pred_names.count(%) = 0",a.pred());
       f.mutable_pred()->set_name(pred_names.at(a.pred()));
     }
     for(size_t i=0; i<a.arg_count(); ++i)
@@ -191,14 +193,14 @@ struct ProtoCtx {
     return f;
   }
 
-  tptp::Formula proto_orClause(const OrClause &cla) const {
+  tptp::Formula proto_orClause(const OrClause &cla) const { FRAME("proto_orClause()");
     tptp::Formula f;
     f.mutable_op()->set_type(tptp::Formula::Operator::OR);
     for(size_t i=0; i<cla.atom_count(); ++i) *(f.mutable_op()->add_args()) = proto_atom(cla.atom(i));
     return f;
   }
 
-  tptp::File proto_notAndForm(const NotAndForm &f) const {
+  tptp::File proto_notAndForm(const NotAndForm &f) const { FRAME("proto_notAndForm()");
     tptp::File file;
     size_t i = 0;
     for(const auto &cla : f.or_clauses) {

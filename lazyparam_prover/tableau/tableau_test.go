@@ -17,12 +17,11 @@ func TestTableau(t *testing.T) {
   for k,v := range problems.SampleProblems {
     k,v := k,v
     t.Run(fmt.Sprintf("case %q",k),func(t *testing.T) {
-      t.Parallel()
       tptpCNF,err := eprover.FOFToCNF(ctx,v)
       if err!=nil { t.Fatalf("eprover.FOFToCNF(): %v",err) }
       cnf,err := tool.TptpToProto(ctx,tool.CNF,tptpCNF)
       if err!=nil { t.Fatalf("tool.TptpToProto(): %v",err) }
-      proveCtx,cancel := context.WithTimeout(ctx,time.Second)
+      proveCtx,cancel := context.WithTimeout(ctx,10*time.Second)
       defer cancel()
       out,err := Prove(proveCtx,v)
       if err!=nil { t.Fatalf("Tableau(%q): %v",k,err) }

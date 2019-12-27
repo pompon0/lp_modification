@@ -67,7 +67,7 @@ func caseSummary(c *spb.Case) string {
     return fmt.Sprintf("%20q : ERROR",c.Name)
   }
   status := ""
-  if c.GetOutput().GetProof()==nil {
+  if !c.GetOutput().GetSolved() {
     status = "UNSOLVED"
   }
   d,err := ptypes.Duration(c.Duration)
@@ -118,8 +118,8 @@ func diff(ctx context.Context) error {
     if c1.Name!=c2.Name {
       //return fmt.Errorf("case name mismatch: report1.Cases[%d] = %q, report2.Cases[%d] = %q",i,c1.Name,i,c2.Name)
     }
-    c1s := c1.GetOutput().GetProof()!=nil
-    c2s := c2.GetOutput().GetProof()!=nil
+    c1s := c1.GetOutput().GetSolved()
+    c2s := c2.GetOutput().GetSolved()
     if c1s!=c2s {
       fmt.Printf("%s  |  %s\n",caseSummary(c1),caseSummary(c2))
     }
@@ -161,13 +161,13 @@ func multidiff(ctx context.Context) error {
     if err!=nil { return fmt.Errorf("problems.ReadReport(%q): %v",p,err) }
     reports = append(reports,r)
     return nil
-  }); err!=nil { return fmt.Errorf("filepath.Walk(): %v",err) }
+  }); err!=nil { return fmt.Errorf("filepath.Walk(reportDir=%q): %v",*reportDir,err) }
   if len(reports)==0 {
     return fmt.Errorf("no reports found under %q",*reportDir)
   }
   lines := map[string]string{}
   for i,r := range reports {
-    fmt.Printf("[%d] labes = %v\n",i,r.Labels)
+    fmt.Printf("[%d] commit = %q, labes = %v\n",i,r.Commit,r.Labels)
     res,err := accumByPrefix(r)
     if err!=nil { return err }
     for k,v := range res {

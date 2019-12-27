@@ -8,6 +8,7 @@
 namespace tableau {
 
 struct ClauseIndex {
+  //TODO: eliminate clauses with unmatchable atoms
   struct OrClauseWithAtom { size_t i; DerOrClause cla; };
   NotAndForm form;
 private:

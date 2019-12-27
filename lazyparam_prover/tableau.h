@@ -146,6 +146,9 @@ struct Cont {
   template<typename Alts> void strong(State &state, StrongFrame f, Alts alts) const { FRAME("strong(%,%)",show(f->dcla),f->strong_id);
     auto dcla = f->dcla.shift(state.val.size());
     state.nodes_used += dcla.cost();
+    for(auto c = dcla.constraints(); !c.empty(); c = c.tail()) {
+      state.val.push_constraint(c.head());
+    }
     auto cla = dcla.derived();
     // do not use f->dcla from now on
     state.val.resize(cla.var_count());

@@ -18,6 +18,7 @@ cc_library(
     hdrs = [
         "alloc.h",
         "pred.h",
+        "derived.h",
     ],
     deps = [
         ":log",

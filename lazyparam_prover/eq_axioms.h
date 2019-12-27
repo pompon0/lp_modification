@@ -115,6 +115,15 @@ bool has_equality(OrForm f) {
   return ctx.pred_count[Atom::EQ]>0;
 }
 
+OrForm add_refl_constraints(OrForm f) {
+  for(auto &c : f.and_clauses) {
+    for(auto a : c.derived.atoms) if(a.pred()==Atom::EQ && !a.sign()) {
+      c.constraints.push_back(Constraint::neq(a.arg(0),a.arg(1)));
+    }
+  }
+  return f;
+}
+
 
 OrForm append_eq_axioms(OrForm _f) {
   // 383/2003 don't use equality axioms (my CNF)
@@ -122,7 +131,7 @@ OrForm append_eq_axioms(OrForm _f) {
   // 549/2003 use refl + symm only (my CNF)
   // 740/2003 use refl + symm + mono (my CNF)
   // 640/2003 use refl + symm + trans (my CNF)
-  NotAndForm f(_f);
+  NotAndForm f(add_refl_constraints(_f));
   ArityCtx ctx; ctx.traverse(f);
   f.or_clauses.push_back(refl_axiom());
   f.or_clauses.push_back(symm_axiom());
@@ -275,7 +284,7 @@ NotAndForm append_restricted_transitivity_axioms(NotAndForm f) {
   OrClause::Builder symm1(2,2);
   symm1.set_atom(0,Atom::slow_make(false,Atom::EQ_TRANS_POS,{a,b}));
   symm1.set_atom(1,Atom::slow_make(true,Atom::EQ_SYMM,{a,b}));
-  f.or_clauses.push_back(DerOrClause(0,symm1.build(),e));
+  f.or_clauses.push_back(DerOrClause(0,symm1.build(),e,List<Constraint>()));
   // -[b=a] symm(a,b)
   OrClause::Builder symm2(2,2);
   symm2.set_atom(0,Atom::slow_make(false,Atom::EQ_TRANS_POS,{b,a}));
@@ -283,7 +292,7 @@ NotAndForm append_restricted_transitivity_axioms(NotAndForm f) {
   OrClause::Builder symm2s(2,2);
   symm2s.set_atom(0,Atom::slow_make(false,Atom::EQ,{b,a}));
   symm2s.set_atom(1,Atom::slow_make(true,Atom::EQ,{a,b}));
-  f.or_clauses.push_back(DerOrClause(0,symm2.build(),symm2s.build() + e));
+  f.or_clauses.push_back(DerOrClause(0,symm2.build(),symm2s.build() + e,List<Constraint>()));
   // -symm(a,b) b/=c a=c
   OrClause::Builder trans_pos(3,3);
   trans_pos.set_atom(0,Atom::slow_make(false,Atom::EQ_SYMM,{a,b}));
@@ -293,7 +302,7 @@ NotAndForm append_restricted_transitivity_axioms(NotAndForm f) {
   trans_pos_s.set_atom(0,Atom::slow_make(false,Atom::EQ,{a,b}));
   trans_pos_s.set_atom(1,Atom::slow_make(false,Atom::EQ,{b,c}));
   trans_pos_s.set_atom(2,Atom::slow_make(true,Atom::EQ,{a,c}));
-  f.or_clauses.push_back(DerOrClause(1,trans_pos.build(),trans_pos_s.build() + e));
+  f.or_clauses.push_back(DerOrClause(1,trans_pos.build(),trans_pos_s.build() + e, List<Constraint>()));
   // {a=b} a/=c b/=c
   OrClause::Builder trans_neg(3,3);
   trans_neg.set_atom(0,Atom::slow_make(true,Atom::EQ_TRANS_NEG,{a,b}));
@@ -303,7 +312,7 @@ NotAndForm append_restricted_transitivity_axioms(NotAndForm f) {
   trans_neg_s.set_atom(0,Atom::slow_make(true,Atom::EQ,{a,b}));
   trans_neg_s.set_atom(1,Atom::slow_make(false,Atom::EQ,{b,c}));
   trans_neg_s.set_atom(2,Atom::slow_make(false,Atom::EQ,{a,c}));
-  f.or_clauses.push_back(DerOrClause(0,trans_neg.build(),trans_neg_s.build() + e));
+  f.or_clauses.push_back(DerOrClause(0,trans_neg.build(),trans_neg_s.build() + e, List<Constraint>()));
   return f;
 }
 
@@ -324,7 +333,7 @@ OrForm append_eq_axioms_with_restricted_transitivity(OrForm _f) {
         b.set_atom(i,ab.build());
       } else b.set_atom(i,a);
     }
-    dc = DerOrClause(dc.cost(),b.build(),dc.source_list());
+    dc = DerOrClause(dc.cost(),b.build(),dc.source_list(),dc.constraints());
   }
   f.or_clauses.push_back(refl_axiom());
   f = append_restricted_transitivity_axioms(f);

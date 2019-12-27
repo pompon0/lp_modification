@@ -4,6 +4,7 @@
 #include "lazyparam_prover/util/short.h"
 #include "lazyparam_prover/util/string.h"
 #include "lazyparam_prover/pred.h"
+#include "lazyparam_prover/derived.h"
 #include "lazyparam_prover/types.h"
 #include "lazyparam_prover/alloc.h"
 #include "lazyparam_prover/mgu.h"
@@ -11,13 +12,6 @@
 #include <algorithm>
 
 namespace tableau {
-
-struct Constraint {
-  enum Type { NEQ, LT };
-  Type type;
-  struct Pair { Term l,r; };
-  List<Pair> or_;
-};
 
 struct KBO {
 public:
@@ -64,6 +58,9 @@ public:
     List<Constraint::Pair> p;
     for(size_t i=l.arg_count(); i--;) p += {l.arg(i),r.arg(i)};
     return check_and_push_constraint_with_log(constraints,{Constraint::NEQ,p});
+  }
+  bool push_constraint(Constraint c) {
+    return check_and_push_constraint_with_log(constraints,c);
   }
 private:
   ResetArray<int> var_occ;

@@ -2,6 +2,7 @@
 #define PRED_FORMAT_H_
 
 #include "lazyparam_prover/pred.h"
+#include "lazyparam_prover/derived.h"
 #include "lazyparam_prover/types.h"
 #include "lazyparam_prover/util/string.h"
 

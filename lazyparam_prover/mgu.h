@@ -3,6 +3,7 @@
 
 #include "lazyparam_prover/types.h"
 #include "lazyparam_prover/pred.h"
+#include "lazyparam_prover/derived.h"
 #include "lazyparam_prover/alloc.h"
 #include "lazyparam_prover/log.h"
 #include "lazyparam_prover/pred_format.h"

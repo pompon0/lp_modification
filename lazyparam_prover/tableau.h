@@ -12,6 +12,7 @@
 #include "lazyparam_prover/eq_axioms.h"
 #include "lazyparam_prover/alt.h"
 #include "lazyparam_prover/ctx.h"
+#include "lazyparam_prover/index.h"
 
 namespace tableau {
 
@@ -29,10 +30,9 @@ inline str show(Branch b) {
 //////////////////////////////////////////
 
 struct SearchState {
-  SearchState(OrForm _form) : form(_form), cla_index(form) {}
+  SearchState(OrForm _form) : cla_index(NotAndForm(_form)) {}
  
-  NotAndForm form;
-  const Index cla_index;
+  const ClauseIndex cla_index;
 
   KBO val;
   size_t nodes_used = 0;
@@ -120,7 +120,7 @@ struct Cont {
   using StartFrame = Variant<Frame,Frame::START,_StartFrame>;
 
   template<typename Alts> void start(State &state, StartFrame f, Alts alts) const { FRAME("start");
-    for(auto dcla : state.form.or_clauses) {
+    for(auto dcla : state.cla_index.form.or_clauses) {
       OrClause cla = dcla.derived();
       // start with all-negative clauses
       bool ok = 1;
@@ -282,7 +282,8 @@ struct Cont {
       tail += Frame(b.build());
     }
 
-    for(auto ca : state.cla_index(f->branch.true_.head(),budget)) {
+    for(auto ca : state.cla_index(f->branch.true_.head())) {
+      if(ca.cla.cost()>budget) break;
       StrongFrame::Builder b;
       b->nodes_limit = f->nodes_limit;
       b->branch = f->branch;

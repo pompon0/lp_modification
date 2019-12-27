@@ -87,7 +87,8 @@ private:
   enum { SIGN, PRED, ARG_COUNT, ARGS };
   u64 *ptr;
   u64 var_offset;
-  explicit Atom(u64 *_ptr, u64 _var_offset) : ptr(_ptr), var_offset(_var_offset) {}
+  u64 id_; // used to identify atom (for indexing)
+  explicit Atom(u64 *_ptr, u64 _var_offset, u64 _id) : ptr(_ptr), var_offset(_var_offset), id_(_id) {}
 public:
   enum {
     EQ = u64(-1),
@@ -101,6 +102,7 @@ public:
   inline u64 pred() const { return ptr[PRED]; }
   inline u64 arg_count() const { return ptr[ARG_COUNT]; }
   inline Term arg(size_t i) const { return Term((u64*)ptr[ARGS+i],var_offset); }
+  inline u64 id() const { return id_; } 
 
   static inline Atom eq(bool sign, Term l, Term r) {
     Builder b(sign,EQ,2);
@@ -132,7 +134,7 @@ public:
     }
     inline Atom build(){
       DEBUG for(size_t i=0; i<ptr[ARG_COUNT]; ++i) if(!ptr[ARGS+i]) error("Atom::build() arg(%) not set",i);
-      return Atom(ptr,0);
+      return Atom(ptr,0,0);
     }
   };
 
@@ -141,7 +143,7 @@ public:
     u64 *ptr2 = alloc(end-ptr);
     for(auto x = ptr, y = ptr2; x<end;) *y++ = *x++;
     ptr2[SIGN] = !ptr2[SIGN];
-    return Atom(ptr2,var_offset);
+    return Atom(ptr2,var_offset,id_);
   }
 };
 
@@ -195,20 +197,25 @@ struct OrClause {
 private:
   enum { ATOM_COUNT, VAR_COUNT, ATOMS };
   u64 *ptr;
-  u64 var_offset;
-  OrClause(u64 *_ptr, u64 _var_offset) : ptr(_ptr), var_offset(_var_offset) {}
+  u64 var_offset_;
+  u64 id_offset_;
+  OrClause(u64 *_ptr, u64 _var_offset, u64 _id_offset) : ptr(_ptr), var_offset_(_var_offset), id_offset_(_id_offset) {}
 public:
-  size_t var_count() const { return var_offset+ptr[VAR_COUNT]; }
+  size_t var_count() const { return var_offset_+ptr[VAR_COUNT]; }
   size_t atom_count() const { return ptr[ATOM_COUNT]; } 
   Atom atom(size_t i) const {
     DEBUG if(i>=atom_count()) error("<atom_count=%>.arg(%)",atom_count(),i);
-    return Atom((u64*)ptr[ATOMS+i],var_offset);
+    return Atom((u64*)ptr[ATOMS+i],var_offset_,id_offset_+i);
   }
   AndClause neg() const;
 
-  OrClause shift(size_t offset) const { FRAME("OrClause::shift()");
-    DEBUG if(var_offset!=0) error("var_offset = %, want %",var_offset,0);
-    return OrClause(ptr,offset);
+  OrClause shift(size_t _var_offset) const { FRAME("OrClause::shift()");
+    DEBUG if(var_offset_!=0) error("var_offset = %, want %",var_offset_,0);
+    return OrClause(ptr,_var_offset,id_offset_);
+  }
+  OrClause set_id_offset(size_t _id_offset) const { FRAME("OrClause::set_id_offset()");
+    DEBUG if(id_offset_!=0) error("id_offset = %, want %",id_offset_,0);
+    return OrClause(ptr,var_offset_,_id_offset);
   }
 
   struct Builder {
@@ -223,7 +230,7 @@ public:
       DEBUG if(a.var_offset) error("a.var_offset = %, want %",a.var_offset,0);
       ptr[ATOMS+i] = (u64)a.ptr;
     }
-    OrClause build(){ return OrClause(ptr,0); }
+    OrClause build(){ return OrClause(ptr,0,0); }
   };
 
   bool operator==(const OrClause &cla) const {
@@ -261,28 +268,33 @@ struct DerAndClause {
 };
 
 struct DerOrClause {
-  explicit DerOrClause(size_t _cost, OrClause cla) : DerOrClause(_cost,cla,List<OrClause>(cla)) {}
-  DerOrClause(size_t _cost, OrClause _derived, List<OrClause> _source) : DerOrClause(_cost,0,_derived,_source) {}
+  DerOrClause(size_t _cost, OrClause cla) : DerOrClause(_cost,cla,List<OrClause>(cla)) {}
+  DerOrClause(size_t _cost, OrClause _derived, List<OrClause> _source) : DerOrClause(_cost,0,0,_derived,_source) {}
   DerAndClause neg() const;
-  DerOrClause shift(size_t _offset) const {
-    DEBUG if(offset_) error("offset = %, want %",offset_,0);
-    return DerOrClause(cost_,_offset,derived_,source_);
+  DerOrClause shift(size_t _var_offset) const {
+    DEBUG if(var_offset_) error("offset = %, want %",var_offset_,0);
+    return DerOrClause(cost_,_var_offset,id_offset_,derived_,source_);
   }
-  OrClause derived() const { return derived_.shift(offset_); }
+  DerOrClause set_id_offset(u64 _id_offset) {
+    DEBUG if(id_offset_!=0) error("id_offset = %, want %",id_offset_,0);
+    return DerOrClause(cost_,var_offset_,_id_offset,derived_,source_);
+  }
+  OrClause derived() const { return derived_.shift(var_offset_).set_id_offset(id_offset_); }
   size_t cost() const { return cost_; }
   List<OrClause> source_list() {
     //TODO: shift the thing for consistency
     return source_;
   }
   vec<OrClause> source() const {
-    vec<OrClause> s; for(auto l=source_; !l.empty(); l = l.tail()) s.push_back(l.head().shift(offset_));
+    vec<OrClause> s; for(auto l=source_; !l.empty(); l = l.tail()) s.push_back(l.head().shift(var_offset_));
     return s;
   }
 private:
-  DerOrClause(size_t _cost, size_t _offset, OrClause _derived, List<OrClause> _source)
-    : cost_(_cost), offset_(_offset), derived_(_derived), source_(_source) {}
+  DerOrClause(size_t _cost, size_t _var_offset, size_t _id_offset, OrClause _derived, List<OrClause> _source)
+    : cost_(_cost), var_offset_(_var_offset), id_offset_(_id_offset), derived_(_derived), source_(_source) {}
   size_t cost_;
-  size_t offset_;
+  size_t var_offset_;
+  size_t id_offset_;
   OrClause derived_;
   List<OrClause> source_;
 };
@@ -333,8 +345,8 @@ static_assert(sizeof(u64*)==sizeof(u64));
 static_assert(sizeof(Term)==2*sizeof(u64));
 static_assert(sizeof(Var)==sizeof(Term));
 static_assert(sizeof(Fun)==sizeof(Term));
-static_assert(sizeof(Atom)==sizeof(Term));
-static_assert(sizeof(OrClause)==sizeof(Term));
+static_assert(sizeof(Atom)==sizeof(Term)+sizeof(u64));
+static_assert(sizeof(OrClause)==sizeof(Atom));
 
 }  // namespace tableau
 

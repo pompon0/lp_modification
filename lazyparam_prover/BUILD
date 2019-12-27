@@ -68,6 +68,7 @@ cc_library(
         "kbo.h",
         "tableau.h",
         "eq_axioms.h",
+        "index.h",
     ],
     deps = [
         "//tptp_parser/proto:tptp_cc_proto",

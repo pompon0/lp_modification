@@ -20,7 +20,7 @@ import (
   spb "github.com/pompon0/tptp_benchmark_go/tptp_parser/proto/solutions_go_proto"
 )
 
-type Prover func(ctx context.Context, cnfProblem *tpb.File, streamStdErr bool, graceful bool) (*spb.ProverOutput, error)
+type Prover func(ctx context.Context, cnfProblem *tpb.File, streamStdErr bool) (*spb.ProverOutput, error)
 
 type Problem struct {
   *problems.Problem
@@ -57,7 +57,7 @@ func worker(
         proverCtx,cancel := context.WithTimeout(ctx,timeout)
         defer cancel()
         t0 := time.Now()
-        out,err := prover(proverCtx,c.CnfProblem,false,true)
+        out,err := prover(proverCtx,c.CnfProblem,false)
         c.Duration = ptypes.DurationProto(time.Since(t0))
         if err==nil {
           c.Output = out

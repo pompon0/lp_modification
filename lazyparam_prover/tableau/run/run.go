@@ -5,6 +5,7 @@ import (
   "log"
   "fmt"
   "flag"
+  "time"
   "os"
   "io/ioutil"
 
@@ -15,6 +16,7 @@ import (
 )
 
 var caseName = flag.String("case_name","","")
+var timeout = flag.Duration("timeout",time.Hour,"")
 
 func run(ctx context.Context) error {
   mp,cancel,err := problems.MizarProblems()
@@ -39,10 +41,13 @@ func run(ctx context.Context) error {
     }
   }
   //fmt.Printf("%s",string(tptp))
-  out,err := tableau.Prove(ctx,tptp)
+  ctxProve,cancel := context.WithTimeout(ctx,*timeout)
+  defer cancel()
+  out,err := tableau.Prove(ctxProve,tptp)
   if err!=nil { return fmt.Errorf("Tableau(%q): %v",*caseName,err) }
   if !out.Solved {
     log.Printf("not solved")
+    log.Printf("out = %+v",out)
     return nil
   }
   log.Printf("out = %v",out)

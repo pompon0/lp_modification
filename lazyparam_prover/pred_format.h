@@ -2,7 +2,6 @@
 #define PRED_FORMAT_H_
 
 #include "lazyparam_prover/pred.h"
-#include "lazyparam_prover/derived.h"
 #include "lazyparam_prover/types.h"
 #include "lazyparam_prover/util/string.h"
 
@@ -57,25 +56,6 @@ str show(const AndClause &andClause) {
   vec<str> atoms;
   for(auto a : andClause.atoms) atoms.push_back(show(a));
   return util::join(" /\\ ",atoms);
-}
-
-str show(const DerAndClause &cla) {
-  vec<str> source;
-  for(auto c : cla.source) source.push_back(show(c));
-  return util::fmt("%   [%]",show(cla.derived),util::join(", ",source));
-}
-str show(const DerOrClause &cla) { return show(cla.derived()); }
-
-str show(const NotAndForm &f) {
-  vec<str> clauses;
-  for(auto c : f.or_clauses) clauses.push_back(show(c) + "\n");
-  return util::join("",clauses);
-}
-
-str show(const OrForm &f) {
-  vec<str> clauses;
-  for(auto c : f.and_clauses) clauses.push_back(show(c) + "\n");
-  return util::join("",clauses);
 }
 
 } // namespace tableau

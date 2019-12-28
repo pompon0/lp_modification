@@ -2,16 +2,33 @@
 #define DERIVED_H_
 
 #include "lazyparam_prover/pred.h"
+#include "lazyparam_prover/pred_format.h"
 
 namespace tableau {
 
 struct Constraint {
+  // ignores sign
+  static Constraint neq(Atom l, Atom r) {
+    if(l.pred()!=r.pred()) return Constraint{TRUE};
+    DEBUG if(l.arg_count()!=r.arg_count()) error("l.arg_count() = %, r.arg_count() = %",show(l),show(r));
+    List<Constraint::Pair> p;
+    for(size_t i=l.arg_count(); i--;) p += {l.arg(i),r.arg(i)};
+    return Constraint{NEQ,p};
+  }
 
   static Constraint neq(Term l, Term r) {
     return Constraint{NEQ,List<Pair>(Pair{l,r})};
   }
 
-  enum Type { NEQ, LT };
+  static Constraint lt(Term l, Term r) {
+    return Constraint{LT,List<Pair>(Pair{l,r})};
+  }
+
+  static Constraint le(Term l, Term r) {
+    return Constraint{LE,List<Pair>(Pair{l,r})};
+  }
+
+  enum Type { NEQ, LT, LE, TRUE };
   Type type;
   struct Pair { Term l,r; };
   List<Pair> or_;
@@ -137,6 +154,25 @@ struct ProverOutput {
   size_t cost;
   ptr<DerAndClause> proof;
 };
+
+str show(const DerAndClause &cla) {
+  vec<str> source;
+  for(auto c : cla.source) source.push_back(show(c));
+  return util::fmt("%   [%]",show(cla.derived),util::join(", ",source));
+}
+str show(const DerOrClause &cla) { return show(cla.derived()); }
+
+str show(const NotAndForm &f) {
+  vec<str> clauses;
+  for(auto c : f.or_clauses) clauses.push_back(show(c) + "\n");
+  return util::join("",clauses);
+}
+
+str show(const OrForm &f) {
+  vec<str> clauses;
+  for(auto c : f.and_clauses) clauses.push_back(show(c) + "\n");
+  return util::join("",clauses);
+}
 
 }  // namespace tableau
 

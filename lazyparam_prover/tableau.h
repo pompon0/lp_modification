@@ -146,13 +146,13 @@ struct Cont {
 
   template<typename Alts> void strong(State &state, StrongFrame f, Alts alts) const { FRAME("strong(%,%)",show(f->dcla),f->strong_id);
     auto dcla = f->dcla.shift(state.val.size());
+    // do not use f->dcla from now on
     state.nodes_used += dcla.cost();
+    auto cla = dcla.derived();
+    state.val.resize(cla.var_count());
     for(auto c = dcla.constraints(); !c.empty(); c = c.tail()) {
       state.val.push_constraint(c.head());
     }
-    auto cla = dcla.derived();
-    // do not use f->dcla from now on
-    state.val.resize(cla.var_count());
     if(f->strong_id>=0) if(!state.val.mgu(f->branch.true_.head(),cla.atom(f->strong_id))) return;
     state.clauses_used += dcla;
     
@@ -210,7 +210,7 @@ struct Cont {
       {
         // add constraints (wrt path)
         for(auto b = f->next.true_; !b.empty(); b = b.tail())
-          if(!state.val.push_constraint(a,b.head())) return;
+          if(!state.val.push_constraint(Constraint::neq(a,b.head()))) return;
         WeakConnectionsFrame::Builder cb;
         cb->nodes_limit = f->nodes_limit;
         cb->atoms = f->atoms.tail();

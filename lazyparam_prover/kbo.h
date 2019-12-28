@@ -49,20 +49,13 @@ public:
     return res;
   }
 
-  List<Constraint> constraints;
-  // ignores sign
   // returning false invalidates the object 
-  bool push_constraint(Atom l, Atom r) { FRAME("push_constraint(%,%)",show(l),show(r));
-    if(l.pred()!=r.pred()) return 1;
-    DEBUG if(l.arg_count()!=r.arg_count()) error("l.arg_count() = %, r.arg_count() = %",show(l),show(r));
-    List<Constraint::Pair> p;
-    for(size_t i=l.arg_count(); i--;) p += {l.arg(i),r.arg(i)};
-    return check_and_push_constraint_with_log(constraints,{Constraint::NEQ,p});
-  }
   bool push_constraint(Constraint c) {
+    if(c.type==Constraint::TRUE) return 1;
     return check_and_push_constraint_with_log(constraints,c);
   }
 private:
+  List<Constraint> constraints;
   ResetArray<int> var_occ;
   Valuation val; 
 
@@ -116,8 +109,18 @@ private:
           default: return false;
         }
       }
+      case Constraint::LE: {
+        DEBUG if(c.or_.size()!=1) error("c.or_.size() = %, want %",c.or_.size(),1);
+        auto ph = c.or_.head();
+        switch(cmp(ph.l,ph.r)) {
+          case KBO::L: return true;
+          case KBO::E: return true;
+          case KBO::N: constraints += c; return true;
+          default: return false;
+        }
+      }
+      default: error("c.type() = %",c.type);
     }
-    error("c.type() = %",c.type);
   }
 
   struct Ctx {

@@ -6,16 +6,16 @@
 //   s(x) := v
 // do initial flattening
 //   f(a,b) = g(c)  ==>  (f(a,b),s(f(a,b))) -> x /\ (g(c),s(g(c))) -> x [f(a,b)>=x, g(c)>=x]
-//   f(a,b) != g(c)  ==>  (a,s(a)) -> x /\ (b,s(b)) -> y /\ (f(x,y),F) != (g(z),F) /\ (c,s(c)) -> z [a>=x,b>=y,c>=z]
+//   f(a,b) != g(c)  ==>  (a,s(a)) -> x /\ (b,s(b)) -> y /\ (f(x,y),F) != (g(z),F) /\ (c,s(c)) -> z [a>=x,b>=y,c>=z] [f(x,y)!=g(z) is applied at =]
 // generate signature aware mono axioms
-//   [3] (f(y,z),f(u1,u2)) !-> x /\ (f(y',z'),F) [=] x /\ (y,u1) -> y' /\ (z,u2) -> z' [f(y,z)>f(y',z')]
-//   [0] (f(y,z),f(u1,u2)) !-> x /\ (f(y,z),F) [=] x [f(y,z)>x]
-//   [0] (x,v) !-> x [you can assume that sides are different if this axiom doesn't match]
+//   [3] (f(y,z),f(u1,u2)) !-> x /\ (f(y',z'),F) [=] x /\ (y,u1) -> y' /\ (z,u2) -> z' [y>=y', z>=z', f(y',z')>=x, f(y,z)>f(y',z')] (last one is the reason to apply the axiom at all).
+//   [0] (y,f(u1,u2)) !-> x /\ (y,F) [=] x [y>=x]
+//   [0] (x,v) !-> x [it applies to variable sig only, because you have other refl axiom as well]
 // generate signature aware trans axioms
 //   [3] (x,F) = (y,ys) /\ (z,zs) = (x,F) /\ (y,ys) != (z,zs) [x>y,x>z]
 //     we can additionally always enforce x>y in (x,xs) = (y,ys), by applying appropriate symmetry axiom between every 2 transitivity axioms
-//   [3] (x,F) ![=] z /\ (x,xs) = (y,ys) /\ (y,ys) [=] z [x>y]
-//   [0] (x,xs) ![=] x
+//   [3] (x,F) ![=] z /\ (x,xs) = (y,ys) /\ (y,ys) [=] z [x > y, z!=x] [x>=z is applied at [=]]
+//   [0] (x,xs) ![=] x [note that this axiom is stronger than some instances of other with ![=] literals]
 // generate signature aware symmetry axiom
 //   [1] (x,xs) = (y,ys) /\ (y,ys) != (x,xs) [y>x]
 
@@ -75,18 +75,19 @@ struct ClauseConverter {
           case Term::FUN: {
             Term u(Var::make(cla.derived.var_count++));
             b.set_arg(i,u);
-            // (a,s(a)) -> x
+            // (a,s(a)) -> x [a>=x]
             Atom::Builder ab(true,Atom::MONO_RED,3);
             ab.set_arg(0,f.arg(i));
             ab.set_arg(1,signature(f.arg(i)));
             ab.set_arg(2,u);
             cla.derived.atoms.push_back(ab.build());
+            cla.constraints.push_back(Constraint::le(u,f.arg(i)));
             ma.atoms.push_back(Atom::eq(true,f.arg(i),u));
             break;
           }
         }
         Term ff(b.build());
-        // a = x /\ b = y /\ f(a,b) != f(x,y) 
+        // a = x /\ b = y /\ f(a,b) != f(x,y)
         ma.atoms.push_back(Atom::eq(false,t,ff));
         cla.source.push_back(ma);
         return ff;
@@ -105,18 +106,19 @@ struct ClauseConverter {
         if(r.type()==Term::FUN) switch(l.type()) {
           case Term::VAR: std::swap(l,r); break;
           case Term::FUN: {           
-            Term u(Var::make(cla.derived.var_count++));
-            // (g(c),F) -> x
+            Term x(Var::make(cla.derived.var_count++));
+            // (g(c),F) -> x  [f(a,b)>=x, g(c)>=x]
             //   f(a,b) = x /\ x = g(c) /\ f(a,b) != g(c)
             //   g(c) = x /\ x != g(c)
             Atom::Builder rb(true,Atom::MONO_RED,3);
             rb.set_arg(0,r);
             rb.set_arg(1,signature(r));
-            rb.set_arg(2,u);
+            rb.set_arg(2,x);
             cla.derived.atoms.push_back(rb.build());
-            cla.source.push_back(trans_axiom(l,u,r));
-            cla.source.push_back(symm_axiom(r,u));
-            r = u;
+            cla.source.push_back(trans_axiom(l,x,r));
+            cla.source.push_back(symm_axiom(r,x));
+            cla.constraints.push_back(Constraint::le(x,r));
+            r = x;
           }
         }
         // (f(a,b),F) -> x
@@ -125,6 +127,7 @@ struct ClauseConverter {
         lb.set_arg(1,signature(l));
         lb.set_arg(2,r);
         cla.derived.atoms.push_back(lb.build());
+        cla.constraints.push_back(Constraint::le(r,l));
       } else {
         // (f(x,y),F) != (g(z),F)
         //   f(x,y) = f(a,b) /\ f(a,b) = g(c) /\ f(x,y) != g(c)
@@ -190,13 +193,14 @@ OrForm conv_and_append_axioms(OrForm f) { FRAME("conv_and_append_axioms()");
 
   for(auto fa : ctx.fun_arity) {
     if(fa.second) {
+      DerAndClause cla;
       AndClause mono1;
       AndClause mono1s;
       Term target(Var::make(mono1.var_count++));
       Fun::Builder f1b(fa.first,fa.second);
       Fun::Builder f1sb(fa.first,fa.second);
       Fun::Builder f2b(fa.first,fa.second);
-      // (y,u1) -> y' /\ (z,u2) -> z'
+      // (y,u1) -> y' /\ (z,u2) -> z' [y>=y', z>=z']
       for(size_t i=0; i<fa.second; ++i) {
         Term x1(Var::make(mono1.var_count++));
         Term x1s(Var::make(mono1.var_count++));
@@ -210,6 +214,7 @@ OrForm conv_and_append_axioms(OrForm f) { FRAME("conv_and_append_axioms()");
         rb.set_arg(2,x2);
         mono1.atoms.push_back(rb.build());
         mono1s.atoms.push_back(Atom::eq(true,x1,x2));
+        cla.constraints.push_back(Constraint::le(x2,x1));
       }
       Term f1(f1b.build());
       Term f1s(f1sb.build());
@@ -221,16 +226,17 @@ OrForm conv_and_append_axioms(OrForm f) { FRAME("conv_and_append_axioms()");
       frb.set_arg(2,target);
       mono1.atoms.push_back(frb.build());
       mono1s.atoms.push_back(Atom::eq(false,f1,f2));
-      // (f(y',z'),F) [=] x
+      // (f(y',z'),F) [=] x [f(y',z')>=x, f(y,z)>f(y',z')]
       Atom::Builder etb(true,Atom::TRANS_TARGET,3);
       etb.set_arg(0,f2);
       etb.set_arg(1,fw);
       etb.set_arg(2,target);
       mono1.atoms.push_back(etb.build()); 
+      cla.constraints.push_back(Constraint::le(target,f2));
+      cla.constraints.push_back(Constraint::lt(f2,f1));
       // (f(y,z),f(u1,u2)) !-> x /\ (f(y',z'),F) [=] x /\ (y,u1) -> y' /\ (z,u2) -> z'
       //   y = y' /\ z = z' /\ f(y,z) != f(y',z')
       //   f(y,z) = f(y',z') /\ f(y',z') = x /\ f(y,z) != x
-      DerAndClause cla;
       cla.cost = 3;
       cla.derived = mono1;
       cla.source.push_back(mono1s);
@@ -251,7 +257,7 @@ OrForm conv_and_append_axioms(OrForm f) { FRAME("conv_and_append_axioms()");
     rb.set_arg(1,Term(fsb.build()));
     rb.set_arg(2,x);
     mono2.atoms.push_back(rb.build());
-    // (y,F) [=] x
+    // (y,F) [=] x [y>=x]
     Atom::Builder tb(true,Atom::TRANS_TARGET,3);
     tb.set_arg(0,y);
     tb.set_arg(1,fw);
@@ -260,6 +266,7 @@ OrForm conv_and_append_axioms(OrForm f) { FRAME("conv_and_append_axioms()");
     DerAndClause cla;
     cla.cost = 0;
     cla.derived = mono2;
+    cla.constraints.push_back(Constraint::le(x,y));
     f.and_clauses.push_back(cla);
   }
 
@@ -309,12 +316,14 @@ OrForm conv_and_append_axioms(OrForm f) { FRAME("conv_and_append_axioms()");
     rbn.set_arg(2,z);
     rbn.set_arg(3,zs);
     trans1.atoms.push_back(rbn.build());
-    // (x,F) = (y,ys) /\ (z,zs) = (x,F) /\ (y,ys) != (z,zs)
+    // (x,F) = (y,ys) /\ (z,zs) = (x,F) /\ (y,ys) != (z,zs) [x>y,x>z]
     DerAndClause cla;
     cla.cost = 1;
     cla.derived = trans1;
     cla.source.push_back(trans_axiom(z,x,y));
     cla.source.push_back(symm_axiom(z,y));
+    cla.constraints.push_back(Constraint::lt(y,x));
+    cla.constraints.push_back(Constraint::lt(z,x));
     f.and_clauses.push_back(cla);
   }
 
@@ -344,11 +353,13 @@ OrForm conv_and_append_axioms(OrForm f) { FRAME("conv_and_append_axioms()");
     tb.set_arg(1,ys);
     tb.set_arg(2,z);
     trans2.atoms.push_back(tb.build());
-    // (x,F) ![=] z /\ (x,xs) = (y,ys) /\ (y,ys) [=] z
+    // (x,F) ![=] z /\ (x,xs) = (y,ys) /\ (y,ys) [=] z  [x > y, z!=x]
     DerAndClause cla;
     cla.cost = 1;
     cla.derived = trans2;
     cla.source.push_back(trans_axiom(x,y,z));
+    cla.constraints.push_back(Constraint::lt(y,x));
+    cla.constraints.push_back(Constraint::neq(z,x));
     f.and_clauses.push_back(cla);
   }
 
@@ -397,6 +408,7 @@ OrForm conv_and_append_axioms(OrForm f) { FRAME("conv_and_append_axioms()");
     cla.cost = 1;
     cla.derived = symm;
     cla.source.push_back(symm_axiom(x,y));
+    cla.constraints.push_back(Constraint::lt(x,y));
     f.and_clauses.push_back(cla);
   }
 

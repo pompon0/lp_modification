@@ -18,6 +18,7 @@ cc_library(
     hdrs = [
         "alloc.h",
         "pred.h",
+        "pred_format.h",
         "derived.h",
     ],
     deps = [
@@ -65,7 +66,6 @@ cc_library(
         "mgu.h",
         "ground.h",
         "parse.h",
-        "pred_format.h",
         "kbo.h",
         "tableau.h",
         "eq_axioms.h",

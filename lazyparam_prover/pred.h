@@ -11,6 +11,7 @@ private:
   friend struct Var;
   friend struct Fun;
   friend struct Atom;
+  friend struct Constraint;
   enum { TYPE, SIZE };
   u64 *ptr;
   u64 var_offset;
@@ -255,94 +256,6 @@ inline AndClause OrClause::neg() const {
   for(size_t i=0; i<atom_count(); ++i) d.atoms.push_back(atom(i).neg());
   return d;
 }
-
-struct DerAndClause;
-struct DerOrClause;
-
-struct DerAndClause {
-  DerAndClause(){}
-  explicit DerAndClause(size_t _cost, AndClause cla) : cost(_cost), derived(cla), source{cla} {}
-
-  DerOrClause neg() const;
-  
-  size_t cost = 0;
-  AndClause derived;
-  vec<AndClause> source;
-};
-
-struct DerOrClause {
-  DerOrClause(size_t _cost, OrClause cla) : DerOrClause(_cost,cla,List<OrClause>(cla)) {}
-  DerOrClause(size_t _cost, OrClause _derived, List<OrClause> _source) : DerOrClause(_cost,0,0,_derived,_source) {}
-  DerAndClause neg() const;
-  DerOrClause shift(size_t _var_offset) const {
-    DEBUG if(var_offset_) error("offset = %, want %",var_offset_,0);
-    return DerOrClause(cost_,_var_offset,id_offset_,derived_,source_);
-  }
-  DerOrClause set_id_offset(u64 _id_offset) {
-    DEBUG if(id_offset_!=0) error("id_offset = %, want %",id_offset_,0);
-    return DerOrClause(cost_,var_offset_,_id_offset,derived_,source_);
-  }
-  OrClause derived() const { return derived_.shift(var_offset_).set_id_offset(id_offset_); }
-  size_t cost() const { return cost_; }
-  List<OrClause> source_list() {
-    //TODO: shift the thing for consistency
-    return source_;
-  }
-  vec<OrClause> source() const {
-    vec<OrClause> s; for(auto l=source_; !l.empty(); l = l.tail()) s.push_back(l.head().shift(var_offset_));
-    return s;
-  }
-private:
-  DerOrClause(size_t _cost, size_t _var_offset, size_t _id_offset, OrClause _derived, List<OrClause> _source)
-    : cost_(_cost), var_offset_(_var_offset), id_offset_(_id_offset), derived_(_derived), source_(_source) {}
-  size_t cost_;
-  size_t var_offset_;
-  size_t id_offset_;
-  OrClause derived_;
-  List<OrClause> source_;
-};
-
-DerOrClause DerAndClause::neg() const {
-  List<OrClause> source_neg;
-  for(const auto &c : source) source_neg += c.neg();
-  return DerOrClause(cost,derived.neg(),source_neg);
-}
-
-DerAndClause DerOrClause::neg() const {
-  DerAndClause cla;
-  cla.cost = cost();
-  cla.derived = derived().neg();
-  for(auto c : source()) {
-    cla.source.push_back(c.neg());
-  }
-  return cla;
-}
-
-struct OrForm {
-  vec<DerAndClause> and_clauses;
-  OrForm(){}
-  explicit OrForm(const NotAndForm &);
-};
-
-struct NotAndForm {
-  vec<DerOrClause> or_clauses;
-  NotAndForm(){}
-  explicit NotAndForm(const OrForm &);
-};
-
-inline NotAndForm::NotAndForm(const OrForm &f) {
-  for(const auto &c : f.and_clauses) or_clauses.push_back(c.neg());
-}
-
-inline OrForm::OrForm(const NotAndForm &f) {
-  for(const auto &c : f.or_clauses) and_clauses.push_back(c.neg());
-}
-
-struct ProverOutput {
-  size_t cont_count;
-  size_t cost;
-  ptr<DerAndClause> proof;
-};
 
 static_assert(sizeof(u64*)==sizeof(u64));
 static_assert(sizeof(Term)==2*sizeof(u64));

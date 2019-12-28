@@ -6,6 +6,7 @@
 #include <iostream>
 #include "lazyparam_prover/tableau.h"
 #include "lazyparam_prover/pred.h"
+#include "lazyparam_prover/derived.h"
 #include "lazyparam_prover/ctx.h"
 #include "lazyparam_prover/log.h"
 #include "solutions.pb.h"

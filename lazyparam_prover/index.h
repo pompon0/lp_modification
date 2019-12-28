@@ -8,13 +8,14 @@
 namespace tableau {
 
 struct ClauseIndex {
+  //TODO: eliminate clauses with unmatchable atoms
   struct OrClauseWithAtom { size_t i; DerOrClause cla; };
   NotAndForm form;
 private:
   vec<vec<OrClauseWithAtom>> map;
 public:
   ClauseIndex(const NotAndForm &f) : form(f) {
-    std::sort(form.or_clauses.begin(),form.or_clauses.end(),
+    std::stable_sort(form.or_clauses.begin(),form.or_clauses.end(),
       [](const DerOrClause &a, const DerOrClause &b){ return a.cost()<b.cost(); });
     size_t id_offset = 0;
     for(auto &c : form.or_clauses) {

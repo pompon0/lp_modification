@@ -83,7 +83,7 @@ func summary(ctx context.Context) error {
   fmt.Printf("commit = %s\n",report.Commit)
   solved := 0
   for _,c := range report.Cases {
-    if c.GetOutput().GetProof()==nil { continue }
+    if !c.GetOutput().GetSolved() { continue }
     solved += 1
     d,err := ptypes.Duration(c.Duration)
     if err!=nil { log.Printf("ptypes.Duration(%q): %v",c.Name,err); continue }

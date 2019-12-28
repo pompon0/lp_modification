@@ -23,7 +23,7 @@ func Prove(ctx context.Context, tptpFOFProblem []byte) (*spb.ProverOutput,error)
   if err!=nil { return nil,fmt.Errorf("eprover.FOFToCNF(): %v",err) }
   cnf,err := tool.TptpToProto(ctx,tool.CNF,tptpCNF)
   if err!=nil { return nil,fmt.Errorf("tool.TptpToProto(): %v",err) }
-  out,err := Tableau(ctx,cnf,true,true)
+  out,err := Tableau(ctx,cnf,true)
   if err!=nil {
     if err==context.DeadlineExceeded {
       return &spb.ProverOutput{Solved:false},nil
@@ -34,7 +34,7 @@ func Prove(ctx context.Context, tptpFOFProblem []byte) (*spb.ProverOutput,error)
   return out,nil
 }
 
-func Tableau(ctx context.Context, cnfProblem *tpb.File, streamStdErr bool, graceful bool) (*spb.ProverOutput,error) {
+func Tableau(ctx context.Context, cnfProblem *tpb.File, streamStdErr bool) (*spb.ProverOutput,error) {
   var inBuf,outBuf,errBuf bytes.Buffer
   cnfProblemBytes, err := proto.Marshal(cnfProblem)
   if err!=nil { return nil,fmt.Errorf("proto.Marshal(): %v",err) }
@@ -45,12 +45,8 @@ func Tableau(ctx context.Context, cnfProblem *tpb.File, streamStdErr bool, grace
   if deadline,ok := ctx.Deadline(); ok {
     timeout = deadline.Sub(time.Now())
   }
-  if graceful {
-    gracefulExitTimeout := 100*time.Millisecond
-    timeout -= gracefulExitTimeout
-  } else {
-    timeout += time.Hour
-  }
+  gracefulExitTimeout := 200*time.Millisecond
+  timeout -= gracefulExitTimeout
   cmd := exec.CommandContext(ctx,utils.Runfile(tableau_bin_path),fmt.Sprintf("--timeout=%v",timeout))
   cmd.Stdin = &inBuf
   cmd.Stdout = &outBuf
@@ -60,7 +56,7 @@ func Tableau(ctx context.Context, cnfProblem *tpb.File, streamStdErr bool, grace
     cmd.Stderr = &errBuf
   }
   if err := cmd.Run(); err!=nil {
-    if ctx.Err()==context.DeadlineExceeded { return nil,ctx.Err() }
+    // deadline exceeded is not acceptable, summary should be always provided.
     return nil,fmt.Errorf("cmd.Run(): %v",err)
   }
 

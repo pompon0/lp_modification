@@ -3,12 +3,11 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive", "http_file"
 # "com_google_protobuf" declares some terribly old version of skylib,
 # forcing the newest version beforehead
 http_archive(
-  name = "bazel_skylib",
-  sha256 = "e5d90f0ec952883d56747b7604e2a15ee36e288bb556c3d0ed33e818a4d971f2",
-  strip_prefix = "bazel-skylib-1.0.2",
-  urls = ["https://github.com/bazelbuild/bazel-skylib/archive/1.0.2.tar.gz"],
+    name = "bazel_skylib",
+    sha256 = "e5d90f0ec952883d56747b7604e2a15ee36e288bb556c3d0ed33e818a4d971f2",
+    strip_prefix = "bazel-skylib-1.0.2",
+    urls = ["https://github.com/bazelbuild/bazel-skylib/archive/1.0.2.tar.gz"],
 )
-
 
 http_archive(
     name = "eprover",
@@ -65,11 +64,12 @@ http_file(
 )
 
 http_archive(
-  name = "com_google_protobuf",
-  strip_prefix = "protobuf-3.11.2",
-  urls = ["https://github.com/google/protobuf/archive/v3.11.2.zip"],
-  sha256 = "e4f8bedb19a93d0dccc359a126f51158282e0b24d92e0cad9c76a9699698268d",
+    name = "com_google_protobuf",
+    strip_prefix = "protobuf-3.11.2",
+    urls = ["https://github.com/google/protobuf/archive/v3.11.2.zip"],
+    sha256 = "e4f8bedb19a93d0dccc359a126f51158282e0b24d92e0cad9c76a9699698268d",
 )
+
 load("@com_google_protobuf//:protobuf_deps.bzl", "protobuf_deps")
 
 protobuf_deps()
@@ -93,8 +93,11 @@ http_archive(
     urls = ["https://github.com/bazelbuild/rules_go/releases/download/v0.20.0/rules_go-v0.20.0.tar.gz"],
     sha256 = "078f2a9569fa9ed846e60805fb5fb167d6f6c4ece48e6d409bf5fb2154eaf0d8",
 )
+
 load("@io_bazel_rules_go//go:deps.bzl", "go_rules_dependencies", "go_register_toolchains")
+
 go_rules_dependencies()
+
 go_register_toolchains()
 
 http_archive(
@@ -131,30 +134,33 @@ load(
 _go_image_repos()
 
 load(
-  "@io_bazel_rules_docker//container:container.bzl",
-  "container_pull",
+    "@io_bazel_rules_docker//container:container.bzl",
+    "container_pull",
 )
 
 container_pull(
-  name = "swipl",
-  registry = "index.docker.io",
-  repository = "amd64/swipl",
-  digest = "sha256:b6f51e9cbccc55386bfa3381336c70bda145405cc258055fc8cc2afaddb9a35b",
+    name = "swipl",
+    registry = "index.docker.io",
+    repository = "amd64/swipl",
+    digest = "sha256:b6f51e9cbccc55386bfa3381336c70bda145405cc258055fc8cc2afaddb9a35b",
 )
 
 ######################################################
 # haskell
 
 http_archive(
-  name = "rules_haskell",
-  strip_prefix = "rules_haskell-master",
-  urls = ["https://github.com/pompon0/rules_haskell/archive/master.tar.gz"],
-  sha256 = "bb1444e628c09e3cd76578602b823493a531d3753eff31b696bf6ef3ad57116f",
+    name = "rules_haskell",
+    strip_prefix = "rules_haskell-master",
+    urls = ["https://github.com/pompon0/rules_haskell/archive/master.tar.gz"],
+    sha256 = "bb1444e628c09e3cd76578602b823493a531d3753eff31b696bf6ef3ad57116f",
 )
 
 load("@rules_haskell//haskell:repositories.bzl", "rules_haskell_dependencies")
+
 rules_haskell_dependencies()
+
 load("@rules_haskell//haskell:toolchain.bzl", "rules_haskell_toolchains")
+
 rules_haskell_toolchains()
 
 http_archive(
@@ -252,8 +258,8 @@ go_repository(
 go_repository(
     name = "org_golang_google_grpc",
     importpath = "google.golang.org/grpc",
-    sum = "h1:wdKvqQk7IttEw92GoRyKG2IDrUIpgpj6H6m81yfeMW0=",
-    version = "v1.25.1",
+    sum = "h1:2dTRdpdFEEhJYQD8EMLB61nnrzSCTbG38PhqdhvOltg=",
+    version = "v1.26.0",
 )
 
 go_repository(
@@ -282,4 +288,32 @@ go_repository(
     importpath = "cloud.google.com/go",
     sum = "h1:CH+lkubJzcPYB1Ggupcq0+k8Ni2ILdG2lYjDIgavDBQ=",
     version = "v0.49.0",
+)
+
+go_repository(
+    name = "org_golang_google_api",
+    importpath = "google.golang.org/api",
+    sum = "h1:yzlyyDW/J0w8yNFJIhiAJy4kq74S+1DOLdawELNxFMA=",
+    version = "v0.15.0",
+)
+
+go_repository(
+    name = "io_opencensus_go",
+    importpath = "go.opencensus.io",
+    sum = "h1:75k/FF0Q2YM8QYo07VPddOLBslDt1MZOdEslOHvmzAs=",
+    version = "v0.22.2",
+)
+
+go_repository(
+    name = "com_github_googleapis_gax_go_v2",
+    importpath = "github.com/googleapis/gax-go/v2",
+    sum = "h1:sjZBwGj9Jlw33ImPtvFviGYvseOtDM7hkSKB7+Tv3SM=",
+    version = "v2.0.5",
+)
+
+go_repository(
+    name = "com_github_golang_groupcache",
+    importpath = "github.com/golang/groupcache",
+    sum = "h1:5ZkaAPbicIKTF2I64qf5Fh8Aa83Q/dnOafMYV0OMwjA=",
+    version = "v0.0.0-20191227052852-215e87163ea7",
 )

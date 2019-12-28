@@ -26,11 +26,13 @@ import (
 
 type server struct {
   sem *semaphore.Weighted
+  commit string
 }
 
-func NewServer() *server {
+func NewServer(commit string) *server {
   return &server{
     sem: semaphore.NewWeighted(1),
+    commit: commit,
   }
 }
 
@@ -40,6 +42,10 @@ func (s *server) Prove(ctx context.Context, req *pb.Req) (*pb.Resp,error) {
   ok := s.sem.TryAcquire(1)
   if !ok { return nil,status.New(codes.ResourceExhausted,"too many requests").Err() }
   defer s.sem.Release(1)
+
+  if got,want := req.GetCommit(),s.commit; got!=want {
+    return nil,status.Newf(codes.Unavailable,"commit got = %q, want %q",got,want).Err()
+  }
 
   timeout,err := ptypes.Duration(req.Timeout)
   if err!=nil { return nil,status.Newf(codes.InvalidArgument,"ptypes.Duration(req.Timeout): %v",err).Err() }
@@ -88,12 +94,15 @@ func convProblemEprover(ctx context.Context, tptp []byte) (/*fof*/ *tpb.File, /*
 }
 
 func run(ctx context.Context) error {
+  commit := os.Getenv("COMMIT")
+  if commit=="" { return fmt.Errorf("COMMIT cannot be empty") }
+
   port := os.Getenv("PORT")
   lis, err := net.Listen("tcp","0.0.0.0:"+port)
   if err!=nil { return fmt.Errorf("net.Listen(): %v",err) }
 
   s := grpc.NewServer()
-  pb.RegisterWorkerServer(s,NewServer())
+  pb.RegisterWorkerServer(s,NewServer(commit))
   if err := s.Serve(lis); err!=nil {
     return fmt.Errorf("s.Serve(): %v",err)
   }

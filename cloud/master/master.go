@@ -21,6 +21,7 @@ import (
   "github.com/golang/protobuf/ptypes"
 
   "github.com/pompon0/tptp_benchmark_go/problems"
+  "github.com/pompon0/tptp_benchmark_go/cloud/worker/push"
   pb "github.com/pompon0/tptp_benchmark_go/cloud/worker/worker_go_proto"
   spb "github.com/pompon0/tptp_benchmark_go/tptp_parser/proto/solutions_go_proto"
 )
@@ -30,13 +31,10 @@ import (
 // run "gcloud auth application-default login" before executing this binary
 var workerAddr = flag.String("worker_addr","worker-su5lpnpdhq-uc.a.run.app:443","worker service address")
 
-//var proofDir = flag.String("proof_dir","/tmp/benchmark_proofs","output directory to write proofs to")
-
 var reportDir = flag.String("report_dir","","")
 
 var maxInFlight = flag.Int("max_in_flight",10,"")
 var problemLimit = flag.Int("problem_limit",-1,"number of problems to solve (-1 for all problems)")
-//var unsolvedOnly = flag.Bool("unsolved_only",false,"process only unsolved problems")
 var timeout = flag.Duration("timeout",16*time.Second,"timeout per problem")
 
 
@@ -78,6 +76,7 @@ const (
 var inFlight int64
 var problemSets = []string{problemSetMizar,problemSetTptp}
 
+var commit = flag.String("commit","","current version")
 var problemSet = flag.String("problem_set",problemSetMizar,strings.Join(problemSets,"|"))
 var prover = NewEnumFlag(pb.Prover_value)
 
@@ -115,6 +114,14 @@ func NewConnPool(ctx context.Context, addr string, n int) (*ConnPool,func(),erro
 }
 
 func run(ctx context.Context) error {
+  if *commit=="" {
+    return fmt.Errorf("commit cannot be empty")
+  }
+  // deploy current revision
+  if err:=push.Push(ctx,*commit); err!=nil {
+    return fmt.Errorf("push.Push(): %v",err)
+  }
+
   pool,cancel,err := NewConnPool(ctx,*workerAddr,15)
   if err!=nil { return fmt.Errorf("NewConnPool(%q): %v",*workerAddr,err) }
   defer cancel()
@@ -123,16 +130,13 @@ func run(ctx context.Context) error {
   if _,err := os.Stat(*reportDir); os.IsNotExist(err) {
     return fmt.Errorf("report_dir = %q doesn't exist",*reportDir)
   }
-  /*if _,err := os.Stat(*proofDir); os.IsNotExist(err) {
-    return fmt.Errorf("proof_dir = %q doesn't exist",*proofDir)
-  }*/
   date,err := ptypes.TimestampProto(time.Now())
   if err!=nil {
     return fmt.Errorf("ptypes.TimestampProto(): %v",err)
   }
   report := &spb.Report {
     Date: date,
-    Commit: "(worker)",
+    Commit: *commit,
     Labels: []string {
       fmt.Sprintf("--problem_set=%s",*problemSet),
       fmt.Sprintf("--prover=%s",prover),
@@ -184,6 +188,7 @@ func run(ctx context.Context) error {
         c := pb.NewWorkerClient(pool.Get())
         //t := time.Now()
         resp,err = c.Prove(gCtx,&pb.Req{
+          Commit: *commit,
           Prover: pb.Prover(prover.Value),
           TptpProblem: tptp,
           Timeout: timeoutProto,

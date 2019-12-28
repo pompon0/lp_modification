@@ -54,6 +54,7 @@ go_image(
     base = "@swipl//image",
     name = "worker_img",
     binary = ":worker",
+    visibility = ["//visibility:public"],
     args = [],
 )
 

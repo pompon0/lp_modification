@@ -31,15 +31,15 @@ go_test(
 )
 
 cc_binary(
-  name = "limit",
-  srcs = ["limit.cc"],
-  deps = ["//lazyparam_prover/util:util"],
-  visibility = ["//visibility:public"],
-  #features = ["fully_static_link"],
-  linkopts = [
-    "-static-libstdc++",
-    "-static-libgcc",
-    "-l:libstdc++.a",
-    "-l:libgcc.a",
-  ],
+    name = "limit",
+    srcs = ["limit.cc"],
+    deps = ["//lazyparam_prover/util:util"],
+    visibility = ["//visibility:public"],
+    features = ["fully_static_link"],
+    linkopts = [
+        "-static-libstdc++",
+        "-static-libgcc",
+        "-l:libstdc++.a",
+        "-l:libgcc.a",
+    ],
 )

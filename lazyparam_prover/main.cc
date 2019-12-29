@@ -28,23 +28,30 @@ int main(int argc, char **argv) {
   ParseCtx parse_ctx;
   OrForm f(parse_ctx.parse_notAndForm(file_raw));
 
-  
-  auto ctx = Ctx::with_timeout(absl::GetFlag(FLAGS_timeout));
-  auto out = prove_loop(*ctx,f);
-  std::cerr << profile.show(); 
-  
-  solutions::ProverOutput outProto;
-  outProto.set_cost(out.cost);
-  outProto.set_continuation_count(out.cont_count);
-  if(out.proof){
-    outProto.set_solved(true);
-    ProtoCtx pctx(parse_ctx);
-    OrForm proof_form;
-    for(auto cla : out.proof->source) proof_form.and_clauses.push_back(DerAndClause(1,cla));
-    *outProto.mutable_proof() = pctx.proto_notAndForm(NotAndForm(proof_form));
-  }
-  if(!outProto.SerializeToOstream(&std::cout)) {
-    error("outProto.SerializeToOstream() failed");  
+  auto emergency_block = new char[1000*1000];
+  try {
+    auto ctx = Ctx::with_timeout(absl::GetFlag(FLAGS_timeout));
+    auto out = prove_loop(*ctx,f);
+    std::cerr << profile.show(); 
+    
+    solutions::ProverOutput outProto;
+    outProto.set_cost(out.cost);
+    outProto.set_continuation_count(out.cont_count);
+    if(out.proof){
+      outProto.set_solved(true);
+      ProtoCtx pctx(parse_ctx);
+      OrForm proof_form;
+      for(auto cla : out.proof->source) proof_form.and_clauses.push_back(DerAndClause(1,cla));
+      *outProto.mutable_proof() = pctx.proto_notAndForm(NotAndForm(proof_form));
+    }
+    if(!outProto.SerializeToOstream(&std::cout)) {
+      error("outProto.SerializeToOstream() failed");  
+    }
+  } catch(const std::bad_alloc&) {
+    delete []emergency_block;
+    solutions::ProverOutput outProto;
+    outProto.set_oom(true);
+    outProto.SerializeToOstream(&std::cout);
   }
   return 0;
 }

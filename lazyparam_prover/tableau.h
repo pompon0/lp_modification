@@ -31,9 +31,9 @@ inline str show(Branch b) {
 //////////////////////////////////////////
 
 struct SearchState {
-  SearchState(OrForm _form) : cla_index(NotAndForm(_form)) {}
+  SearchState(const ClauseIndex &_cla_index) : cla_index(_cla_index) {}
  
-  const ClauseIndex cla_index;
+  const ClauseIndex &cla_index;
 
   KBO val;
   size_t nodes_used = 0;
@@ -310,9 +310,9 @@ struct Cont {
   }
 };
 
-ProverOutput prove(const Ctx &ctx, OrForm form, size_t limit) { FRAME("prove()");
+ProverOutput prove(const Ctx &ctx, const ClauseIndex &cla_index, size_t limit) { FRAME("prove()");
   SCOPE("prove");
-  SearchState s(form);
+  SearchState s(cla_index);
   Cont::StartFrame::Builder b;
   b->nodes_limit = limit;
   auto res = alt::search(ctx,s,Cont{List<Cont::Frame>(Cont::Frame(b.build()))});
@@ -326,13 +326,16 @@ ProverOutput prove_loop(const Ctx &ctx, OrForm form) { FRAME("prove_loop()");
   if(has_equality(form)) { 
     //form = reduce_monotonicity_and_append_eq_axioms(form);
     //form = append_eq_axioms_with_restricted_transitivity(form);
-    form = append_eq_axioms(form);
+    form = lazy::conv(form);
   }
   size_t cont_count = 0;
   size_t limit = 1;
+  //info("ClauseIndex begin");
+  ClauseIndex idx((NotAndForm)form);
+  //info("ClauseIndex end");
   for(;!ctx.done(); ++limit) {
     DEBUG info("limit = %",limit);
-    ProverOutput out = prove(ctx,form,limit);
+    ProverOutput out = prove(ctx,idx,limit);
     out.cont_count += cont_count;
     if(out.proof) {
       DEBUG info("SUCCESS");

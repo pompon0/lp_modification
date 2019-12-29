@@ -160,6 +160,28 @@ public:
     return b.build();
   }
 
+  // FIXME: var_count gets invalidated due to evaluation
+  inline AndClause eval(AndClause cla) { FRAME("eval(%)",show(cla));
+    for(Atom &a : cla.atoms) a = eval(a);
+    return cla;
+  }
+
+  inline Constraint eval(Constraint c) {
+    List<Constraint::Pair> or_;
+    for(auto o = c.or_; !o.empty(); o = o.tail())
+      or_ += Constraint::Pair{eval(o.head().l),eval(o.head().r)};
+    c.or_ = or_;
+    return c;
+  }
+
+  // FIXME: var_count gets invalidated due to evaluation
+  inline DerAndClause eval(DerAndClause cla) {
+    cla.derived = eval(cla.derived);
+    for(auto &s : cla.source) s = eval(s);
+    for(auto &c : cla.constraints) c = eval(c);
+    return cla;
+  }
+
   str DebugString() const {
     vec<str> l;
     for(size_t i=0; i<val.size(); ++i) if(val[i]) {

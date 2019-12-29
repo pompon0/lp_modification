@@ -25,6 +25,8 @@ message ProverOutput {
   int64 continuation_count = 2;
   int64 extension_count = 3;
   bool solved = 5;
+  bool oom = 7;
+  bool killed = 8;
   tptp.File proof = 4;
   tptp.File cnf_problem = 6;
 }

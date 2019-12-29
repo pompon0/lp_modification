@@ -47,6 +47,7 @@ func run(ctx context.Context) error {
   if err!=nil { return fmt.Errorf("Tableau(%q): %v",*caseName,err) }
   if !out.Solved {
     log.Printf("not solved")
+    out.CnfProblem = nil
     log.Printf("out = %+v",out)
     return nil
   }

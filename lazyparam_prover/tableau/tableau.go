@@ -7,6 +7,7 @@ import (
   "os"
   "context"
   "time"
+  "syscall"
 
   "github.com/pompon0/tptp_benchmark_go/eprover"
   "github.com/pompon0/tptp_benchmark_go/tool"
@@ -55,7 +56,12 @@ func Tableau(ctx context.Context, cnfProblem *tpb.File, streamStdErr bool) (*spb
   } else {
     cmd.Stderr = &errBuf
   }
-  if err := cmd.Run(); err!=nil {
+  const memLimitBytes = 2*1000*1000*1000
+  if err := tool.RunWithMemLimit(cmd,memLimitBytes); err!=nil {
+    status := err.(*exec.ExitError).Sys().(syscall.WaitStatus)
+    if status.Signaled() && status.Signal()==syscall.SIGKILL {
+      return &spb.ProverOutput{Solved:false,Killed:true},nil
+    }
     // deadline exceeded is not acceptable, summary should be always provided.
     return nil,fmt.Errorf("cmd.Run(): %v",err)
   }

@@ -212,7 +212,7 @@ func run(ctx context.Context) error {
         case codes.Internal: // probably bug
         default: return fmt.Errorf("c.Prove(%q): %v",name,err)
         }
-        time.Sleep(2)
+        time.Sleep(4)
       }
       resp.Case.Name = name
       if resp.Case.Output==nil {

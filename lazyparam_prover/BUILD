@@ -28,12 +28,30 @@ cc_library(
 )
 
 cc_library(
-    name = "parse2",
-    hdrs = ["parse2.h"],
+    name = "parse",
+    hdrs = [
+        "parse.h",
+    ],
     deps = [
         ":types",
         ":pred",
         "//tptp_parser/proto:tptp_cc_proto",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
+    name = "parse2",
+    hdrs = [
+        "parse2.h",
+    ],
+    deps = [
+        ":types",
+        ":pred",
+        "//tptp_parser/proto:tptp_cc_proto",
+        # vampire agressively takes over signal handling of the whole binary
+        # in particular it severly reduces the global memory limits.
+        # DO NOT LINK into actual prover, until you refector it.
         "@vampire//:lib",
         "@com_google_protobuf//:protobuf",
     ],
@@ -63,20 +81,20 @@ cc_library(
     hdrs = [
         "ctx.h",
         "alt.h",
+        "eq_axioms.h",
         "mgu.h",
         "ground.h",
-        "parse.h",
         "kbo.h",
         "tableau.h",
-        "eq_axioms.h",
         "lazy.h",
         "index.h",
     ],
     deps = [
         "//tptp_parser/proto:tptp_cc_proto",
         "//tptp_parser/proto:solutions_cc_proto",
-        ":pred",
         ":log",
+        ":parse",
+        ":pred",
         ":types",
         "//lazyparam_prover/util:util",
         "@com_google_protobuf//:protobuf",

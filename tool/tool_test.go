@@ -94,6 +94,27 @@ func TestTPTPFOFToCNF(t *testing.T) {
   }
 }
 
+func TestTptpHasEquality(t *testing.T) {
+  ctx := context.Background()
+  for _,c := range []struct { name string; tptp []byte; want bool } {
+    {"trivial", problems.Trivial, false},
+    {"simple", problems.Simple, false},
+    {"eqAxiom1", problems.EqAxiom1, true},
+    {"eqAxiom2", problems.EqAxiom2, true},
+    {"eqAxiom3", problems.EqAxiom3, true},
+    {"barber", problems.Barber, false},
+    {"pelletier20", problems.Pelletier20, false},
+    {"pelletier24", problems.Pelletier24, false},
+  } {
+    got,err := TptpHasEquality(ctx,c.tptp)
+    if err!=nil {
+      t.Errorf("TptpHasEquality(%q): %v",c.name,err)
+    } else if got!=c.want {
+      t.Errorf("TptpHasEquality(%q) = %, want %",got,c.want)
+    }
+  }
+}
+
 func pred(name string) *tpb.Formula {
   return &tpb.Formula{
     Formula: &tpb.Formula_Pred_{

@@ -57,11 +57,32 @@ func TptpToProto(ctx context.Context, lang Language, tptp []byte) (*tpb.File,err
     if ctx.Err()!=nil { return nil,ctx.Err() }
     return nil,fmt.Errorf("cmd.Run(): %v",err)
   }
-  pbFile := &tpb.File{}
-  if err:=proto.Unmarshal(outBuf.Bytes(),pbFile); err!=nil {
+  out := &tpb.ToolOutput{}
+  if err:=proto.Unmarshal(outBuf.Bytes(),out); err!=nil {
     return nil,fmt.Errorf("proto.Unmarshal(): %v",err)
   }
-  return pbFile,nil
+  return out.File,nil
+}
+
+func TptpHasEquality(ctx context.Context, tptp []byte) (bool,error) {
+  var inBuf,outBuf bytes.Buffer
+  if _,err := inBuf.Write(tptp); err!=nil {
+    return false,fmt.Errorf("inbuf.Write(): %v",err)
+  }
+  cmd := exec.CommandContext(ctx,utils.Runfile(cc_tool_bin_path))
+  cmd.Stdin = &inBuf
+  cmd.Stdout = &outBuf
+  cmd.Stderr = os.Stderr
+  if err := cmd.Run(); err!=nil {
+    if ctx.Err()!=nil { return false,ctx.Err() }
+    return false,fmt.Errorf("cmd.Run(): %v",err)
+  }
+  out := &tpb.ToolOutput{}
+  if err:=proto.Unmarshal(outBuf.Bytes(),out); err!=nil {
+    return false,fmt.Errorf("proto.Unmarshal(): %v",err)
+  }
+  return out.HasEquality,nil
+
 }
 
 func TptpToProto2(ctx context.Context, lang Language, tptp []byte) (*tpb.File,error) {

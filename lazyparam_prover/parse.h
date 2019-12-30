@@ -4,6 +4,7 @@
 #include "tptp.pb.h"
 #include "google/protobuf/io/coded_stream.h"
 #include "lazyparam_prover/pred.h"
+#include "lazyparam_prover/derived.h"
 
 namespace tableau {
 

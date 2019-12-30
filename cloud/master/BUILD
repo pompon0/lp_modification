@@ -9,6 +9,7 @@ go_library(
         "//cloud/worker:worker_go_proto",
         "//cloud/worker/push:go_default_library",
         "//problems:go_default_library",
+        "//tool:go_default_library",
         "//tptp_parser/proto:solutions_go_proto",
         "@com_github_golang_protobuf//ptypes:go_default_library_gen",
         "@org_golang_google_grpc//:go_default_library",

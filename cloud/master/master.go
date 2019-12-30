@@ -20,6 +20,7 @@ import (
   "golang.org/x/sync/errgroup"
   "github.com/golang/protobuf/ptypes"
 
+  "github.com/pompon0/tptp_benchmark_go/tool"
   "github.com/pompon0/tptp_benchmark_go/problems"
   "github.com/pompon0/tptp_benchmark_go/cloud/worker/push"
   pb "github.com/pompon0/tptp_benchmark_go/cloud/worker/worker_go_proto"
@@ -37,6 +38,7 @@ var maxInFlight = flag.Int("max_in_flight",10,"")
 var problemLimit = flag.Int("problem_limit",-1,"number of problems to solve (-1 for all problems)")
 var timeout = flag.Duration("timeout",16*time.Second,"timeout per problem")
 
+var equalityOnly = flag.Bool("equality_only",false,"")
 
 type EnumFlag struct {
   fromString map[string]int32
@@ -169,11 +171,36 @@ func run(ctx context.Context) error {
 
   timeoutProto := ptypes.DurationProto(*timeout)
   inFlightSem := semaphore.NewWeighted(int64(*maxInFlight))
+  processSem := semaphore.NewWeighted(int64(100))
   for _,name := range probNames {
     name := name
     group.Go(func() error {
       tptp,err := prob[name].Get()
       if err!=nil { return fmt.Errorf("prob[%q].Get(): %v",err) }
+
+      if *equalityOnly {
+        if err:=processSem.Acquire(gCtx,1); err!=nil {
+          return fmt.Errorf("processSem.Acquire(): %v",err)
+        }
+        has := false
+        for {
+          var err error
+          has,err = tool.TptpHasEquality(gCtx,tptp)
+          if err==nil { break }
+        }
+        processSem.Release(1)
+        if err!=nil {
+          return fmt.Errorf("tool.HasEquality(%q): %v",name,err)
+        }
+        if !has {
+          // send to signal that case has been filtered out.
+          select {
+          case <-gCtx.Done(): return nil
+          case resultsChan <- nil: return nil
+          }
+          return nil
+        }
+      }
 
       // throttle in-flight operations
       if err:=inFlightSem.Acquire(gCtx,1); err!=nil {
@@ -203,11 +230,6 @@ func run(ctx context.Context) error {
         }
         switch st.Code() {
         case codes.Unknown:
-        /*case codes.Unknown: // probably OOM, TODO: add OOM as a possible output
-          resp = &pb.Resp{Case: &spb.Case{
-            Duration: timeoutProto,
-            Output: &spb.ProverOutput{Solved:false},
-          }}*/
         case codes.Unavailable:
         case codes.Internal: // probably bug
         default: return fmt.Errorf("c.Prove(%q): %v",name,err)
@@ -228,23 +250,22 @@ func run(ctx context.Context) error {
   group.Go(func() error {
     okCount := 0
     failCount := 0
+    filteredCount := 0
     for i:=0; i<len(probNames); i++ {
       select {
       case <-gCtx.Done(): return nil
       case r := <-resultsChan:
+        if r==nil {
+          filteredCount++
+          continue
+        }
         report.Cases = append(report.Cases, r)
         if !r.Output.Solved {
           failCount++
         } else {
-          //legacyProof := &spb.CNF{Problem:r.CnfProblem, Proof:r.Output.Proof}
-          /*isNew,err := problems.WriteProof(*proofDir,r.Name,legacyProof)
-          if err!=nil {
-            return fmt.Errorf("writeProof(): %v",err)
-          }
-          if isNew { newCount++ }*/
           okCount++
         }
-        log.Printf("done %v/%v fail=%v ok=%v",i+1,len(probNames),failCount,okCount)
+        log.Printf("done %v/%v fail=%v ok=%v filtered=%v",i+1,len(probNames),failCount,okCount,filteredCount)
       }
     }
     return nil

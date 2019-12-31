@@ -81,3 +81,7 @@ message Term {
   repeated Term args = 3;
 }
 
+message ToolOutput {
+  File file = 1;
+  bool has_equality = 2;
+}

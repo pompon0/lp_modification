@@ -15,9 +15,10 @@ int main(int argc, char **argv) {
   std::ios::sync_with_stdio(0);
   //absl::ParseCommandLine(argc, argv);
 
-  tptp::File file;
-  parse_file(&file,std::cin);
-  file.SerializeToOstream(&std::cout);
+  tptp::ToolOutput out;
+  parse_file(out.mutable_file(),std::cin);
+  out.set_has_equality(has_equality(out.file()));
+  out.SerializeToOstream(&std::cout);
   //inline_imports(std::cout,std::cin);
   std::cout << std::flush;
   return 0;

@@ -187,6 +187,28 @@ void inline_imports(std::ostream &os, std::istream &is) { FRAME("inline_imports"
   }
 }
 
+bool has_equality(const tptp::Formula &f) {
+  switch(f.formula_case()) {
+    case tptp::Formula::kOp:
+      for(const auto &a : f.op().args()) {
+        if(has_equality(a)) return 1;
+      }
+      return 0;
+    case tptp::Formula::kQuant:
+      return has_equality(f.quant().sub());
+    case tptp::Formula::kPred:
+      return f.pred().type()==tptp::Formula::Pred::EQ;
+    default: error("f.formula_case() = %",f.formula_case());
+  }
+}
+
+bool has_equality(const tptp::File &f) {
+  for(const auto &i : f.input()) {
+    if(has_equality(i.formula())) return 1;
+  }
+  return 0;
+}
+
 } // namespace tableau
 
 #endif  // PARSE2_H_

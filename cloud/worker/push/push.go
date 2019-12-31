@@ -57,7 +57,7 @@ func Push(ctx context.Context, commit string) error {
 
   template := &run.RevisionTemplate {
     Metadata: &run.ObjectMeta {
-      Name: fmt.Sprintf("worker-%s",digest.String()[:15]),
+      Name: fmt.Sprintf("worker-%s",commit[:15]),
       Annotations: map[string]string {
         "autoscaling.knative.dev/maxScale": "1000",
       },

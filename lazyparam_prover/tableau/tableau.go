@@ -57,7 +57,7 @@ func Tableau(ctx context.Context, cnfProblem *tpb.File, streamStdErr bool) (*spb
     cmd.Stderr = &errBuf
   }
   const memLimitBytes = 2*1000*1000*1000
-  if err := tool.RunWithMemLimit(cmd,memLimitBytes); err!=nil {
+  if err := utils.RunWithMemLimit(cmd,memLimitBytes); err!=nil {
     status := err.(*exec.ExitError).Sys().(syscall.WaitStatus)
     if status.Signaled() && status.Signal()==syscall.SIGKILL {
       return &spb.ProverOutput{Solved:false,Killed:true},nil

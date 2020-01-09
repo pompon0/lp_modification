@@ -203,7 +203,7 @@ func multidiff(ctx context.Context) error {
         }
         lines[k] += fmt.Sprintf(" |     %s",t)
       } else {
-        lines[k] += fmt.Sprintf(" | %4d/%4d",v.solved,v.total)
+        lines[k] += fmt.Sprintf(" & $%d$/$%d$",v.solved,v.total)
       }
     }
   }
@@ -211,7 +211,7 @@ func multidiff(ctx context.Context) error {
   for k,_ := range lines { keys = append(keys,k) }
   sort.Strings(keys)
   for _,k := range keys {
-    fmt.Printf("%25s%s\n",k,lines[k])
+    fmt.Printf("%s %s \\\\\n",k,lines[k])
   }
   return nil
 }

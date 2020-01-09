@@ -326,8 +326,8 @@ ProverOutput prove_loop(const Ctx &ctx, OrForm form) { FRAME("prove_loop()");
   if(has_equality(form)) { 
     //form = reduce_monotonicity_and_append_eq_axioms(form);
     //form = append_eq_axioms_with_restricted_transitivity(form);
-    form = append_eq_axioms(form);
-    //form = lazy::conv(form);
+    //form = append_eq_axioms(form);
+    form = lazy::conv(form);
   }
   size_t cont_count = 0;
   size_t limit = 1;

@@ -104,55 +104,37 @@ func diff(ctx context.Context) error {
   report2,err := problems.ReadReport(*reportPath2)
   if err!=nil { return fmt.Errorf("problems.ReadReport(report_path=%q): %v",*reportPath2,err) }
 
-  fmt.Printf("[L] commit = %q, labes = %v\n",report1.Commit,report1.Labels)
-  fmt.Printf("[R] commit = %q, labes = %v\n",report2.Commit,report2.Labels)
-
-  sort.Slice(report1.Cases, func(i,j int) bool { return report1.Cases[i].Name < report1.Cases[j].Name })
-  sort.Slice(report2.Cases, func(i,j int) bool { return report2.Cases[i].Name < report2.Cases[j].Name })
-  cc1 := len(report1.Cases)
-  cc2 := len(report2.Cases)
-  if cc1!=cc2 {
-    return fmt.Errorf("number of cases mismatch len(report1) = %d, len(report2) = %d",cc1,cc2)
+  reports := []*spb.Report{report1,report2}
+  var results []map[string]*Result
+  for i,r := range reports {
+    fmt.Printf("[%d] commit = %q, labes = %v\n",i,r.Commit,r.Labels)
+    res,err := accumByPrefix(r)
+    if err!=nil { return err }
+    results = append(results,res)
   }
-
-  var lines []string
-  unique1 := map[string]int{}
-  unique2 := map[string]int{}
-  for i:=0; i<cc1; i++ {
-    c1 := report1.Cases[i]
-    c2 := report2.Cases[i]
-    if c1.Name!=c2.Name {
-      return fmt.Errorf("case name mismatch: report1.Cases[%d] = %q, report2.Cases[%d] = %q",i,c1.Name,i,c2.Name)
-    }
-    c1s := c1.GetOutput().GetSolved()
-    c2s := c2.GetOutput().GetSolved()
-    if c1s!=c2s {
-      labels := strings.Split(c1.Name,"/")
-      for i:=0; i<len(labels); i++ {
-        p := strings.Join(labels[:i],"/")
-        if c1s { unique1[p]++ }
-        if c2s { unique2[p]++ }
-      }
-      lines = append(lines,fmt.Sprintf("%s  |  %s\n",caseSummary(c1),caseSummary(c2)))
+  calcUnique(reports,results)
+  lines := map[string]string{}
+  for _,res := range results {
+    for k,v := range res {
+      lines[k] += fmt.Sprintf(" & (%d)%d/%d",v.unique,v.solved,v.total)
     }
   }
   var keys []string
-  for k,_ := range unique1 { keys = append(keys,k) }
-  for k,_ := range unique2 { keys = append(keys,k) }
-  sort.Strings(keys)
-  prev := ""
-  for _,k := range keys {
-    if prev==k { continue }
-    prev = k
-    fmt.Printf("%10s | %10d | %10d\n",k,unique1[k],unique2[k])
+  for k,_ := range lines {
+    if strings.Count(k,"/")>0 { continue }
+    keys = append(keys,k)
   }
-  fmt.Printf("%s",strings.Join(lines,""))
+  sort.Strings(keys)
+  for _,k := range keys {
+    fmt.Printf("%s%s\\\\\n",k,lines[k])
+  }
   return nil
 }
 
 type Result struct {
   solved int
   total int
+  unique int
   totalTime time.Duration
 }
 
@@ -173,6 +155,24 @@ func accumByPrefix(r *spb.Report) (map[string]*Result,error) {
     }
   }
   return res,nil
+}
+
+func calcUnique(r []*spb.Report, m []map[string]*Result) {
+  for ri:=0; ri<len(r); ri++ {
+    for _,c := range r[ri].Cases {
+      if m[ri][c.Name].solved==0 { continue }
+      unique := true
+      for rj:=0; rj<len(m); rj++ {
+        if m[rj][c.Name].solved>0 && ri!=rj { unique = false }
+      }
+      if unique {
+        labels := strings.Split(c.Name,"/")
+        for i:=0; i<=len(labels); i++ {
+          m[ri][strings.Join(labels[:i],"/")].unique++
+        }
+      }
+    }
+  }
 }
 
 func multidiff(ctx context.Context) error {
@@ -208,7 +208,9 @@ func multidiff(ctx context.Context) error {
     }
   }
   var keys []string
-  for k,_ := range lines { keys = append(keys,k) }
+  for k,_ := range lines {
+    keys = append(keys,k)
+  }
   sort.Strings(keys)
   for _,k := range keys {
     fmt.Printf("%25s%s\n",k,lines[k])

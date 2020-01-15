@@ -37,7 +37,7 @@ DerOrClause trans_axiom() {
   b.set_atom(0,Atom::eq(false,x,y));
   b.set_atom(1,Atom::eq(false,y,z));
   b.set_atom(2,Atom::eq(true,x,z));
-  return DerOrClause(3,b.build());
+  return DerOrClause(1,b.build());
 }
 
 
@@ -55,7 +55,7 @@ DerOrClause cong_pred_axiom(u64 pred_name, u64 arg_count) {
   }
   cb.set_atom(arg_count,lb.build()); 
   cb.set_atom(arg_count+1,rb.build());
-  return DerOrClause(3,cb.build());
+  return DerOrClause(1,cb.build());
 }
 
 DerOrClause cong_fun_axiom(u64 fun_name, u64 arg_count) {
@@ -71,7 +71,7 @@ DerOrClause cong_fun_axiom(u64 fun_name, u64 arg_count) {
     rb.set_arg(i,ra);
   }
   cb.set_atom(arg_count,Atom::eq(true,Term(lb.build()),Term(rb.build()))); 
-  return DerOrClause(3,cb.build());
+  return DerOrClause(1,cb.build());
 }
 
 struct ArityCtx {
@@ -265,7 +265,12 @@ inline OrForm flatten_OrForm(OrForm f) {
 }
 
 OrForm reduce_monotonicity_and_append_eq_axioms(OrForm _f) {
-  NotAndForm f(flatten_OrForm(_f));
+  _f = flatten_OrForm(_f);
+  for(auto &c : _f.and_clauses) {
+    for(const auto &a : c.derived.atoms) if(a.pred()==Atom::EQ && !a.sign())
+      c.constraints.push_back(Constraint::neq(a.arg(0),a.arg(1)));
+  } 
+  NotAndForm f(_f);
   f.or_clauses.push_back(refl_axiom());
   f.or_clauses.push_back(symm_axiom());
   f.or_clauses.push_back(trans_axiom());

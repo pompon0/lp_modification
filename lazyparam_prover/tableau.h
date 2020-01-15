@@ -330,11 +330,12 @@ ProverOutput prove_loop(const Ctx &ctx, OrForm form) { FRAME("prove_loop()");
     //form = lazy::conv(form);
   }
   size_t cont_count = 0;
-  size_t limit = 1;
+  size_t limit = 0;
   //info("ClauseIndex begin");
   ClauseIndex idx((NotAndForm)form);
   //info("ClauseIndex end");
-  for(;!ctx.done(); ++limit) {
+  for(;!ctx.done();) {
+    limit++; // avoid incrementing limit before context check
     DEBUG info("limit = %",limit);
     ProverOutput out = prove(ctx,idx,limit);
     out.cont_count += cont_count;

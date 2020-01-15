@@ -140,15 +140,15 @@ struct SplitBuilder {
           // f(x)=y /\ C
           // ==> f(x)->y /\ C  [f(x)>=y]
           out.derived.atoms.push_back(red(true,l,r));
-          out.constraints.push_back(Constraint::le(r,l));
+          //out.constraints.push_back(Constraint::le(r,l));
         } else {
           // f(x)=g(y) /\ C
           // ==> f(x)->w /\ g(y)->w /\ C  [f(x)>=w /\ g(y)>=w]
           Term w(Var::make(out.derived.var_count++));
           out.derived.atoms.push_back(red(true,l,w));
           out.derived.atoms.push_back(red(true,r,w));
-          out.constraints.push_back(Constraint::le(w,l));
-          out.constraints.push_back(Constraint::le(w,r));
+          //out.constraints.push_back(Constraint::le(w,l));
+          //out.constraints.push_back(Constraint::le(w,r));
           out.source.push_back(trans_axiom(l,w,r));
           out.source.push_back(symm_axiom(r,w));
         }
@@ -169,7 +169,7 @@ struct SplitBuilder {
             c1.derived.var_count = out.derived.var_count;
             c1.derived.atoms.push_back(b.build().neg());
             c1.derived.atoms.push_back(red(false,l,r));
-            c1.constraints.push_back(Constraint::neq(l,r));
+            //c1.constraints.push_back(Constraint::neq(l,r));
             extra.push_back(reduce_vars(c1));
           } {
             DerAndClause c2;
@@ -177,7 +177,7 @@ struct SplitBuilder {
             c2.derived.var_count = out.derived.var_count;
             c2.derived.atoms.push_back(b.build().neg());
             c2.derived.atoms.push_back(red(false,r,l));
-            c2.constraints.push_back(Constraint::neq(r,l));
+            //c2.constraints.push_back(Constraint::neq(r,l));
             c2.source.push_back(symm_axiom(l,r));
             extra.push_back(reduce_vars(c2));
           }
@@ -199,7 +199,7 @@ struct SplitBuilder {
             c1.derived.var_count = out.derived.var_count;
             c1.derived.atoms.push_back(b.build().neg());
             c1.derived.atoms.push_back(red(false,l,r));
-            c1.constraints.push_back(Constraint::neq(l,r));
+            //c1.constraints.push_back(Constraint::neq(l,r));
             extra.push_back(reduce_vars(c1));
           }
           {
@@ -210,8 +210,8 @@ struct SplitBuilder {
             c2.derived.atoms.push_back(b.build().neg());
             c2.derived.atoms.push_back(red(false,r,w));
             c2.derived.atoms.push_back(red(true,l,w));
-            c2.constraints.push_back(Constraint::neq(r,w));
-            c2.constraints.push_back(Constraint::le(w,l));
+            //c2.constraints.push_back(Constraint::neq(r,w));
+            //c2.constraints.push_back(Constraint::le(w,l));
             c2.source.push_back(trans_axiom(r,l,w));
             c2.source.push_back(symm_axiom(l,r));
             extra.push_back(reduce_vars(c2));
@@ -236,8 +236,8 @@ struct SplitBuilder {
             c1.derived.atoms.push_back(b.build().neg());
             c1.derived.atoms.push_back(red(false,l,w));
             c1.derived.atoms.push_back(red(true,r,w));
-            c1.constraints.push_back(Constraint::neq(l,w));
-            c1.constraints.push_back(Constraint::le(w,r));
+            //c1.constraints.push_back(Constraint::neq(l,w));
+            //c1.constraints.push_back(Constraint::le(w,r));
             c1.source.push_back(trans_axiom(l,r,w));
             extra.push_back(reduce_vars(c1));
           } { 
@@ -248,8 +248,8 @@ struct SplitBuilder {
             c2.derived.atoms.push_back(b.build().neg());
             c2.derived.atoms.push_back(red(true,l,w));
             c2.derived.atoms.push_back(red(false,r,w));
-            c2.constraints.push_back(Constraint::neq(r,w));
-            c2.constraints.push_back(Constraint::le(w,l));
+            //c2.constraints.push_back(Constraint::neq(r,w));
+            //c2.constraints.push_back(Constraint::le(w,l));
             c2.source.push_back(trans_axiom(r,l,w));
             c2.source.push_back(symm_axiom(l,r));
             extra.push_back(reduce_vars(c2));

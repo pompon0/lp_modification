@@ -14,7 +14,6 @@ import (
   spb "github.com/pompon0/tptp_benchmark_go/tptp_parser/proto/solutions_go_proto"
 )
 
-const limitBinPath = "__main__/tool/limit"
 const leancopBinPath = "leancop/bmtp"
 const resultOk = "% SZS status Theorem"
 const resultUnknown = "%C SZS status Unknown"
@@ -29,13 +28,11 @@ func Prove(ctx context.Context, tptpFOFProblem []byte) (*spb.ProverOutput,error)
 
   const memLimitBytes = 2000000000 // 2GB
   var inBuf,outBuf,errBuf bytes.Buffer
-  cmd := exec.CommandContext(ctx,
-    utils.Runfile(limitBinPath),fmt.Sprintf("%d",memLimitBytes),
-    utils.Runfile(leancopBinPath),tmp)
+  cmd := exec.CommandContext(ctx,utils.Runfile(leancopBinPath),tmp)
   cmd.Stdin = &inBuf
   cmd.Stdout = &outBuf
   cmd.Stderr = &errBuf
-  if err := cmd.Run(); err!=nil {
+  if err := utils.RunWithMemLimit(cmd,memLimitBytes); err!=nil {
     status := err.(*exec.ExitError).Sys().(syscall.WaitStatus)
     log.Printf("status = %v",status)
     if status.Signaled() && status.Signal()==syscall.SIGSEGV {

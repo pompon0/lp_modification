@@ -26,7 +26,7 @@ func run(ctx context.Context) error {
   if !ok { return fmt.Errorf("case %q not found",*caseName) }
   tptp,err := p.Get()
   if err!=nil { return fmt.Errorf("p.Get(): %v",err) }
-  log.Printf("%s\n",tptp)
+  log.Printf("%q\n",tptp)
   out,err := vampire.Prove(ctx,tptp)
   if err!=nil { return fmt.Errorf("Prove(%q): %v",*caseName,err) }
   log.Printf("out = %v",out)

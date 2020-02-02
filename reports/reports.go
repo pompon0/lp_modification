@@ -104,6 +104,9 @@ func diff(ctx context.Context) error {
   report2,err := problems.ReadReport(*reportPath2)
   if err!=nil { return fmt.Errorf("problems.ReadReport(report_path=%q): %v",*reportPath2,err) }
 
+  fmt.Printf("[L] commit = %q, labes = %v\n",report1.Commit,report1.Labels)
+  fmt.Printf("[R] commit = %q, labes = %v\n",report2.Commit,report2.Labels)
+
   sort.Slice(report1.Cases, func(i,j int) bool { return report1.Cases[i].Name < report1.Cases[j].Name })
   sort.Slice(report2.Cases, func(i,j int) bool { return report2.Cases[i].Name < report2.Cases[j].Name })
   cc1 := len(report1.Cases)
@@ -112,18 +115,38 @@ func diff(ctx context.Context) error {
     return fmt.Errorf("number of cases mismatch len(report1) = %d, len(report2) = %d",cc1,cc2)
   }
 
+  var lines []string
+  unique1 := map[string]int{}
+  unique2 := map[string]int{}
   for i:=0; i<cc1; i++ {
     c1 := report1.Cases[i]
     c2 := report2.Cases[i]
     if c1.Name!=c2.Name {
-      //return fmt.Errorf("case name mismatch: report1.Cases[%d] = %q, report2.Cases[%d] = %q",i,c1.Name,i,c2.Name)
+      return fmt.Errorf("case name mismatch: report1.Cases[%d] = %q, report2.Cases[%d] = %q",i,c1.Name,i,c2.Name)
     }
     c1s := c1.GetOutput().GetSolved()
     c2s := c2.GetOutput().GetSolved()
     if c1s!=c2s {
-      fmt.Printf("%s  |  %s\n",caseSummary(c1),caseSummary(c2))
+      labels := strings.Split(c1.Name,"/")
+      for i:=0; i<len(labels); i++ {
+        p := strings.Join(labels[:i],"/")
+        if c1s { unique1[p]++ }
+        if c2s { unique2[p]++ }
+      }
+      lines = append(lines,fmt.Sprintf("%s  |  %s\n",caseSummary(c1),caseSummary(c2)))
     }
   }
+  var keys []string
+  for k,_ := range unique1 { keys = append(keys,k) }
+  for k,_ := range unique2 { keys = append(keys,k) }
+  sort.Strings(keys)
+  prev := ""
+  for _,k := range keys {
+    if prev==k { continue }
+    prev = k
+    fmt.Printf("%10s | %10d | %10d\n",k,unique1[k],unique2[k])
+  }
+  fmt.Printf("%s",strings.Join(lines,""))
   return nil
 }
 
@@ -171,7 +194,7 @@ func multidiff(ctx context.Context) error {
     res,err := accumByPrefix(r)
     if err!=nil { return err }
     for k,v := range res {
-      if v.total==1 {
+      if v.total==1 { continue
         var t string
         if v.solved==1 {
           t = fmt.Sprintf("%05.2f",v.totalTime.Seconds())

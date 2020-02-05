@@ -40,9 +40,7 @@ int main(int argc, char **argv) {
     if(out.proof){
       outProto.set_solved(true);
       ProtoCtx pctx(parse_ctx);
-      OrForm proof_form;
-      for(auto cla : out.proof->source) proof_form.and_clauses.push_back(DerAndClause(1,cla));
-      *outProto.mutable_proof() = pctx.proto_notAndForm(NotAndForm(proof_form));
+      *outProto.mutable_proof() = pctx.proto_Proof(*out.proof,out.val);
     }
     if(!outProto.SerializeToOstream(&std::cout)) {
       error("outProto.SerializeToOstream() failed");  

@@ -54,7 +54,7 @@ func run(ctx context.Context) error {
   log.Printf("out = %v",out)
   _,err = tool.ValidateProof(ctx,&spb.CNF{Problem:out.CnfProblem,Proof:out.Proof})
   if err!=nil { return fmt.Errorf("tool.Validate(%q): %v",*caseName,err) }
-  tptpProof,err := tool.ProtoToTptp(ctx,out.Proof)
+  tptpProof,err := tool.ProofToTptp(ctx,out.Proof)
   if err!=nil { return fmt.Errorf("tool.ProtoToTptp(%q): %v",*caseName,err) }
   fmt.Printf("-- PROOF BEGIN --\n%s-- PROOF END--\n",tptpProof)
 

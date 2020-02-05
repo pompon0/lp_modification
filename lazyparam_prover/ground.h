@@ -6,7 +6,7 @@
 namespace tableau {
 
 // clears offset (it doesnt' matter, because result contains no vars)
-inline Term ground(Term t) {
+inline Term ground(Term t) { FRAME("ground(%)",show(t));
   switch(t.type()) {
     case Term::VAR: return Term(Fun::Builder(Fun::EXTRA_CONST,0).build());
     case Term::FUN: {
@@ -21,7 +21,7 @@ inline Term ground(Term t) {
 }
 
 // clears offset
-inline Atom ground(Atom a) {
+inline Atom ground(Atom a) { FRAME("ground(%)",show(a));
   size_t ac = a.arg_count();
   Atom::Builder b(a.sign(),a.pred(),ac);
   for(size_t i=ac; i--;) b.set_arg(i,ground(a.arg(i)));
@@ -29,7 +29,7 @@ inline Atom ground(Atom a) {
 }
 
 // clears offset
-inline OrClause ground(OrClause cla) {
+inline OrClause ground(OrClause cla) { FRAME("ground(%)",show(cla));
   OrClause::Builder b(cla.atom_count(),0);
   for(size_t i=cla.atom_count(); i--;) b.set_atom(i,ground(cla.atom(i)));
   return b.build();

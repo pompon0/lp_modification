@@ -19,6 +19,7 @@ private:
 public:
   enum Type { VAR, FUN };
   Type type(){ return Type(ptr[TYPE]); }
+  inline Term drop_offset();
 };
 
 struct Var {
@@ -32,6 +33,8 @@ public:
   explicit operator Term() { return term; }
   u64 id(){ return term.ptr[ID]+term.var_offset; }
   
+  Var drop_offset() { return make(id()); }
+
   static Var make(u64 id) {
     COUNTER("Var::make");
     auto ptr = alloc(SIZE);
@@ -57,7 +60,13 @@ public:
     DEBUG if(i>=arg_count()) error("<arg_count=%>.arg(%)",arg_count(),i);
     return Term((u64*)term.ptr[ARGS+i],term.var_offset);
   }
-  
+
+  Fun drop_offset() {
+    Builder b(fun(),arg_count());
+    for(size_t i=arg_count(); i--;) b.set_arg(i,arg(i).drop_offset());
+    return b.build();
+  }
+
   static Fun slow_make(u64 fun, const vec<Term> &args) {
     Builder b(fun,args.size());
     for(size_t i=0; i<args.size(); ++i) b.set_arg(i,args[i]);
@@ -81,7 +90,14 @@ public:
     Fun build(){ return Fun(Term(ptr,0)); }
   };
 };
-
+ 
+inline Term Term::drop_offset() {
+  switch(type()) {
+  case VAR: return Term(Var(*this).drop_offset());
+  case FUN: return Term(Fun(*this).drop_offset());
+  default: error("type = %",type());
+  }
+}
 struct Atom {
 private:
   friend struct OrClause;
@@ -107,6 +123,12 @@ public:
   inline u64 arg_count() const { return ptr[ARG_COUNT]; }
   inline Term arg(size_t i) const { return Term((u64*)ptr[ARGS+i],var_offset); }
   inline u64 id() const { return id_; } 
+
+  inline Atom drop_offset() {
+    Builder b(sign(),pred(),arg_count());
+    for(size_t i=arg_count(); i--;) b.set_arg(i,arg(i).drop_offset());
+    return b.build();
+  }
 
   static inline Atom eq(bool sign, Term l, Term r) {
     Builder b(sign,EQ,2);
@@ -253,7 +275,7 @@ inline OrClause AndClause::neg() const {
 
 inline AndClause OrClause::neg() const {
   AndClause d(var_count());
-  for(size_t i=0; i<atom_count(); ++i) d.atoms.push_back(atom(i).neg());
+  for(size_t i=0; i<atom_count(); ++i) d.atoms.push_back(atom(i).neg().drop_offset());
   return d;
 }
 

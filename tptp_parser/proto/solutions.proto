@@ -16,8 +16,23 @@ message Case {
   string name = 1;
   google.protobuf.Duration duration = 2;
   tptp.File fof_problem = 3;
-  tptp.File cnf_problem = 4;
+  tptp.File cnf_problem = 4; // deprecated
   ProverOutput output = 5;
+}
+
+message Source {
+  tptp.Input ground = 1;
+  tptp.Input source = 2;
+}
+
+message Derivation {
+  int64 cost = 1;
+  tptp.Input derived = 2;
+  repeated Source sources = 3;
+}
+
+message Proof {
+  repeated Derivation clauses = 1;
 }
 
 message ProverOutput {
@@ -27,8 +42,9 @@ message ProverOutput {
   bool solved = 5;
   bool oom = 7;
   bool killed = 8;
-  tptp.File proof = 4;
+  Proof proof = 9;
   tptp.File cnf_problem = 6;
+  reserved 4;
 }
 
 message Stats {
@@ -48,6 +64,6 @@ message Stats {
 // deprecated
 message CNF {
   tptp.File problem = 1;
-  tptp.File proof = 2;
+  Proof proof = 2;
 }
 

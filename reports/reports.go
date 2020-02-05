@@ -225,7 +225,7 @@ func print_(ctx context.Context) error {
       if err!=nil { return fmt.Errorf("ProtoToTptp(%q): %v",c.Name,err) }
       fmt.Printf("%s\n\n",string(tptp))
       if c.Output!=nil {
-        tptpProof,err := tool.ProtoToTptp(ctx,c.Output.Proof)
+        tptpProof,err := tool.ProofToTptp(ctx,c.Output.Proof)
         if err!=nil { return fmt.Errorf("ProtoToTptp(%q[proof]): %v",c.Name,err) }
         fmt.Printf("%s\n\n",string(tptpProof))
       }

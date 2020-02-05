@@ -108,27 +108,6 @@ private:
   List<Constraint> constraints_;
 };
 
-DerOrClause DerAndClause::neg() const {
-  List<OrClause> source_neg;
-  List<Constraint> constraints_list;
-  for(const auto &c : source) source_neg += c.neg();
-  for(const auto &c : constraints) constraints_list += c;
-  return DerOrClause(cost,derived.neg(),source_neg,constraints_list);
-}
-
-DerAndClause DerOrClause::neg() const {
-  DerAndClause cla;
-  cla.cost = cost();
-  cla.derived = derived().neg();
-  for(auto c : source()) {
-    cla.source.push_back(c.neg());
-  }
-  for(auto c = constraints_; !c.empty(); c = c.tail()) {
-    cla.constraints.push_back(c.head());
-  }
-  return cla;
-}
-
 struct OrForm {
   vec<DerAndClause> and_clauses;
   OrForm(){}
@@ -149,11 +128,7 @@ inline OrForm::OrForm(const NotAndForm &f) {
   for(const auto &c : f.or_clauses) and_clauses.push_back(c.neg());
 }
 
-struct ProverOutput {
-  size_t cont_count;
-  size_t cost;
-  ptr<DerAndClause> proof;
-};
+
 
 str show(const DerAndClause &cla) {
   vec<str> source;
@@ -172,6 +147,27 @@ str show(const OrForm &f) {
   vec<str> clauses;
   for(auto c : f.and_clauses) clauses.push_back(show(c) + "\n");
   return util::join("",clauses);
+}
+
+DerOrClause DerAndClause::neg() const { FRAME("neg(%)",show(*this));
+  List<OrClause> source_neg;
+  List<Constraint> constraints_list;
+  for(const auto &c : source) source_neg += c.neg();
+  for(const auto &c : constraints) constraints_list += c;
+  return DerOrClause(cost,derived.neg(),source_neg,constraints_list);
+}
+
+DerAndClause DerOrClause::neg() const { FRAME("neg(%)",show(*this));
+  DerAndClause cla;
+  cla.cost = cost();
+  cla.derived = derived().neg();
+  for(auto c : source()) {
+    cla.source.push_back(c.neg());
+  }
+  for(auto c = constraints_; !c.empty(); c = c.tail()) {
+    cla.constraints.push_back(c.head());
+  }
+  return cla;
 }
 
 }  // namespace tableau

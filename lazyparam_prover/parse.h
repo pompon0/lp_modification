@@ -183,8 +183,8 @@ struct ProtoCtx {
       f.mutable_pred()->set_type(tptp::Formula::Pred::EQ);
     } else {
       f.mutable_pred()->set_type(tptp::Formula::Pred::CUSTOM);
-      DEBUG if(!pred_names.count(a.pred())) error("pred_names.count(%) = 0",a.pred());
-      f.mutable_pred()->set_name(pred_names.at(a.pred()));
+      //DEBUG if(!pred_names.count(a.pred())) error("pred_names.count(%) = 0",a.pred());
+      f.mutable_pred()->set_name(pred_names.count(a.pred()) ? pred_names.at(a.pred()) : util::fmt("unknownPred%",a.pred()));
     }
     for(size_t i=0; i<a.arg_count(); ++i)
       *(f.mutable_pred()->add_args()) = proto_term(a.arg(i));

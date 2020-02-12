@@ -22,8 +22,9 @@ const (
   cmdPrint = "print"
   cmdDiff = "diff"
   cmdMultiDiff = "multidiff"
+  cmdList = "list"
 )
-var cmds = []string{cmdSummary,cmdPrint,cmdDiff,cmdMultiDiff}
+var cmds = []string{cmdSummary,cmdPrint,cmdDiff,cmdMultiDiff,cmdList}
 
 var reportDir = flag.String("report_dir","","")
 var reportPath = flag.String("report_path","","")
@@ -124,6 +125,7 @@ func diff(ctx context.Context) error {
     if c1.Name!=c2.Name {
       return fmt.Errorf("case name mismatch: report1.Cases[%d] = %q, report2.Cases[%d] = %q",i,c1.Name,i,c2.Name)
     }
+    if problems.TptpProvableWithoutEquality[c1.Name] { continue }
     c1s := c1.GetOutput().GetSolved()
     c2s := c2.GetOutput().GetSolved()
     if c1s!=c2s {
@@ -234,12 +236,27 @@ func print_(ctx context.Context) error {
   return nil
 }
 
+func list(ctx context.Context) error {
+  report,err := problems.ReadReport(*reportPath)
+  if err!=nil { return fmt.Errorf("problems.ReadReport(report_path=%q): %v",*reportPath,err) }
+  var solved []string
+  for _,c := range report.Cases {
+    if c.GetOutput().GetSolved() {
+      solved = append(solved,fmt.Sprintf("%q: true,\n",c.Name))
+    }
+  }
+  sort.Strings(solved)
+  fmt.Printf("%s",strings.Join(solved,""))
+  return nil
+}
+
 func run(ctx context.Context) error {
   switch *cmd {
     case cmdSummary: return summary(ctx)
     case cmdPrint: return print_(ctx)
     case cmdDiff: return diff(ctx)
     case cmdMultiDiff: return multidiff(ctx)
+    case cmdList: return list(ctx)
     default: return fmt.Errorf("unknown command = %q",*cmd)
   }
 }

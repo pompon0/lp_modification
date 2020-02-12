@@ -166,9 +166,12 @@ func TestValidateProofOK(t *testing.T) {
   cnfProblem := &tpb.File {
     Input: clauses,
   }
-  cnfProof := &tpb.File {
-    Input: clauses,
+
+  var sources []*spb.Source
+  for _,c := range clauses {
+    sources = append(sources,&spb.Source{Ground:c,Source:c})
   }
+  cnfProof := &spb.Proof { Clauses: []*spb.Derivation{{Sources:sources}} }
   if _,err := ValidateProof(context.Background(),&spb.CNF{Problem:cnfProblem,Proof:cnfProof}); err!=nil {
     t.Errorf("ValidateProof(): %v",err)
   }
@@ -191,9 +194,7 @@ func TestValidateProofFail(t *testing.T) {
       },
     },
   }
-  cnfProof := &tpb.File {
-    Input: []*tpb.Input{},
-  }
+  cnfProof := &spb.Proof {}
   if stats,err := ValidateProof(context.Background(),&spb.CNF{Problem:cnfProblem,Proof:cnfProof}); err==nil {
     t.Errorf("ValidateProof() = %v, want error",stats)
   }

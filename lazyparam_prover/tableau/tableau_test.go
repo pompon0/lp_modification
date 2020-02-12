@@ -24,6 +24,11 @@ func TestTableau(t *testing.T) {
       proveCtx,cancel := context.WithTimeout(ctx,10*time.Second)
       defer cancel()
       out,err := Prove(proveCtx,v)
+
+      proofTptp,err := tool.ProofToTptp(ctx,out.Proof)
+      if err!=nil { t.Fatalf("tool.ProofTPTP(%q): %v",k,err) }
+      t.Logf("proof = %s",proofTptp)
+
       if err!=nil { t.Fatalf("Tableau(%q): %v",k,err) }
       _,err = tool.ValidateProof(ctx,&spb.CNF{Problem:cnf,Proof:out.Proof})
       if err!=nil { t.Fatalf("tool.Validate(%q): %v",k,err) }

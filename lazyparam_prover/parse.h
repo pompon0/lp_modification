@@ -2,9 +2,12 @@
 #define PARSE_H_
 
 #include "tptp.pb.h"
+#include "solutions.pb.h"
 #include "google/protobuf/io/coded_stream.h"
 #include "lazyparam_prover/pred.h"
 #include "lazyparam_prover/derived.h"
+#include "lazyparam_prover/kbo.h"
+#include "lazyparam_prover/ground.h"
 
 namespace tableau {
 
@@ -199,6 +202,41 @@ struct ProtoCtx {
     f.mutable_op()->set_type(tptp::Formula::Operator::OR);
     for(size_t i=0; i<cla.atom_count(); ++i) *(f.mutable_op()->add_args()) = proto_atom(cla.atom(i));
     return f;
+  }
+
+  solutions::Derivation proto_derAndClause(const DerAndClause &cla, const KBO &val) const { FRAME("proto_derAndClause()");
+    solutions::Derivation d;
+    d.set_cost(cla.cost);
+    auto derived = d.mutable_derived();
+    derived->set_name("derived");
+    derived->set_role(tptp::Input::PLAIN);
+    derived->set_language(tptp::Input::CNF);
+    *(derived->mutable_formula()) = proto_orClause(ground(val.eval(cla.derived.neg())));
+    for(const auto &s : cla.source) {
+      auto ps = d.add_sources();
+      auto pg = ps->mutable_ground();
+      pg->set_name("ground");
+      pg->set_role(tptp::Input::PLAIN);
+      pg->set_language(tptp::Input::CNF);
+      *(pg->mutable_formula()) = proto_orClause(ground(val.eval(s.neg())));
+      auto pss = ps->mutable_source();
+      pss->set_name("source");
+      pss->set_role(tptp::Input::PLAIN);
+      pss->set_language(tptp::Input::CNF);
+      *(pss->mutable_formula()) = proto_orClause(s.neg());
+    }
+    return d;
+  }
+
+  solutions::Proof proto_Proof(const OrForm &f, const KBO &val) { FRAME("proto_Proof");
+    solutions::Proof proof;
+    size_t i=0;
+    for(const auto &cla : f.and_clauses) {
+      auto pcla = proof.add_clauses();
+      *pcla = proto_derAndClause(cla,val);
+      pcla->mutable_derived()->set_name(util::fmt("a%",i++));
+    }
+    return proof;
   }
 
   tptp::File proto_notAndForm(const NotAndForm &f) const { FRAME("proto_notAndForm()");

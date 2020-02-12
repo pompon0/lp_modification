@@ -12,6 +12,7 @@ namespace util
   template<typename T> using arr = std::vector<T>;
   template<typename T> using ptr = std::unique_ptr<T>;
   template<typename T> inline ptr<T> own(T *v){ return ptr<T>(v); }
+  template<typename T, typename ...Args> inline ptr<T> make(Args&& ...args){ return own(new T(args...)); }
   typedef uint8_t Byte;
   typedef arr<Byte> Bytes;
 
@@ -19,7 +20,6 @@ namespace util
     template<typename T> operator ptr<T>(){ return {}; }
   };
   constexpr Nil nil;
-  template<typename T> static inline ptr<T> just(const T &v){ return ptr<T>(new T(v)); }
 }
 
 #endif  // UTIL_TYPES_H_

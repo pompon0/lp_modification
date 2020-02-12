@@ -6,6 +6,7 @@ import Prelude hiding(readFile)
 import System.IO(stdout)
 import System.Environment(getArgs)
 import qualified Data.ProtoLens.TextFormat as TextFormat
+import Data.ProtoLens(defMessage)
 import Data.ProtoLens.Message(Message)
 import Data.ProtoLens.Encoding(encodeMessage,decodeMessage)
 import Data.ByteString(hPut,ByteString,readFile)
@@ -81,12 +82,16 @@ cnf [mode,fof_proto_file] = do
   let (gv,dnf) = f (g,fof)
   hPut stdout $ encodeMessage $ toProto'File dnf
 
+flattenProof :: SPB.Proof -> T.File
+flattenProof p = defMessage & #input .~ (p^.. #clauses.traverse. #sources.traverse. #ground)
+
 validate [solution_proto_file] = do
   solutionProto :: SPB.CNF <- readProtoFile solution_proto_file
   (problem,proof,stats) <- assert $ do
-    let gv = FOF.globalVar'make [solutionProto^. #problem, solutionProto^. #proof]
+    let flatProofProto = flattenProof (solutionProto^. #proof)
+    let gv = FOF.globalVar'make [solutionProto^. #problem, flatProofProto]
     problem <- fromProto'File gv (solutionProto^. #problem)
-    proof <- fromProto'File gv (solutionProto^. #proof)
+    proof <- fromProto'File gv flatProofProto
     stats <- Proof.classify proof problem
     case counterExample proof of
       Nothing -> return ()

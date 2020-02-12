@@ -127,7 +127,7 @@ public:
   }
 
   // clears offset
-  inline Term eval(Term t) { FRAME("eval(%)",show(t));
+  inline Term eval(Term t) const { FRAME("eval(%)",show(t));
     switch(t.type()) {
       case Term::VAR: {
         u64 id = Var(t).id();
@@ -145,7 +145,7 @@ public:
   }
 
   // clears offset
-  inline Atom eval(Atom a) { FRAME("eval(%)",show(a));
+  inline Atom eval(Atom a) const { FRAME("eval(%)",show(a));
     size_t ac = a.arg_count();
     Atom::Builder b(a.sign(),a.pred(),ac);
     for(size_t i=ac; i--;) b.set_arg(i,eval(a.arg(i)));
@@ -154,19 +154,19 @@ public:
 
   // clears offset
   // FIXME: var_count gets invalidated due to evaluation
-  inline OrClause eval(OrClause cla) { FRAME("eval(%)",show(cla));
+  inline OrClause eval(OrClause cla) const { FRAME("eval(%)",show(cla));
     OrClause::Builder b(cla.atom_count(),cla.var_count());
     for(size_t i=cla.atom_count(); i--;) b.set_atom(i,eval(cla.atom(i)));
     return b.build();
   }
 
   // FIXME: var_count gets invalidated due to evaluation
-  inline AndClause eval(AndClause cla) { FRAME("eval(%)",show(cla));
+  inline AndClause eval(AndClause cla) const { FRAME("eval(%)",show(cla));
     for(Atom &a : cla.atoms) a = eval(a);
     return cla;
   }
 
-  inline Constraint eval(Constraint c) {
+  inline Constraint eval(Constraint c) const {
     List<Constraint::Pair> or_;
     for(auto o = c.or_; !o.empty(); o = o.tail())
       or_ += Constraint::Pair{eval(o.head().l),eval(o.head().r)};
@@ -175,7 +175,7 @@ public:
   }
 
   // FIXME: var_count gets invalidated due to evaluation
-  inline DerAndClause eval(DerAndClause cla) {
+  inline DerAndClause eval(DerAndClause cla) const {
     cla.derived = eval(cla.derived);
     for(auto &s : cla.source) s = eval(s);
     for(auto &c : cla.constraints) c = eval(c);

@@ -57,7 +57,7 @@ func run(ctx context.Context) error {
   tptpProblem,err := tool.ProtoToTptp(ctx,out.CnfProblem)
   if err!=nil { return fmt.Errorf("tool.ProtoToTptp(problem): %v",err) }
   fmt.Printf("-- PROBLEM BEGIN --\n%s-- PROBLEM END--\n",tptpProblem)
-  tptpProof,err := tool.ProtoToTptp(ctx,out.Proof)
+  tptpProof,err := tool.ProofToTptp(ctx,out.Proof)
   if err!=nil { return fmt.Errorf("tool.ProtoToTptp(%q): %v",*caseName,err) }
   fmt.Printf("-- PROOF BEGIN --\n%s-- PROOF END--\n",tptpProof)
 

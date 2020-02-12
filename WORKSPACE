@@ -152,7 +152,7 @@ http_archive(
     name = "rules_haskell",
     strip_prefix = "rules_haskell-master",
     urls = ["https://github.com/pompon0/rules_haskell/archive/master.tar.gz"],
-    sha256 = "bb1444e628c09e3cd76578602b823493a531d3753eff31b696bf6ef3ad57116f",
+    sha256 = "1ea58bc22d7c8854826cbd154ce258743a5401c87c0d9c8cd39bd494d52da419",
 )
 
 load("@rules_haskell//haskell:repositories.bzl", "rules_haskell_dependencies")
@@ -231,9 +231,9 @@ http_archive(
 
 http_archive(
     name = "tptp",
-    urls = ["https://hackage.haskell.org/package/tptp-0.1.1.0/tptp-0.1.1.0.tar.gz"],
+    urls = ["https://github.com/aztek/tptp/archive/c920f1e611db53062fccc1bc5b7b3e2c0537cd15.zip"],
     build_file = "//:third_party/tptp.BUILD",
-    sha256 = "2ec3a5fd1c290f68aed82600299c17a3a698b24c189efb6a4df4ff300aa29233",
+    sha256 = "f6d9f0a9e39e725c46ff94ceac20e8b689ec80184d612d1e2fb60c8f4876ea49",
 )
 
 http_archive(

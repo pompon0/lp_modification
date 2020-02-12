@@ -61,13 +61,14 @@ func TestProtoToTptp(t *testing.T) {
 }
 
 func TestProtoFOFToCNF(t *testing.T) {
+  ctx := context.Background()
   for k,v := range problems.SampleProblems {
     log.Printf("%s",k)
     log.Printf("tptp -> fof")
-    fof,err := TptpToProto(context.Background(),FOF,v)
+    fof,err := TptpToProto(ctx,FOF,v)
     if err!=nil { t.Fatalf("TptpToProto(%q): %v",k,err) }
     log.Printf("fof -> cnf")
-    cnf,err := FOFToCNF(context.Background(),fof)
+    cnf,err := FOFToCNF(ctx,fof)
     if err!=nil { t.Fatalf("FOFToCNF(%q): %v",k,err) }
     log.Printf("iterating over inputs")
     for _,i := range cnf.Input {
@@ -79,18 +80,24 @@ func TestProtoFOFToCNF(t *testing.T) {
 }
 
 func TestTPTPFOFToCNF(t *testing.T) {
+  ctx := context.Background()
   for k,v := range problems.SampleProblems {
     log.Printf("%s",k)
-    cnf,err := eprover.FOFToCNF(context.Background(),v)
+    cnf,err := eprover.FOFToCNF(ctx,v)
     if err!=nil { t.Fatalf("FOFToCNF(%q): %v",k,err) }
     log.Printf("cnf = %s",string(cnf))
-    cnfProto,err := TptpToProto(context.Background(),CNF,cnf)
+    cnfProto,err := TptpToProto(ctx,CNF,cnf)
     if err!=nil { t.Fatalf("TptpToProto(%q): %v",k,err) }
     for _,i := range cnfProto.Input {
       if got,want := i.Language,tpb.Input_CNF; got!=want {
         t.Errorf("i.Language = %v, want %v",got,want)
       }
     }
+    // Test if we can convert cnf back to TPTP and to proto again
+    cnf2,err := ProtoToTptp(ctx,cnfProto)
+    if err!=nil { t.Fatalf("ProtoToTPTP(%q): %v",k,err) }
+    _,err = eprover.FOFToCNF(ctx,cnf2)
+    if err!=nil { t.Fatalf("FOFToCNF(%q): %v",k,err) }
   }
 }
 

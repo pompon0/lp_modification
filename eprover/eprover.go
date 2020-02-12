@@ -5,6 +5,7 @@ import (
   "fmt"
   "log"
   "context"
+  "os"
   "os/exec"
   "strings"
 
@@ -24,22 +25,26 @@ const statusCounterSatisfiable = "CounterSatisfiable"
 const resultOk = "# SZS status Theorem"
 
 func Prove(ctx context.Context, tptpFOFProblem []byte) (*spb.ProverOutput,error) {
-  var inBuf,outBuf,errBuf bytes.Buffer
+  const memLimitBytes = 2000000000 // 2GB
+  var inBuf,outBuf bytes.Buffer
   if _,err := inBuf.Write(tptpFOFProblem); err!=nil {
     return nil,fmt.Errorf("inBuf.Write(): %v",err)
   }
 
-  cmd := exec.CommandContext(ctx,utils.Runfile(eproverBinPath),"-s")
+  cmd := exec.CommandContext(ctx,utils.Runfile(eproverBinPath),"-s","--auto-schedule")
   cmd.Stdin = &inBuf
   cmd.Stdout = &outBuf
-  cmd.Stderr = &errBuf
-  if err := cmd.Run(); err!=nil {
+  cmd.Stderr = os.Stderr
+  if err := utils.RunWithMemLimit(cmd,memLimitBytes); err!=nil {
     if ctx.Err()==context.DeadlineExceeded {
+      return &spb.ProverOutput{Solved:false},nil
+    }
+    if err.(*exec.ExitError).ExitCode()==9 {
       return &spb.ProverOutput{Solved:false},nil
     }
     //log.Printf("out = %q",outBuf.String())
     //log.Printf("err = %q",errBuf.String())
-    return nil,fmt.Errorf("cmd.Run(): %v",err)
+    return nil,fmt.Errorf("cmd.Run(): %q %v",outBuf.String(),err)
   }
   for _,l := range strings.Split(strings.TrimSpace(outBuf.String()),"\n") {
     if strings.HasPrefix(l,statusPrefix) {
@@ -56,19 +61,18 @@ func Prove(ctx context.Context, tptpFOFProblem []byte) (*spb.ProverOutput,error)
 }
 
 func FOFToCNF(ctx context.Context, tptpFOF []byte) ([]byte,error) {
-  var inBuf,outBuf,errBuf bytes.Buffer
+  var inBuf,outBuf bytes.Buffer
   if _,err := inBuf.Write(tptpFOF); err!=nil {
     return nil,fmt.Errorf("inBuf(): %v",err)
   }
   cmd := exec.CommandContext(ctx,utils.Runfile(eproverBinPath),"--cnf","-s")
   cmd.Stdin = &inBuf
   cmd.Stdout = &outBuf
-  cmd.Stderr = &errBuf
+  cmd.Stderr = os.Stderr
   if err := cmd.Run(); err!=nil {
     if ctx.Err()!=nil { return nil,ctx.Err() }
     log.Printf("in = %q",tptpFOF)
     log.Printf("out = %q",outBuf.String())
-    log.Printf("err = %q",errBuf.String())
     return nil,fmt.Errorf("cmd.Run(): %v",err)
   }
   var buf bytes.Buffer

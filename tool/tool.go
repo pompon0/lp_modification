@@ -44,6 +44,17 @@ func ProtoToTptp(ctx context.Context, f *tpb.File) ([]byte,error) {
   return outBuf.Bytes(),nil
 }
 
+func ProofToTptp(ctx context.Context, proof *spb.Proof) ([]byte,error) {
+  f := &tpb.File{}
+  for _,d := range proof.Clauses {
+    f.Input = append(f.Input,d.Derived)
+    for _,s := range d.Sources {
+      f.Input = append(f.Input,s.Ground,s.Source)
+    }
+  }
+  return ProtoToTptp(ctx,f)
+}
+
 func TptpToProto(ctx context.Context, lang Language, tptp []byte) (*tpb.File,error) {
   var inBuf,outBuf bytes.Buffer
   if _,err := inBuf.Write(tptp); err!=nil {

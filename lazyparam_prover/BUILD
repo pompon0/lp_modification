@@ -88,6 +88,7 @@ cc_library(
         "tableau.h",
         "lazy.h",
         "index.h",
+        "prover_output.h",
     ],
     deps = [
         "//tptp_parser/proto:tptp_cc_proto",

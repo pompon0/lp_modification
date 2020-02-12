@@ -4,6 +4,7 @@ import (
   "bytes"
   "fmt"
   //"log"
+  "os"
   "context"
   "os/exec"
   "strings"
@@ -24,16 +25,18 @@ const statusCounterSatisfiable = "CounterSatisfiable"
 const refutationNotFound = "% Refutation not found"
 
 func Prove(ctx context.Context, tptpFOFProblem []byte) (*spb.ProverOutput,error) {
-  var inBuf,outBuf,errBuf bytes.Buffer
+  var inBuf,outBuf bytes.Buffer
   if _,err := inBuf.Write(tptpFOFProblem); err!=nil {
     return nil,fmt.Errorf("inBuf.Write(): %v",err)
   }
-  cmd := exec.CommandContext(ctx,utils.Runfile(vampireBinPath),
+  cmd := exec.CommandContext(ctx,
+    utils.Runfile(vampireBinPath),
     "--statistics","none",
-    "--proof","off")
+    "--proof","off",
+    "--mode","casc")
   cmd.Stdin = &inBuf
   cmd.Stdout = &outBuf
-  cmd.Stderr = &errBuf
+  cmd.Stderr = os.Stderr
   if err := cmd.Run(); err!=nil {
     if ctx.Err()==context.DeadlineExceeded {
       return &spb.ProverOutput{Solved:false},nil
@@ -41,9 +44,12 @@ func Prove(ctx context.Context, tptpFOFProblem []byte) (*spb.ProverOutput,error)
     if strings.HasPrefix(outBuf.String(),refutationNotFound) {
       return &spb.ProverOutput{Solved:false},nil
     }
+    if err.(*exec.ExitError).ExitCode() == 2 {
+      return &spb.ProverOutput{Solved:false},nil
+    }
     //log.Printf("out = %s",outBuf.String())
     //log.Printf("err = %s",errBuf.String())
-    return nil,fmt.Errorf("cmd.Run(): %v",err)
+    return nil,fmt.Errorf("cmd.Run(): %q %v",outBuf.String(),err)
   }
   for _,l := range strings.Split(strings.TrimSpace(outBuf.String()),"\n") {
     if strings.HasPrefix(l,statusPrefix) {

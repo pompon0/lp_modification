@@ -14,6 +14,7 @@
 #include "lazyparam_prover/lazy.h"
 #include "lazyparam_prover/ctx.h"
 #include "lazyparam_prover/index.h"
+#include "lazyparam_prover/prover_output.h"
 
 namespace tableau {
 
@@ -39,13 +40,12 @@ struct SearchState {
   size_t nodes_used = 0;
   List<DerOrClause> clauses_used;
 
-  ptr<DerAndClause> get_proof() {
-    ptr<DerAndClause> proof(new DerAndClause);
+  // cannot return the proto, because parsing context is not available
+  // This means that Valuation has to be included in the ProverOutput.
+  ptr<OrForm> get_proof() {
+    auto proof = util::make<OrForm>();
     for(auto l=clauses_used; !l.empty(); l = l.tail()) {
-      proof->cost += l.head().cost();
-      for(auto cla : l.head().source()) {
-        proof->source.push_back(ground(val.eval(cla)).neg());
-      }
+      proof->and_clauses.push_back(l.head().neg());
     }
     return proof;
   }
@@ -316,7 +316,7 @@ ProverOutput prove(const Ctx &ctx, const ClauseIndex &cla_index, size_t limit) {
   Cont::StartFrame::Builder b;
   b->nodes_limit = limit;
   auto res = alt::search(ctx,s,Cont{List<Cont::Frame>(Cont::Frame(b.build()))});
-  return {res.cont_count,limit,res.found ? s.get_proof() : 0};
+  return {res.cont_count,limit,s.val,res.found ? s.get_proof() : 0};
 }
 
 ProverOutput prove_loop(const Ctx &ctx, OrForm form) { FRAME("prove_loop()");
@@ -329,11 +329,12 @@ ProverOutput prove_loop(const Ctx &ctx, OrForm form) { FRAME("prove_loop()");
     form = lazy::conv(form);
   }
   size_t cont_count = 0;
-  size_t limit = 1;
+  size_t limit = 0;
   //info("ClauseIndex begin");
   ClauseIndex idx((NotAndForm)form);
   //info("ClauseIndex end");
-  for(;!ctx.done(); ++limit) {
+  for(;!ctx.done();) {
+    limit++; // avoid incrementing limit before context check
     DEBUG info("limit = %",limit);
     ProverOutput out = prove(ctx,idx,limit);
     out.cont_count += cont_count;

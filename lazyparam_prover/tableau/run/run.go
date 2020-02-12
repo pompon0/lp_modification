@@ -51,9 +51,12 @@ func run(ctx context.Context) error {
     log.Printf("out = %+v",out)
     return nil
   }
-  log.Printf("out = %v",out)
+  //log.Printf("out = %v",out)
   _,err = tool.ValidateProof(ctx,&spb.CNF{Problem:out.CnfProblem,Proof:out.Proof})
   if err!=nil { return fmt.Errorf("tool.Validate(%q): %v",*caseName,err) }
+  tptpProblem,err := tool.ProtoToTptp(ctx,out.CnfProblem)
+  if err!=nil { return fmt.Errorf("tool.ProtoToTptp(problem): %v",err) }
+  fmt.Printf("-- PROBLEM BEGIN --\n%s-- PROBLEM END--\n",tptpProblem)
   tptpProof,err := tool.ProofToTptp(ctx,out.Proof)
   if err!=nil { return fmt.Errorf("tool.ProtoToTptp(%q): %v",*caseName,err) }
   fmt.Printf("-- PROOF BEGIN --\n%s-- PROOF END--\n",tptpProof)

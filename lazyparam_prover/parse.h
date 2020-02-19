@@ -151,6 +151,7 @@ struct ParseCtx {
 struct ProtoCtx {
   ProtoCtx(const ParseCtx &pc) : pred_names(pc.pred_names.rev()), fun_names(pc.fun_names.rev()) {
     fun_names[Fun::EXTRA_CONST] = "c";
+    pred_names[Atom::EQ_TRANS_POS] = "eqt";
   }
   std::map<size_t,str> pred_names;
   std::map<size_t,str> fun_names;

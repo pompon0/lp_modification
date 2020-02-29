@@ -23,7 +23,7 @@ public:
       for(;next_id<atoms->size(); next_id++) {
         auto &a = (*atoms)[next_id];
         if(index->or_clauses[a.clause_id].cost()>cost_limit) return Maybe<OrClauseWithAtom>();
-        if(starting_clause_id>a.clause_id && index->is_starting_clause[a.clause_id]) continue;
+        //if(starting_clause_id>a.clause_id && index->is_starting_clause[a.clause_id]) continue;
         next_id++;
         return Maybe<OrClauseWithAtom>({a.atom_id,index->or_clauses[a.clause_id]});
       }

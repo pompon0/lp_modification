@@ -32,15 +32,15 @@ inline str show(Branch b) {
 //////////////////////////////////////////
 
 struct SearchState {
-  SearchState(const ClauseIndex &_cla_index) : cla_index(_cla_index) {}
+  SearchState(const ClauseIndex &_cla_index) : cla_index(&_cla_index) {}
  
-  const ClauseIndex &cla_index;
+  ClauseIndex::State cla_index;
 
   KBO val;
   size_t nodes_used = 0;
   List<DerOrClause> clauses_used;
 
-  // cannot return the proto, because parsing context is not available
+  // cannot return the proto, because parsing context is not available.
   // This means that Valuation has to be included in the ProverOutput.
   ptr<OrForm> get_proof() {
     auto proof = util::make<OrForm>();
@@ -55,6 +55,7 @@ struct SearchState {
     tableau::Snapshot stack;
     size_t nodes_used;
     List<DerOrClause> clauses_used;
+    ClauseIndex::State cla_index;
   };
 
   void rewind(Snapshot s) {
@@ -62,10 +63,11 @@ struct SearchState {
     stack = s.stack;
     nodes_used = s.nodes_used;
     clauses_used = s.clauses_used;
+    cla_index = s.cla_index;
   }
 
   Snapshot snapshot(){
-    return {val.snapshot(),stack,nodes_used,clauses_used};
+    return {val.snapshot(),stack,nodes_used,clauses_used,cla_index};
   }
 };
 
@@ -121,16 +123,11 @@ struct Cont {
   using StartFrame = Variant<Frame,Frame::START,_StartFrame>;
 
   template<typename Alts> void start(State &state, StartFrame f, Alts alts) const { FRAME("start");
-    for(auto dcla : state.cla_index.form.or_clauses) {
-      OrClause cla = dcla.derived();
-      // start with all-negative clauses
-      bool ok = 1;
-      for(size_t i=cla.atom_count(); i--;) ok &= !cla.atom(i).sign();
-      if(!ok) continue;
+    while(auto dcla = state.cla_index.next_starting_clause()) {
       StrongFrame::Builder b;
       b->nodes_limit = f->nodes_limit;
       b->branch = Branch();
-      b->dcla = dcla;
+      b->dcla = dcla.get();
       b->strong_id = -1;
       alts(Cont{List<Frame>(Frame(b.build()))});
     }
@@ -285,9 +282,11 @@ struct Cont {
       b->min_cost = state.nodes_used + f->min_cost;
       tail += Frame(b.build());
     }
-
-    for(auto ca : state.cla_index(f->branch.true_.head())) {
-      if(ca.cla.cost()>budget) break;
+    
+    auto matches = state.cla_index.get_matches(f->branch.true_.head(),budget);
+    while(auto mca = matches.next()) {
+      auto ca = mca.get();
+      DEBUG if(ca.cla.cost()>budget) error("ca.cla.cost()>budget");
       StrongFrame::Builder b;
       b->nodes_limit = f->nodes_limit;
       b->branch = f->branch;

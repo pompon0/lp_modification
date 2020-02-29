@@ -163,6 +163,7 @@ func (r *Result) String() string { return fmt.Sprintf("%3d/%3d",r.solved,r.total
 func accumByPrefix(r *spb.Report) (map[string]*Result,error) {
   res := map[string]*Result{}
   for _,c := range r.Cases {
+    if problems.TptpProvableWithoutEquality[c.Name] { continue }
     labels := strings.Split(c.Name,"/")
     for i:=0; i<=len(labels); i++ {
       p := strings.Join(labels[:i],"/")

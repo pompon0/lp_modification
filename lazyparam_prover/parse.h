@@ -167,7 +167,7 @@ struct ProtoCtx {
       case Term::FUN: {
         Fun f(t);
         pt.set_type(tptp::Term::EXP);
-        DEBUG if(!fun_names.count(f.fun())) error("pred_names.count(%) = 0",f.fun());
+        DEBUG if(!fun_names.count(f.fun())) error("fun_names.count(%) = 0",f.fun());
         pt.set_name(fun_names.at(f.fun()));
         for(size_t i=0; i<f.arg_count(); ++i)
           *(pt.add_args()) = proto_term(f.arg(i));

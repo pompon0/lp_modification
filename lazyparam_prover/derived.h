@@ -50,15 +50,8 @@ struct DerAndClause;
 struct DerOrClause;
 
 struct DerOrClause {
-  DerOrClause(size_t _cost, OrClause cla) : DerOrClause(_cost,cla,List<OrClause>(cla),List<Constraint>()) {}
-  DerOrClause(size_t _cost, OrClause _derived, List<OrClause> _source, List<Constraint> _constraints)
-    : DerOrClause(_cost,0,0,_derived,_source,_constraints) {}
   DerAndClause neg() const;
-  DerOrClause shift(size_t _var_offset) const {
-    DEBUG if(var_offset_) error("offset = %, want %",var_offset_,0);
-    return DerOrClause(cost_,_var_offset,id_offset_,derived_,source_,constraints_);
-  }
-  DerOrClause set_id_offset(u64 _id_offset) {
+  DerOrClause set_id_offset(u64 _id_offset) const {
     DEBUG if(id_offset_!=0) error("id_offset = %, want %",id_offset_,0);
     return DerOrClause(cost_,var_offset_,_id_offset,derived_,source_,constraints_);
   }
@@ -87,21 +80,31 @@ struct DerOrClause {
   }
 
 private:
-  DerOrClause(size_t _cost, size_t _var_offset, size_t _id_offset, OrClause _derived, List<OrClause> _source, List<Constraint> _constraints)
+  friend NoOffset<DerOrClause>;
+  DerOrClause(size_t _cost, size_t _var_offset, size_t _id_offset, NoOffset<OrClause> _derived, List<NoOffset<OrClause>> _source, List<Constraint> _constraints)
     : cost_(_cost), var_offset_(_var_offset), id_offset_(_id_offset), derived_(_derived), source_(_source), constraints_(_constraints) {}
   size_t cost_;
   size_t var_offset_;
   size_t id_offset_;
-  OrClause derived_;
-  List<OrClause> source_;
+  NoOffset<OrClause> derived_;
+  List<NoOffset<OrClause>> source_;
   List<Constraint> constraints_;
+};
+
+template<> struct NoOffset<DerOrClause> : DerOrClause {
+  NoOffset(size_t _cost, NoOffset<OrClause> _derived, List<NoOffset<OrClause>> _source, List<Constraint> _constraints)
+    : DerOrClause(_cost,0,0,_derived,_source,_constraints) {} 
+  NoOffset(size_t _cost, NoOffset<OrClause> cla)
+    : NoOffset<DerOrClause>(_cost,cla,List<NoOffset<OrClause>>(cla),List<Constraint>()) {}
+  DerOrClause shift(NoOffset<DerOrClause> cla, size_t _var_offset) const {
+    return DerOrClause(cla.cost_,_var_offset,cla.id_offset_,cla.derived_,cla.source_,cla.constraints_);
+  }
 };
 
 struct DerAndClause { 
   size_t cost() const { return neg_or_clause.cost(); }
   AndClause derived() const { return neg_or_clause.derived().neg(); }
   DerAndClause set_id_offset(u64 _id_offset) { return DerAndClause(neg_or_clause.set_id_offset(_id_offset)); }
-  DerAndClause shift(size_t _var_offset) const { return DerAndClause(neg_or_clause.shift(_var_offset)); }
   DerOrClause neg() const { return neg_or_clause; }
   ListA<AndClause::Iso> source_list() const { return ListA<AndClause::Iso>(neg_or_clause.source_list()); }
   List<Constraint> constraints() const { return neg_or_clause.constraints(); }

@@ -6,11 +6,7 @@
 
 namespace tableau {
 
-template<typename T> struct NoOffset : T {
-private:
-  NoOffset(T t) : T(t) {}
-  friend T;
-};
+template<typename T> struct NoOffset;
 
 struct Term {
 private:
@@ -25,7 +21,7 @@ private:
 public:
   enum Type { VAR, FUN };
   Type type(){ return Type(ptr[TYPE]); }
-  inline Term drop_offset();
+  inline NoOffset<Term> drop_offset();
 };
 
 struct Var {
@@ -39,15 +35,8 @@ public:
   explicit operator Term() { return term; }
   u64 id(){ return term.ptr[ID]+term.var_offset; }
   
-  Var drop_offset() { return make(id()); }
-
-  static Var make(u64 id) {
-    COUNTER("Var::make");
-    auto ptr = alloc(SIZE);
-    ptr[Term::TYPE] = Term::VAR;
-    ptr[ID] = id;
-    return Var(Term(ptr,0));
-  }
+  NoOffset<Var> drop_offset();
+  static NoOffset<Var> make(u64 id);
 };
 
 struct Fun {
@@ -60,24 +49,15 @@ public:
     DEBUG if(term.ptr[Term::TYPE]!=FUN) error("Fun(<type=%>)",term.ptr[Term::TYPE]);
   }
   explicit operator Term(){ return term; }
-  u64 fun(){ return term.ptr[FUN]; }
-  u64 arg_count(){ return term.ptr[ARG_COUNT]; }
-  Term arg(size_t i) {
+  u64 fun() const { return term.ptr[FUN]; }
+  u64 arg_count() const { return term.ptr[ARG_COUNT]; }
+  Term arg(size_t i) const {
     DEBUG if(i>=arg_count()) error("<arg_count=%>.arg(%)",arg_count(),i);
     return Term((u64*)term.ptr[ARGS+i],term.var_offset);
   }
 
-  Fun drop_offset() {
-    Builder b(fun(),arg_count());
-    for(size_t i=arg_count(); i--;) b.set_arg(i,arg(i).drop_offset());
-    return b.build();
-  }
-
-  static Fun slow_make(u64 fun, const vec<Term> &args) {
-    Builder b(fun,args.size());
-    for(size_t i=0; i<args.size(); ++i) b.set_arg(i,args[i]);
-    return b.build();
-  }
+  NoOffset<Fun> drop_offset();
+  static NoOffset<Fun> slow_make(u64 fun, const vec<NoOffset<Term>> &args);
 
   struct Builder {
   private:
@@ -89,21 +69,66 @@ public:
       ptr[FUN] = _fun;
       ptr[ARG_COUNT] = _arg_count;
     }
-    void set_arg(size_t i, Term a){
-      DEBUG if(a.var_offset) error("Fun::Builder.set_arg(): var_offset = %, want 0",a.var_offset);
-      ptr[ARGS+i] = (u64)a.ptr;
-    }
-    Fun build(){ return Fun(Term(ptr,0)); }
+    void set_arg(size_t i, NoOffset<Term> a);
+    NoOffset<Fun> build();
   };
 };
- 
-inline Term Term::drop_offset() {
+
+template<> struct NoOffset<Term> : Term {
+  explicit NoOffset(Term t) : Term(t) {} 
+  explicit NoOffset(NoOffset<Var> v);
+  explicit NoOffset(NoOffset<Fun> f);
+};
+
+template<> struct NoOffset<Var> : Var {
+  explicit NoOffset(Var v) : Var(v) {}
+  explicit NoOffset(NoOffset<Term> t) : Var(t) {}
+};
+
+template<> struct NoOffset<Fun> : Fun {
+  explicit NoOffset(Fun f) : Fun(f) {}
+  explicit NoOffset(NoOffset<Term> t) : Fun(t) {}
+  NoOffset<Term> arg(size_t i) const;
+};
+
+NoOffset<Term>::NoOffset(NoOffset<Var> v) : Term(v) {}
+NoOffset<Term>::NoOffset(NoOffset<Fun> f) : Term(f) {}
+
+NoOffset<Term> NoOffset<Fun>::arg(size_t i) const { return NoOffset<Term>(Fun::arg(i)); }
+
+NoOffset<Var> Var::drop_offset() { return make(id()); }
+
+NoOffset<Var> Var::make(u64 id) {
+  COUNTER("Var::make");
+  auto ptr = alloc(SIZE);
+  ptr[Term::TYPE] = Term::VAR;
+  ptr[ID] = id;
+  return NoOffset<Var>(Var(Term(ptr,0)));
+}
+
+NoOffset<Fun> Fun::drop_offset() {
+  Builder b(fun(),arg_count());
+  for(size_t i=arg_count(); i--;) b.set_arg(i,arg(i).drop_offset());
+  return b.build();
+}
+
+NoOffset<Fun> Fun::slow_make(u64 fun, const vec<NoOffset<Term>> &args) {
+  Builder b(fun,args.size());
+  for(size_t i=0; i<args.size(); ++i) b.set_arg(i,args[i]);
+  return b.build();
+}
+
+void Fun::Builder::set_arg(size_t i, NoOffset<Term> a){ ptr[ARGS+i] = (u64)a.ptr; }
+NoOffset<Fun> Fun::Builder::build(){ return NoOffset<Fun>(Fun(Term(ptr,0))); }
+
+inline NoOffset<Term> Term::drop_offset() {
   switch(type()) {
-  case VAR: return Term(Var(*this).drop_offset());
-  case FUN: return Term(Fun(*this).drop_offset());
+    case VAR: return NoOffset<Term>(Var(*this).drop_offset());
+    case FUN: return NoOffset<Term>(Fun(*this).drop_offset());
   default: error("type = %",type());
   }
 }
+
 struct Atom {
 private:
   friend struct OrClause;
@@ -131,24 +156,9 @@ public:
   inline Term arg(size_t i) const { return Term((u64*)ptr[ARGS+i],var_offset); }
   inline u64 id() const { return id_; } 
 
-  inline Atom drop_offset() {
-    Builder b(sign(),pred(),arg_count());
-    for(size_t i=arg_count(); i--;) b.set_arg(i,arg(i).drop_offset());
-    return b.build();
-  }
-
-  static inline Atom eq(bool sign, Term l, Term r) {
-    Builder b(sign,EQ,2);
-    b.set_arg(0,l);
-    b.set_arg(1,r);
-    return b.build();
-  }
-
-  static inline Atom slow_make(bool sign, u64 pred, const vec<Term> &args) {
-    Builder b(sign,pred,args.size());
-    for(size_t i=0; i<args.size(); ++i) b.set_arg(i,args[i]);
-    return b.build();
-  }
+  NoOffset<Atom> drop_offset();
+  static NoOffset<Atom> slow_make(bool sign, u64 pred, const vec<NoOffset<Term>> &args);
+  static NoOffset<Atom> eq(bool sign, NoOffset<Term> l, NoOffset<Term> r);
 
   struct Builder {
   private:
@@ -161,18 +171,41 @@ public:
       ptr[ARG_COUNT] = _arg_count;
       DEBUG for(size_t i=0; i<_arg_count; ++i) ptr[ARGS+i] = 0;
     }
-    inline void set_arg(size_t i, Term a){
-      DEBUG if(a.var_offset!=0) error("Atom::set_arg(): var_offset = %, want %",a.var_offset,0);
-      ptr[ARGS+i] = (u64)a.ptr;
-    }
-    inline Atom build(){
-      DEBUG for(size_t i=0; i<ptr[ARG_COUNT]; ++i) if(!ptr[ARGS+i]) error("Atom::build() arg(%) not set",i);
-      return Atom(ptr,0,0);
-    }
+    inline void set_arg(size_t i, NoOffset<Term> a){ ptr[ARGS+i] = (u64)a.ptr; }
+    inline NoOffset<Atom> build();
   };
 
   Atom neg() const { Atom a{*this}; a.sign_ = !a.sign_; return a; }
 };
+
+template<> struct NoOffset<Atom> : Atom {
+  NoOffset(Atom a) : Atom(a) {}
+  NoOffset neg() const { return NoOffset(Atom::neg()); }
+};
+
+NoOffset<Atom> Atom::drop_offset() {
+  Builder b(sign(),pred(),arg_count());
+  for(size_t i=arg_count(); i--;) b.set_arg(i,arg(i).drop_offset());
+  return b.build();
+}
+
+NoOffset<Atom> Atom::eq(bool sign, NoOffset<Term> l, NoOffset<Term> r) {
+  Builder b(sign,EQ,2);
+  b.set_arg(0,l);
+  b.set_arg(1,r);
+  return b.build();
+}
+
+NoOffset<Atom> Atom::slow_make(bool sign, u64 pred, const vec<NoOffset<Term>> &args) {
+  Builder b(sign,pred,args.size());
+  for(size_t i=0; i<args.size(); ++i) b.set_arg(i,args[i]);
+  return b.build();
+}
+
+NoOffset<Atom> Atom::Builder::build(){
+  DEBUG for(size_t i=0; i<ptr[ARG_COUNT]; ++i) if(!ptr[ARGS+i]) error("Atom::build() arg(%) not set",i);
+  return NoOffset<Atom>(Atom(ptr,0,0));
+}
 
 //TODO: replace with hash consing
 inline bool operator==(Term x, Term y) {
@@ -215,6 +248,7 @@ struct OrForm;
 
 struct OrClause {
 private:
+  friend NoOffset<OrClause>;
   enum { ATOM_COUNT, VAR_COUNT, ATOMS };
   u64 *ptr;
   u64 var_offset_;
@@ -229,10 +263,6 @@ public:
   }
   AndClause neg() const;
 
-  OrClause shift(size_t _var_offset) const { FRAME("OrClause::shift()");
-    DEBUG if(var_offset_!=0) error("var_offset = %, want %",var_offset_,0);
-    return OrClause(ptr,_var_offset,id_offset_);
-  }
   OrClause set_id_offset(size_t _id_offset) const { FRAME("OrClause::set_id_offset()");
     DEBUG if(id_offset_!=0) error("id_offset = %, want %",id_offset_,0);
     return OrClause(ptr,var_offset_,_id_offset);
@@ -246,11 +276,11 @@ public:
       ptr[VAR_COUNT] = _var_count;
       ptr[ATOM_COUNT] = _atom_count;
     }
-    void set_atom(size_t i, Atom a) { FRAME("OrClause.Builder.set_atom()");
+    void set_atom(size_t i, NoOffset<Atom> a) { FRAME("OrClause.Builder.set_atom()");
       DEBUG if(a.var_offset) error("a.var_offset = %, want %",a.var_offset,0);
       ptr[ATOMS+i] = (u64)a.ptr;
     }
-    OrClause build(){ return OrClause(ptr,0,0); }
+    NoOffset<OrClause> build();
   };
 
   bool operator==(const OrClause &cla) const {
@@ -271,7 +301,7 @@ struct AndClause {
   size_t var_count() const { return neg_or_clause.var_count(); }
   size_t atom_count() const { return neg_or_clause.atom_count(); }
   Atom atom(size_t i) const { return neg_or_clause.atom(i).neg(); }
-  OrClause neg(){ return neg_or_clause; }
+  OrClause neg() const { return neg_or_clause; }
 private:
   explicit AndClause(OrClause _neg_or_clause) : neg_or_clause(_neg_or_clause) {}
   OrClause neg_or_clause;
@@ -279,6 +309,27 @@ private:
 };
 
 inline AndClause OrClause::neg() const { return AndClause(*this); }
+
+template<> struct NoOffset<OrClause> : OrClause {
+  NoOffset(OrClause c) : OrClause(c) {}
+  NoOffset<Atom> atom(size_t i) const { return NoOffset<Atom>(OrClause::atom(i)); }
+  NoOffset<AndClause> neg() const;
+  OrClause shift(size_t _var_offset) const { FRAME("OrClause::shift()");
+    return OrClause(ptr,_var_offset,id_offset_);
+  }
+};
+
+template<> struct NoOffset<AndClause> : AndClause {
+  NoOffset(AndClause c) : AndClause(c) {}
+  NoOffset<Atom> atom(size_t i) const { return NoOffset<Atom>(AndClause::atom(i)); }
+  NoOffset<OrClause> neg() const { return NoOffset<OrClause>(AndClause::neg()); }
+};
+
+NoOffset<AndClause> NoOffset<OrClause>::neg() const { return NoOffset<AndClause>(OrClause::neg()); }
+
+NoOffset<OrClause> OrClause::Builder::build(){ return NoOffset<OrClause>(OrClause(ptr,0,0)); }
+
+
 
 static_assert(sizeof(u64*)==sizeof(u64));
 static_assert(sizeof(Term)==2*sizeof(u64));

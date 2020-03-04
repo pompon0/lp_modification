@@ -10,22 +10,22 @@
 
 namespace tableau {
 
-DerOrClause refl_axiom() {
+NoOffset<DerOrClause> refl_axiom() {
   size_t var_count = 0;
-  Term x(Var::make(var_count++));
+  NoOffset<Term> x(Var::make(var_count++));
   OrClause::Builder b(1,var_count);
   b.set_atom(0,Atom::eq(true,x,x));
-  return DerOrClause(0,b.build());
+  return NoOffset<DerOrClause>(0,b.build());
 }
 
-DerOrClause symm_axiom() {
+NoOffset<DerOrClause> symm_axiom() {
   size_t var_count = 0;
-  Term x(Var::make(var_count++));
-  Term y(Var::make(var_count++));
+  NoOffset<Term> x(Var::make(var_count++));
+  NoOffset<Term> y(Var::make(var_count++));
   OrClause::Builder b(2,var_count);
   b.set_atom(0,Atom::eq(false,x,y));
   b.set_atom(1,Atom::eq(true,y,x));
-  return DerOrClause(1,b.build());
+  return NoOffset<DerOrClause>(1,b.build());
 }
 
 DerOrClause trans_axiom() {

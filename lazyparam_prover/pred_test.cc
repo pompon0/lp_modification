@@ -10,9 +10,9 @@ TEST(pred,neg) {
   bool sign = true;
   size_t pred_name = 7;
   Atom::Builder b(sign,pred_name,2);
-  b.set_arg(0,Term(Var::make(0)));
-  b.set_arg(1,Term(Var::make(4)));
-  Atom a = b.build();
+  b.set_arg(0,NoOffset<Term>(Var::make(0)));
+  b.set_arg(1,NoOffset<Term>(Var::make(4)));
+  NoOffset<Atom> a = b.build();
   ASSERT_EQ(a.sign(),sign);
   ASSERT_EQ(a.pred(),pred_name);
   ASSERT_NE(a.neg(),a) << util::fmt("expected % != %",show(a.neg()),show(a));

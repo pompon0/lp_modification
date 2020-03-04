@@ -46,15 +46,15 @@ str show(Atom a) {
   return util::fmt("%%(%)",sign,pred_name,util::join(",",args));
 }
 
-str show(const OrClause &cla) {
+str show(const OrClause cla) {
   vec<str> atoms;
   for(size_t i=0; i<cla.atom_count(); ++i) atoms.push_back(show(cla.atom(i)));
   return util::join(" \\/ ",atoms);
 }
 
-str show(const AndClause &andClause) {
+str show(const AndClause cla) {
   vec<str> atoms;
-  for(auto a : andClause.atoms) atoms.push_back(show(a));
+  for(size_t i=0; i<cla.atom_count(); ++i) atoms.push_back(show(cla.atom(i)));
   return util::join(" /\\ ",atoms);
 }
 

@@ -118,8 +118,11 @@ bool has_equality(OrForm f) {
 
 OrForm add_refl_constraints(OrForm f) {
   for(auto &c : f.and_clauses) {
-    for(auto a : c.derived.atoms) if(a.pred()==Atom::EQ && !a.sign()) {
-      c.constraints.push_back(Constraint::neq(a.arg(0),a.arg(1)));
+    auto d = c.derived();
+    for(size_t i=0; i<d.atom_count(); ++i) {
+      auto a = d.atom(i);
+      if(a.pred()==Atom::EQ && !a.sign()) {
+      c = c.constraints() + Constraint::neq(a.arg(0),a.arg(1));
     }
   }
   return f;

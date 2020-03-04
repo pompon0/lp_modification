@@ -161,10 +161,7 @@ public:
   }
 
   // FIXME: var_count gets invalidated due to evaluation
-  inline AndClause eval(AndClause cla) const { FRAME("eval(%)",show(cla));
-    for(Atom &a : cla.atoms) a = eval(a);
-    return cla;
-  }
+  inline AndClause eval(AndClause cla) const { return eval(cla.neg()).neg(); }
 
   inline Constraint eval(Constraint c) const {
     List<Constraint::Pair> or_;
@@ -174,13 +171,17 @@ public:
     return c;
   }
 
-  // FIXME: var_count gets invalidated due to evaluation
-  inline DerAndClause eval(DerAndClause cla) const {
-    cla.derived = eval(cla.derived);
-    for(auto &s : cla.source) s = eval(s);
-    for(auto &c : cla.constraints) c = eval(c);
-    return cla;
+  // FIXME var_offset,id_offset and var_counts get invalidated
+  inline DerOrClause eval(DerOrClause cla) const {
+    return DerOrClause(cla.cost,
+        eval(cla.derived()),
+        cla.source.traverse(eval),
+        cla.constraints.traverse(eval));
   }
+
+  // FIXME: var_count gets invalidated due to evaluation
+  inline DerAndClause eval(DerAndClause cla) const { return eval(cla.neg()).neg(); }
+
 
   str DebugString() const {
     vec<str> l;

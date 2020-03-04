@@ -49,18 +49,6 @@ struct Constraint {
 struct DerAndClause;
 struct DerOrClause;
 
-struct DerAndClause {
-  DerAndClause(){}
-  explicit DerAndClause(size_t _cost, AndClause cla) : cost(_cost), derived(cla), source{cla} {}
-
-  DerOrClause neg() const;
-  
-  size_t cost = 0;
-  AndClause derived;
-  vec<AndClause> source;
-  vec<Constraint> constraints;
-};
-
 struct DerOrClause {
   DerOrClause(size_t _cost, OrClause cla) : DerOrClause(_cost,cla,List<OrClause>(cla),List<Constraint>()) {}
   DerOrClause(size_t _cost, OrClause _derived, List<OrClause> _source, List<Constraint> _constraints)
@@ -77,7 +65,7 @@ struct DerOrClause {
   OrClause derived() const { return derived_.shift(var_offset_).set_id_offset(id_offset_); }
   size_t cost() const { return cost_; }
   
-  List<OrClause> source_list() {
+  List<OrClause> source_list() const {
     List<OrClause> source2;
     for(auto l=source_; !l.empty(); l = l.tail()) {
       source2 += l.head().shift(var_offset_);
@@ -97,6 +85,7 @@ struct DerOrClause {
     vec<OrClause> s; for(auto l=source_; !l.empty(); l = l.tail()) s.push_back(l.head().shift(var_offset_));
     return s;
   }
+
 private:
   DerOrClause(size_t _cost, size_t _var_offset, size_t _id_offset, OrClause _derived, List<OrClause> _source, List<Constraint> _constraints)
     : cost_(_cost), var_offset_(_var_offset), id_offset_(_id_offset), derived_(_derived), source_(_source), constraints_(_constraints) {}
@@ -108,16 +97,34 @@ private:
   List<Constraint> constraints_;
 };
 
-struct OrForm {
-  vec<DerAndClause> and_clauses;
-  OrForm(){}
-  explicit OrForm(const NotAndForm &);
+struct DerAndClause { 
+  size_t cost() const { return neg_or_clause.cost(); }
+  AndClause derived() const { return neg_or_clause.derived().neg(); }
+  DerAndClause set_id_offset(u64 _id_offset) { return DerAndClause(neg_or_clause.set_id_offset(_id_offset)); }
+  DerAndClause shift(size_t _var_offset) const { return DerAndClause(neg_or_clause.shift(_var_offset)); }
+  DerOrClause neg() const { return neg_or_clause; }
+  ListA<AndClause::Iso> source_list() const { return ListA<AndClause::Iso>(neg_or_clause.source_list()); }
+  List<Constraint> constraints() const { return neg_or_clause.constraints(); }
+private:
+  explicit DerAndClause(DerOrClause _neg_or_clause) : neg_or_clause(_neg_or_clause) {}
+  DerOrClause neg_or_clause;
+  friend DerAndClause DerOrClause::neg() const;
 };
+
+DerAndClause DerOrClause::neg() const { return DerAndClause(*this); }
+
+
 
 struct NotAndForm {
   vec<DerOrClause> or_clauses;
   NotAndForm(){}
   explicit NotAndForm(const OrForm &);
+};
+
+struct OrForm {
+  vec<DerAndClause> and_clauses;
+  OrForm(){}
+  explicit OrForm(const NotAndForm &);
 };
 
 inline NotAndForm::NotAndForm(const OrForm &f) {
@@ -128,12 +135,10 @@ inline OrForm::OrForm(const NotAndForm &f) {
   for(const auto &c : f.or_clauses) and_clauses.push_back(c.neg());
 }
 
-
-
 str show(const DerAndClause &cla) {
   vec<str> source;
-  for(auto c : cla.source) source.push_back(show(c));
-  return util::fmt("%   [%]",show(cla.derived),util::join(", ",source));
+  for(auto c : cla.source_list().to_vec()) source.push_back(show(c));
+  return util::fmt("%   [%]",show(cla.derived()),util::join(", ",source));
 }
 str show(const DerOrClause &cla) { return show(cla.derived()); }
 
@@ -147,27 +152,6 @@ str show(const OrForm &f) {
   vec<str> clauses;
   for(auto c : f.and_clauses) clauses.push_back(show(c) + "\n");
   return util::join("",clauses);
-}
-
-DerOrClause DerAndClause::neg() const { FRAME("neg(%)",show(*this));
-  List<OrClause> source_neg;
-  List<Constraint> constraints_list;
-  for(const auto &c : source) source_neg += c.neg();
-  for(const auto &c : constraints) constraints_list += c;
-  return DerOrClause(cost,derived.neg(),source_neg,constraints_list);
-}
-
-DerAndClause DerOrClause::neg() const { FRAME("neg(%)",show(*this));
-  DerAndClause cla;
-  cla.cost = cost();
-  cla.derived = derived().neg();
-  for(auto c : source()) {
-    cla.source.push_back(c.neg());
-  }
-  for(auto c = constraints_; !c.empty(); c = c.tail()) {
-    cla.constraints.push_back(c.head());
-  }
-  return cla;
 }
 
 }  // namespace tableau

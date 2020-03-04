@@ -6,6 +6,12 @@
 
 namespace tableau {
 
+template<typename T> struct NoOffset : T {
+private:
+  NoOffset(T t) : T(t) {}
+  friend T;
+};
+
 struct Term {
 private:
   friend struct Var;
@@ -104,6 +110,7 @@ private:
   enum { SIGN, PRED, ARG_COUNT, ARGS };
   u64 *ptr;
   u64 var_offset;
+  bool sign_;
   u64 id_; // used to identify atom (for indexing)
   explicit Atom(u64 *_ptr, u64 _var_offset, u64 _id) : ptr(_ptr), var_offset(_var_offset), id_(_id) {}
 public:
@@ -118,7 +125,7 @@ public:
     PRED_MIN = TRANS_TARGET,
   };
 
-  inline bool sign() const { return ptr[SIGN]; }
+  inline bool sign() const { return sign_; }
   inline u64 pred() const { return ptr[PRED]; }
   inline u64 arg_count() const { return ptr[ARG_COUNT]; }
   inline Term arg(size_t i) const { return Term((u64*)ptr[ARGS+i],var_offset); }
@@ -164,13 +171,7 @@ public:
     }
   };
 
-  Atom neg() const {
-    u64 *end = ptr+ARGS+arg_count();
-    u64 *ptr2 = alloc(end-ptr);
-    for(auto x = ptr, y = ptr2; x<end;) *y++ = *x++;
-    ptr2[SIGN] = !ptr2[SIGN];
-    return Atom(ptr2,var_offset,id_);
-  }
+  Atom neg() const { Atom a{*this}; a.sign_ = !a.sign_; return a; }
 };
 
 //TODO: replace with hash consing
@@ -211,13 +212,6 @@ struct OrClause;
 struct AndClause;
 struct NotAndForm;
 struct OrForm;
-
-struct AndClause {
-  AndClause(size_t _var_count = 0) : var_count(_var_count) {}
-  size_t var_count;
-  vec<Atom> atoms;
-  OrClause neg() const;
-};
 
 struct OrClause {
 private:
@@ -267,24 +261,31 @@ public:
   bool operator!=(const OrClause &cla) const { return !(*this==cla); }
 };
 
-inline OrClause AndClause::neg() const {
-  OrClause::Builder b(atoms.size(),var_count);
-  for(size_t i=atoms.size(); i--;) b.set_atom(i,atoms[i].neg());
-  return b.build();
-}
+struct AndClause {
+  struct Iso {
+    using From = OrClause;
+    using To = AndClause;
+    From from(To c){ return c.neg(); }
+    To to(From c){ return c.neg(); }
+  };
+  size_t var_count() const { return neg_or_clause.var_count(); }
+  size_t atom_count() const { return neg_or_clause.atom_count(); }
+  Atom atom(size_t i) const { return neg_or_clause.atom(i).neg(); }
+  OrClause neg(){ return neg_or_clause; }
+private:
+  explicit AndClause(OrClause _neg_or_clause) : neg_or_clause(_neg_or_clause) {}
+  OrClause neg_or_clause;
+  friend AndClause OrClause::neg() const;
+};
 
-inline AndClause OrClause::neg() const {
-  AndClause d(var_count());
-  for(size_t i=0; i<atom_count(); ++i) d.atoms.push_back(atom(i).neg().drop_offset());
-  return d;
-}
+inline AndClause OrClause::neg() const { return AndClause(*this); }
 
 static_assert(sizeof(u64*)==sizeof(u64));
 static_assert(sizeof(Term)==2*sizeof(u64));
 static_assert(sizeof(Var)==sizeof(Term));
 static_assert(sizeof(Fun)==sizeof(Term));
-static_assert(sizeof(Atom)==sizeof(Term)+sizeof(u64));
-static_assert(sizeof(OrClause)==sizeof(Atom));
+static_assert(sizeof(Atom)<=sizeof(Term)+2*sizeof(u64));
+static_assert(sizeof(OrClause)==sizeof(AndClause));
 
 }  // namespace tableau
 

@@ -151,6 +151,7 @@ struct ParseCtx {
 struct ProtoCtx {
   ProtoCtx(const ParseCtx &pc) : pred_names(pc.pred_names.rev()), fun_names(pc.fun_names.rev()) {
     fun_names[Fun::EXTRA_CONST] = "c";
+    pred_names[Atom::EQ_TRANS_POS] = "eqt";
   }
   std::map<size_t,str> pred_names;
   std::map<size_t,str> fun_names;
@@ -166,7 +167,7 @@ struct ProtoCtx {
       case Term::FUN: {
         Fun f(t);
         pt.set_type(tptp::Term::EXP);
-        DEBUG if(!fun_names.count(f.fun())) error("pred_names.count(%) = 0",f.fun());
+        DEBUG if(!fun_names.count(f.fun())) error("fun_names.count(%) = 0",f.fun());
         pt.set_name(fun_names.at(f.fun()));
         for(size_t i=0; i<f.arg_count(); ++i)
           *(pt.add_args()) = proto_term(f.arg(i));

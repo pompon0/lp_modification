@@ -1,3 +1,7 @@
+package(
+  default_visibility = ["//visibility:public"],
+)
+
 cc_library(
     name = "types",
     hdrs = ["types.h"],
@@ -14,9 +18,14 @@ cc_library(
 )
 
 cc_library(
+    name = "alloc",
+    hdrs = ["alloc.h"],
+    deps = [":log"],
+)
+
+cc_library(
     name = "pred",
     hdrs = [
-        "alloc.h",
         "pred.h",
         "pred_format.h",
         "derived.h",
@@ -24,6 +33,7 @@ cc_library(
     deps = [
         ":log",
         ":types",
+        ":alloc",
     ],
 )
 

@@ -6,46 +6,6 @@
 
 namespace tableau {
 
-struct Constraint {
-  // ignores sign
-  static Constraint neq(Atom l, Atom r) {
-    if(l.pred()!=r.pred()) return Constraint{TRUE};
-    DEBUG if(l.arg_count()!=r.arg_count()) error("l.arg_count() = %, r.arg_count() = %",show(l),show(r));
-    List<Constraint::Pair> p;
-    for(size_t i=l.arg_count(); i--;) p += {l.arg(i),r.arg(i)};
-    return Constraint{NEQ,p};
-  }
-
-  static Constraint neq(Term l, Term r) {
-    return Constraint{NEQ,List<Pair>(Pair{l,r})};
-  }
-
-  static Constraint lt(Term l, Term r) {
-    return Constraint{LT,List<Pair>(Pair{l,r})};
-  }
-
-  static Constraint le(Term l, Term r) {
-    return Constraint{LE,List<Pair>(Pair{l,r})};
-  }
-
-  enum Type { NEQ, LT, LE, TRUE };
-  Type type;
-  struct Pair { Term l,r; };
-  List<Pair> or_;
-  
-  Constraint shift(size_t var_offset) const {
-    List<Pair> or2;
-    for(auto p = or_; !p.empty(); p = p.tail()) {
-      auto h = p.head();
-      or2 += Pair{
-        Term(h.l.ptr,var_offset),
-        Term(h.r.ptr,var_offset),
-      };
-    }
-    return Constraint{type,or2};
-  }
-};
-
 struct DerAndClause;
 struct DerOrClause;
 

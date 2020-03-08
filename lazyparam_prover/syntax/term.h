@@ -8,64 +8,72 @@
 
 namespace tableau {
 
-struct Term0 {
+struct VarRange {
+  size_t begin,end;
+  bool empty() const { return begin>=end; }
+  VarRange & operator|=(const VarRange &r){
+    if(r.empty()){ return *this; }
+    if(empty()){ *this = r; return *this; }
+    util::mini(begin,r.begin);
+    util::maxi(end,r.end);
+    return *this;
+  }
+  VarRange operator+(size_t offset) const {
+    return {begin+offset,end+offset};
+  }
+};
+
+struct Term {
+  friend struct Var;
+  friend struct Fun;
   enum Type { VAR, FUN };
 private:
-  friend struct Var0;
-  friend struct Fun0;
-  friend struct Atom0;
-  friend struct Constraint;
   using TYPE = Field<Type>;
-  using VAR_END = Field<u64,TYPE>;
-  using LAST_FIELD = VAR_END;
+  using LAST_FIELD = TYPE;
   u8 *ptr;
-  Term0(u8 *_ptr) : ptr(_ptr) {}
+  size_t offset;
+  Term(u8 *_ptr, size_t _offset) : ptr(_ptr), offset(_offset) {}
 public:
-  u64 var_end() const { return VAR_END::ref(ptr); }
   Type type() const { return TYPE::ref(ptr); }
+  VarRange var_range() const;
+  Term shift(size_t _offset) const { return Term(ptr,offset+_offset); }
 };
 
-struct Var0 {
+struct Var {
 private:
-  using ID = Field<u64,Term0::LAST_FIELD>;
-  Term0 term;
-  static Term0 _Var0(u64 id) {
-    COUNTER("Var0(id)");
-    auto ptr = ID::alloc();
-    Term0::TYPE::ref(ptr) = Term0::VAR;
-    Term0::VAR_END::ref(ptr) = id+1;
-    ID::ref(ptr) = id;
-    return Term0(ptr);
-  }
+  Term term;
 public:
-  explicit Var0(Term0 t) : term(t) {
-    DEBUG if(Term0::TYPE::ref(t.ptr)!=Term0::VAR) error("Var(<type=%>)",Term0::TYPE::ref(term.ptr));
+  explicit Var(Term t) : term(t) {
+    DEBUG if(Term::TYPE::ref(t.ptr)!=Term::VAR) error("Var(<type=%>)",Term::TYPE::ref(t.ptr));
   }
-  explicit Var0(u64 id) : Var0(_Var0(id)) {}
-  explicit operator Term0() const { return term; }
-  u64 id() const { return ID::ref(term.ptr); }
+  explicit Var(u64 id) : term(Term::LAST_FIELD::alloc(),id) { Term::TYPE::ref(term.ptr) = Term::VAR; }
+  explicit operator Term() const { return term; }
+  u64 id() const { return term.offset; }
+  VarRange var_range() const { return {term.offset,term.offset+1}; }
 };
 
-struct Fun0 {
+struct Fun {
 private:
-  using FUN = Field<u64,Term0::LAST_FIELD>;
-  using ARGS = ArrayField<u8*,FUN>;
-  Term0 term;
-  static Term0 _Fun0(u64 fun, const vec<Term0> &args) {
+  using VAR_RANGE = Field<VarRange,Term::LAST_FIELD>;
+  using FUN = Field<u64,VAR_RANGE>;
+  using ARGS = ArrayField<Term,FUN>;
+  Term term;
+  static Term _Fun(u64 fun, const vec<Term> &args) {
     Builder b(fun,args.size());
     for(size_t i=0; i<args.size(); ++i) b.set_arg(i,args[i]);
-    return Term0(b.build());
+    return Term(b.build());
   }
 public:
   enum { EXTRA_CONST = u64(-1), VAR_WRAP = u64(-2), FUN_WRAP = u64(-3) };
-  explicit Fun0(Term0 t) : term(t) {
-    DEBUG if(Term0::TYPE::ref(term.ptr)!=Term0::FUN) error("Fun(<type=%>)",Term0::TYPE::ref(term.ptr));
+  explicit Fun(Term t) : term(t) {
+    DEBUG if(Term::TYPE::ref(t.ptr)!=Term::FUN) error("Fun(<type=%>)",Term::TYPE::ref(t.ptr));
   }
-  explicit operator Term0() const { return term; }
+  explicit Fun(u64 fun, const vec<Term> &args) : Fun(_Fun(fun,args)) {}
+  explicit operator Term() const { return term; }
   u64 fun() const { return FUN::ref(term.ptr); }
   u64 arg_count() const { return ARGS::size(term.ptr); }
-  Term0 arg(size_t i) const { return Term0(ARGS::ref(term.ptr,i)); }
-  explicit Fun0(u64 fun, const vec<Term0> &args) : Fun0(_Fun0(fun,args)) {}
+  Term arg(size_t i) const { return ARGS::ref(term.ptr,i).shift(term.offset); }
+  VarRange var_range() const { return VAR_RANGE::ref(term.ptr)+term.offset; }
 
   struct Builder {
   private:
@@ -73,74 +81,33 @@ public:
   public:
     Builder(u64 _fun, u64 _arg_count) : ptr(ARGS::alloc(_arg_count)) {
       COUNTER("Fun::Builder");
-      Term0::TYPE::ref(ptr) = Term0::FUN;
-      Term0::VAR_END::ref(ptr) = 0;
+      VAR_RANGE::ref(ptr) = {0,0};
+      Term::TYPE::ref(ptr) = Term::FUN;
       FUN::ref(ptr) = _fun;
+      //TODO: in DEBUG mode, check if all elements have been set
     }
-    void set_arg(size_t i, Term0 a) {
-      ARGS::ref(ptr,i) = a.ptr;
-      util::maxi(Term0::VAR_END::ref(ptr),a.var_end());
+    void set_arg(size_t i, Term a) {
+      ARGS::ref(ptr,i) = a;
+      VAR_RANGE::ref(ptr) |= a.var_range();
     }
-    Fun0 build() { return Fun0(Term0(ptr)); } 
+    Fun build(){ return Fun(Term(ptr,0)); } 
   };
 };
 
-struct Term {
-  Term0::Type type() const { return term.type(); }
-  u64 var_begin() const { return offset; }
-  u64 var_end() const { return offset+term.var_end(); }
-  explicit operator Term0();
-private:
-  Term(u64 _offset, Term0 _term) : offset(_offset), term(_term) {}
-  u64 offset;
-  Term0 term;
-  friend struct Var;
-  friend struct Fun;
-  friend struct Atom;
-};
-
-struct Var {
-  Var(Var0 v) : offset(0), var(v) {}
-  explicit Var(Term t) : offset(t.offset), var(t.term) {}
-  u64 id() const { return var.id()+offset; }
-  explicit operator Term() const { return Term(offset,Term0(var)); }
-  explicit operator Var0() const { return Var0(id()); }
-private:
-  u64 offset;
-  Var0 var;
-};
-
-struct Fun {
-  Fun(Fun0 f) : offset(0), fun_(f) {}
-  explicit Fun(Term t) : offset(t.offset), fun_(t.term) {}  
-
-  u64 fun() const { return fun_.fun(); }
-  u64 arg_count() const { return fun_.arg_count(); }
-  Term arg(size_t i) const { return Term(offset,fun_.arg(i)); }
-  explicit operator Term() const { return Term(offset,Term0(fun_)); }
-  explicit operator Fun0() const {
-    Fun0::Builder b(fun(),arg_count());
-    for(size_t i=arg_count(); i--;) b.set_arg(i,Term0(arg(i)));
-    return b.build();
-  }
-private:
-  u64 offset;
-  Fun0 fun_;
-};
-
-Term::operator Term0() {
+VarRange Term::var_range() const {
   switch(type()) {
-    case Term0::VAR: return Term0(Var0(Var(*this)));
-    case Term0::FUN: return Term0(Fun0(Fun(*this)));
-    default: error("type = %",type());
+  case VAR: return Var(*this).var_range();
+  case FUN: return Term(*this).var_range();
+  default: error("<type=%>.var_range()",type());
   }
 }
+
 
 //TODO: replace with hash consing
 inline bool operator==(Term x, Term y) {
   if(x.type()!=y.type()) return 0;
   switch(x.type()) {
-  case Term0::FUN: {
+  case Term::FUN: {
     Fun fx(x),fy(y);
     if(fx.fun()!=fy.fun()) return 0;
     DEBUG if(fx.arg_count()!=fy.arg_count())
@@ -149,7 +116,7 @@ inline bool operator==(Term x, Term y) {
       if(!(fx.arg(i)==fy.arg(i))) return 0;
     return 1;
   }
-  case Term0::VAR:
+  case Term::VAR:
     return Var(x).id()==Var(y).id();
   default:
     error("Term<type=%> == Term<type=%>",x.type(),y.type());

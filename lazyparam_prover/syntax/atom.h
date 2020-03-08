@@ -6,17 +6,16 @@
 
 namespace tableau {
 
-struct Atom0 {
+struct Atom {
 private:
-  friend struct Atom;
-  friend struct OrClause0;
-  using VAR_END = Field<u64>;
-  using PRED = Field<u64,VAR_END>;
-  using ARGS = ArrayField<u8*,PRED>;
+  using VAR_RANGE = Field<VarRange>;
+  using PRED = Field<u64,VAR_RANGE>;
+  using ARGS = ArrayField<Term,PRED>;
   u8 *ptr;
+  size_t offset;
   bool sign_;
   u64 id_; // used to identify atom (for indexing)
-  Atom0(u8 *_ptr, bool _sign, u64 _id) : ptr(_ptr), sign_(_sign), id_(_id) {}
+  Atom(u8 *_ptr, size_t _offset, bool _sign, u64 _id) : ptr(_ptr), offset(_offset), sign_(_sign), id_(_id) {}
 public:
   enum Pred {
     EQ = u64(-1),
@@ -29,26 +28,26 @@ public:
     PRED_MIN = TRANS_TARGET,
   };
 
-  u64 var_end() const { return VAR_END::ref(ptr); }
+  VarRange var_range() const { return VAR_RANGE::ref(ptr)+offset; }
+  Atom shift(size_t _offset) const { return Atom(ptr,offset+_offset,sign_,id_); }
+  Atom set_id(size_t _id) const { return Atom(ptr,offset,sign_,_id); }
+  Atom neg() const { return Atom(ptr,offset,!sign_,id_); }
+  
   inline bool sign() const { return sign_; }
   inline u64 pred() const { return PRED::ref(ptr); }
   inline u64 arg_count() const { return ARGS::size(ptr); }
-  inline Term0 arg(size_t i) const { return Term0(ARGS::ref(ptr,i)); }
+  inline Term arg(size_t i) const { return ARGS::ref(ptr,i).shift(offset); }
   inline u64 id() const { return id_; } 
 
-  explicit Atom0(bool sign, u64 pred, const vec<Term0> &args) {
+  explicit Atom(bool sign, u64 pred, const vec<Term> &args) {
     Builder b(sign,pred,args.size());
     for(size_t i=0; i<args.size(); ++i) b.set_arg(i,args[i]);
     *this = b.build();
   }
 
-  static inline Atom0 eq(bool sign, Term0 l, Term0 r) {
-    Builder b(sign,EQ,2);
-    b.set_arg(0,l);
-    b.set_arg(1,r);
-    return b.build();
+  static inline Atom eq(bool sign, Term l, Term r) {
+    return Builder(sign,EQ,2).set_arg(0,l).set_arg(1,r).build();
   }
-
 
   struct Builder {
   private:
@@ -57,44 +56,20 @@ public:
   public:
     Builder(bool _sign, u64 _pred, u64 _arg_count) : sign_(_sign), ptr(ARGS::alloc(_arg_count)) {
       COUNTER("Atom::Builder");
-      VAR_END::ref(ptr) = 0;
+      VAR_RANGE::ref(ptr) = {0,0};
       PRED::ref(ptr) = _pred;
-      DEBUG for(size_t i=0; i<_arg_count; ++i) ARGS::ref(ptr,i) = 0;
+      //DEBUG for(size_t i=0; i<_arg_count; ++i) ARGS::ref(ptr,i) = 0;
     }
-    inline void set_arg(size_t i, Term0 a){
-      ARGS::ref(ptr,i) = a.ptr;
-      util::maxi(VAR_END::ref(ptr),a.var_end());
+    inline Builder& set_arg(size_t i, Term a){
+      ARGS::ref(ptr,i) = a;
+      VAR_RANGE::ref(ptr) |= a.var_range();
+      return *this;
     }
-    inline Atom0 build() {
-      DEBUG for(size_t i=0; i<ARGS::size(ptr); ++i) if(!ARGS::ref(ptr,i)) error("Atom::build() arg(%) not set",i);
-      return Atom0(ptr,sign_,0);
+    inline Atom build() {
+      //DEBUG for(size_t i=0; i<ARGS::size(ptr); ++i) if(!ARGS::ref(ptr,i)) error("Atom::build() arg(%) not set",i);
+      return Atom(ptr,0,sign_,0);
     }
   };
-
-  Atom0 neg() const { Atom0 a{*this}; a.sign_ = !a.sign_; return a; }
-};
-
-struct Atom {
-  u64 var_begin() const { return offset; }
-  u64 var_end() const { return offset+atom.var_end(); }
-
-  inline bool sign() const { return atom.sign(); }
-  inline u64 pred() const { return atom.pred(); }
-  inline u64 arg_count() const { return atom.arg_count(); }
-  inline Term arg(size_t i) const { return Term(offset,atom.arg(i)); }
-  inline u64 id() const { return atom.id(); } 
-  inline Atom neg() const { return Atom(offset,atom.neg()); }
-  Atom(Atom0 _atom) : Atom(0,_atom) {}
-  explicit operator Atom0() const {
-    Atom0::Builder b(sign(),pred(),arg_count());
-    for(size_t i=arg_count(); i--;) b.set_arg(i,Term0(arg(i)));
-    return b.build();
-  }
-private:
-  Atom(u64 _offset, Atom0 _atom) : offset(_offset), atom(_atom) {}
-  u64 offset;
-  Atom0 atom;
-  friend struct OrClause;
 };
 
 inline bool operator==(Atom x, Atom y) {

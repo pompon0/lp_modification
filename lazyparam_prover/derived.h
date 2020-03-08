@@ -46,9 +46,9 @@ private:
   size_t cost_;
   size_t var_offset_;
   size_t id_offset_;
-  NoOffset<OrClause> derived_;
-  List<NoOffset<OrClause>> source_;
-  List<Constraint> constraints_;
+  OrClause derived_;
+  List<OrClause> source_;
+  List<OrderAtom> constraints_;
 };
 
 template<> struct NoOffset<DerOrClause> : DerOrClause {

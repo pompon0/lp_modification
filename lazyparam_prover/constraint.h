@@ -1,73 +1,86 @@
 #ifndef CONSTRAINT_H_
 #define CONSTRAINT_H_
 
+#include "lazyparam_prover/syntax/term.h"
+
 namespace tableau {
 
-struct Constraint;
+struct OrderAtom {
+  enum Relation { L = 1, G = 2, E = 4, LE = L|E, GE = G|E, NE = L|G, U = L|G|E };
+  enum Status { TRUE, FALSE, UNKNOWN };
+  Status status(){ return status_; }
+  VarRange var_range() const { return VAR_RANGE::ref(ptr); }
+  OrderAtom shift(size_t _offset){ return OrderOrClause(ptr,offset+_offset,status_,done); }
 
-struct Constraint0 {
-  enum Type { NEQ, LT, LE, TRUE };
-  struct Pair { Term0 l,r; }; 
-private:
-  using TYPE = Field<Type>;
-  using VAR_END = Field<u64,TYPE>;
-  using OR = ArrayField<Pair,VAR_END>;
-  u8 *ptr;
-  Constraint0(u8 *_ptr) : ptr(_ptr) {}
-public:
-  
+  // OrderAtom -> (Term -> Term -> OrderAtom::Relation) -> OrderAtom
+  template<typename CMP> OrderAtom reduce(CMP &cmp) const {
+    if(status()!=UNKNOWN) return *this;
+    for(size_t _done = done, size = TERM_PAIRS::size(ptr); _done++) {
+      auto p = TERM_PAIRS::ref(ptr,_done);
+      auto r = cmp(p.l.shift(offset),p.r.shift(offset));
+      bool last = _done==size-1;
+      if(!last && r==E) continue;
+      auto got = decide(r,last);
+      auto want = RELATION::ref(ptr);
+      if(got&want==got) return OrderAtom(ptr,offset,TRUE,_done);
+      if(got&want==0) return OrderAtom(ptr,offset,FALSE,_done);
+      return OrderAtom(ptr,offset,UKNOWN,_done);
+    }
+  }
+
   struct Builder {
   private:
     u8 *ptr;
   public:
-    Builder(Type _type, size_t _or_count) : ptr(OR::alloc(or_count)) { TYPE::ref(ptr) = _type; }
-    Builder& set_or(size_t i, Pair p){
-      OR::ref(ptr,i) = p;
-      util::maxi(VAR_END::ref(ptr),p.l.var_end());
-      util::maxi(VAR_END::ref(ptr),p.r.var_end());
+    Builder(Relation rel, size_t pair_count) : ptr(TERM_PAIRS::alloc(pair_count)) {
+      VAR_RANGE::ref(ptr) = {0,0};
+      RELATION::ref(ptr) = rel;
+    }
+    Builder& set_pair(size_t i, Term a, Term b) {
+      TERM_PAIRS::ref(ptr,i) = {a,b};
+      VAR_RANGE::ref(ptr) |= a.var_range() |= b.var_range();
       return *this;
     }
-    Constraint0 build(){ return Constraint0(ptr); }
+    OrderAtom build() {
+      return OrderAtom(ptr,0,TERM_PAIRS::size(ptr) ? UNKNOWN : RELATION::ref(ptr)&E ? TRUE : FALSE,0);
+    }
   };
- 
+  
   // ignores sign
-  static Constraint0 neq(Atom0 l, Atom0 r) {
-    if(l.pred()!=r.pred()) return Builder(TRUE,0).build();
+  static OrderAtom neq(Atom l, Atom r) {
+    if(l.pred()!=r.pred()) return OrderAtom(0,0,TRUE,0);
     DEBUG if(l.arg_count()!=r.arg_count()) error("l.arg_count() = %, r.arg_count() = %",show(l),show(r));
     Builder b(NEQ,l.arg_count());
-    for(size_t i=l.arg_count(); i--;) b.set_or({l.arg(i),r.arg(i)});
+    for(size_t i=l.arg_count(); i--;) b.set_pair(i,l.arg(i),r.arg(i));
     return b.build();
   }
 
-  static Constraint0 neq(Term0 l, Term0 r) {
-    return Builder(NEQ,1).set_or(0,{l,r}).build();
-  }
-
-  static Constraint0 lt(Term0 l, Term0 r) {
-    return Builder(LT,1).set_or({l,r}).build();
-  }
-
-  static Constraint0 le(Term0 l, Term0 r) {
-    return Builder(GT,1).set_or({l,r}).build();
-  }
-
-  size_t var_end() const { return VAR_END::ref(ptr); }
-  Type type() const { return TYPE::ref(ptr); }
-  size_t or_count() const { return OR::size(ptr); }
-  Pair or_(size_t i) const { return OR::ref(ptr,i); }
-
-  Constraint shift(size_t offset) const { return Constraint(offset,*this); }
-};
-
-// On the opposite to atoms and clauses, constraints are also build throughout tableau
-// search and they may couple unrelated Atoms - they are not pure shifts, and the number
-// of pairs may decrease over time.
-struct Constraint {
+  OrderAtom(Relation rel, Term l, Term r) : OrderAtom(Builder(rel,1).set_pair(0,l,r).build()) {}
 
 private:
-  Constraint(u64 _offset, ) : offset(_offset), constraint(_constraint) {}
-  u64 offset;
-  Constraint0 constraint;
+  struct TermPair { Term a,b; };
+  using VAR_RANGE = Field<VarRange>;
+  using RELATION = Field<Relation,VAR_RANGE>;
+  using TERM_PAIRS = ArrayField<TermPair,RELATION>;
+
+  u8 *ptr;
+  size_t offset;
+  Status status;
+  size_t done;
+  OrderAtom(u8 *_ptr, size_t _offset, Status _status, size_t _done) : ptr(_ptr), offset(_offset), status(_status), done(_done) {}
+
+  Relation decide(Relation rel, bool last) {
+    switch(rel) {
+      case L: return L;
+      case G: return G;
+      case E: DEBUG if(!last) error("decide(E,last=true)"); return E;
+      case LE: return last ? LE : U;
+      case GE: return last ? GE : U;
+      case NE: return NE;
+      case U: return U;
+      default: error("decide(%)",rel);
+    }
+  }
 };
 
 }  // namespace tableau

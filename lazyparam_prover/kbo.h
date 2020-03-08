@@ -3,10 +3,11 @@
 
 #include "lazyparam_prover/util/short.h"
 #include "lazyparam_prover/util/string.h"
-#include "lazyparam_prover/pred.h"
-#include "lazyparam_prover/derived.h"
+#include "lazyparam_prover/syntax/term.h"
+#include "lazyparam_prover/syntax/atom.h"
+#include "lazyparam_prover/syntax/clause.h"
+#include "lazyparam_prover/constraint.h"
 #include "lazyparam_prover/types.h"
-#include "lazyparam_prover/alloc.h"
 #include "lazyparam_prover/mgu.h"
 #include "lazyparam_prover/log.h"
 #include <algorithm>
@@ -19,7 +20,7 @@ public:
   void resize(size_t n){ val.resize(n); var_occ.resize(n,0); }
   struct Snapshot {
     Valuation::Snapshot val;
-    List<Constraint> constraints;
+    List<OrderAtom> constraints;
   };
   Snapshot snapshot(){ return {val.snapshot(),constraints}; }
   void rewind(Snapshot s){ val.rewind(s.val); constraints = s.constraints; }
@@ -42,7 +43,6 @@ public:
     return 1;
   }
   
-  enum Res { L, G, E, N };
   inline Res cmp(Term l, Term r) { FRAME("KBO.cmp()");
     auto res = Ctx(*this).cmp(l,r);
     var_occ.reset(0);
@@ -50,17 +50,17 @@ public:
   }
 
   // returning false invalidates the object 
-  bool push_constraint(Constraint c) {
-    if(c.type==Constraint::TRUE) return 1;
+  bool push_constraint(OrderAtom c) {
+    if(a.status()==OrderAtom::TRUE) return 1;
     return check_and_push_constraint_with_log(constraints,c);
   }
 private:
-  List<Constraint> constraints;
+  List<OrderAtom> constraints;
   ResetArray<int> var_occ;
   Valuation val; 
 
   bool check_constraints() {
-    List<Constraint> c2;
+    List<OrderAtom> c2;
     for(auto c = constraints; !c.empty(); c = c.tail()) {
       if(!check_and_push_constraint_with_log(c2,c.head())) return false;
     }
@@ -68,58 +68,24 @@ private:
     return true;
   } 
 
-  bool check_and_push_constraint_with_log(List<Constraint> &constraints, Constraint c) {
-    if(check_and_push_constraint(constraints,c)) return 1;
-    DEBUG {
-      /*info("val = %",val.DebugString());
-      for(auto c = constraints; !c.empty(); c = c.tail()) { 
-        vec<str> ps;
-        for(auto p = c.head().or_; !p.empty(); p = p.tail()) {
-          ps.push_back(util::fmt("[% = %, % = %]",show(p.head().l),show(val.eval(p.head().l)),show(p.head().r),show(val.eval(p.head().r))));
-        }
-        str ts = c.head().type==Constraint::NEQ ? "!=" : "<";
-        info("% :: %",ts,util::join(" ",ps));
-      }*/
-    }
-    return 0;
-  }
-
-  bool check_and_push_constraint(List<Constraint> &constraints, Constraint c) { FRAME("check_and_push_constraint");
-    switch(c.type) {
-      case Constraint::NEQ: {
-        for(auto p = c.or_; !p.empty(); p = p.tail()) {
-          auto ph = p.head();
-          switch(cmp(ph.l,ph.r)) {
-            case KBO::E: break;
-            case KBO::N:
-              constraints += {c.type,p};
-              return true;
-            default:
-              return true;
+  bool check_and_push_constraint_with_log(List<OrderAtom> &constraints, OrderAtom c) {
+    c = c.reduce(Ctx(*this));
+    switch(c.status()) {
+    case OrderAtom::TRUE: return true;
+    case OrderAtom::UNKNOWN: constraints += c; return true;
+    case OrderAtom::FALSE:
+      DEBUG {
+        /*info("val = %",val.DebugString());
+        for(auto c = constraints; !c.empty(); c = c.tail()) { 
+          vec<str> ps;
+          for(auto p = c.head().or_; !p.empty(); p = p.tail()) {
+            ps.push_back(util::fmt("[% = %, % = %]",show(p.head().l),show(val.eval(p.head().l)),show(p.head().r),show(val.eval(p.head().r))));
           }
-        }
-        return false;
+          str ts = c.head().type==Constraint::NEQ ? "!=" : "<";
+          info("% :: %",ts,util::join(" ",ps));
+        }*/
       }
-      case Constraint::LT: {
-        DEBUG if(c.or_.size()!=1) error("c.or_.size() = %, want %",c.or_.size(),1);
-        auto ph = c.or_.head(); 
-        switch(cmp(ph.l,ph.r)) {
-          case KBO::L: return true;
-          case KBO::N: constraints += c; return true;
-          default: return false;
-        }
-      }
-      case Constraint::LE: {
-        DEBUG if(c.or_.size()!=1) error("c.or_.size() = %, want %",c.or_.size(),1);
-        auto ph = c.or_.head();
-        switch(cmp(ph.l,ph.r)) {
-          case KBO::L: return true;
-          case KBO::E: return true;
-          case KBO::N: constraints += c; return true;
-          default: return false;
-        }
-      }
-      default: error("c.type() = %",c.type);
+      return false;
     }
   }
 

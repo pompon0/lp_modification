@@ -7,81 +7,49 @@
 
 namespace tableau {
 
-struct AndClause0;
+struct AndClause;
 
-struct OrClause0 {
+struct OrClause {
 private:
-  using VAR_END = Field<size_t>;
-  using ATOMS = ArrayField<Atom0,VAR_END>;
+  using VAR_RANGE = Field<VarRange>;
+  using ATOMS = ArrayField<Atom,VAR_RANGE>;
   u8 *ptr;
-  OrClause0(u8 *_ptr) : ptr(_ptr) {}
+  size_t offset;
+  OrClause(u8 *_ptr, size_t _offset) : ptr(_ptr), offset(_offset) {}
 public:
-  size_t var_end() const { return VAR_END::ref(ptr); }
+  VarRange var_range() const { return VAR_RANGE::ref(ptr)+offset; }
   size_t atom_count() const { return ATOMS::size(ptr); } 
-  Atom0 atom(size_t i) const {
-    DEBUG if(i>=atom_count()) error("<atom_count=%>.arg(%)",atom_count(),i);
-    return ATOMS::ref(ptr,i);
-  }
-  AndClause0 neg() const;
+  Atom atom(size_t i) const { return ATOMS::ref(ptr,i).shift(offset); }
+  OrClause shift(size_t _offset) const { return OrClause(ptr,offset+_offset); }
+  AndClause neg() const;
 
   struct Builder {
   private:
     u8 *ptr;
   public:
     Builder(size_t _atom_count) : ptr(ATOMS::alloc(_atom_count)) {
-      VAR_END::ref(ptr) = 0;
+      VAR_RANGE::ref(ptr) = {0,0};
     }
-    void set_atom(size_t i, Atom0 a) { FRAME("OrClause0.Builder.set_atom()");
-      DEBUG if(i>=ATOMS::size(ptr)) error("<atom_count=%>.set_atom(%)",ATOMS::size(ptr),i);
+    void set_atom(size_t i, Atom a) { FRAME("OrClause0.Builder.set_atom()");
       ATOMS::ref(ptr,i) = a;
-      util::maxi(VAR_END::ref(ptr),a.var_end());
+      VAR_RANGE::ref(ptr) |= a.var_range();
     }
-    OrClause0 build(){ return OrClause0(ptr); }
+    OrClause build(){ return OrClause(ptr,0); }
   }; 
 };
 
-struct AndClause0 {
+struct AndClause {
   struct Iso {
-    using From = OrClause0;
-    using To = AndClause0;
+    using From = OrClause;
+    using To = AndClause;
     From from(To c){ return c.neg(); }
     To to(From c){ return c.neg(); }
   };
-  size_t var_end() const { return neg_or_clause.var_end(); }
+  VarRange var_range() const { return neg_or_clause.var_range(); }
   size_t atom_count() const { return neg_or_clause.atom_count(); }
-  Atom0 atom(size_t i) const { return neg_or_clause.atom(i).neg(); }
-  OrClause0 neg() const { return neg_or_clause; }
-private:
-  explicit AndClause0(OrClause0 _neg_or_clause) : neg_or_clause(_neg_or_clause) {}
-  OrClause0 neg_or_clause;
-  friend AndClause0 OrClause0::neg() const;
-};
-
-AndClause0 OrClause0::neg() const { return AndClause0(*this); }
-
-struct AndClause;
-
-struct OrClause {
-  u64 var_begin() const { return offset; }
-  u64 var_end() const { return offset+cla.var_end(); }
-
-  u64 atom_count() const { return cla.atom_count(); }
-  Atom atom(size_t i) const { return Atom(offset,cla.atom(i)); }
-  AndClause neg() const;
-private:
-  OrClause(u64 _offset, OrClause0 _cla) : offset(_offset), cla(_cla) {}
-  u64 offset;
-  OrClause0 cla;
-};
-
-struct AndClause {
-  u64 var_begin() const { return neg_or_clause.var_begin(); }
-  u64 var_end() const { return neg_or_clause.var_end(); }
-
-  u64 atom_count() const { return neg_or_clause.atom_count(); }
   Atom atom(size_t i) const { return neg_or_clause.atom(i).neg(); }
   OrClause neg() const { return neg_or_clause; }
-  private:
+private:
   explicit AndClause(OrClause _neg_or_clause) : neg_or_clause(_neg_or_clause) {}
   OrClause neg_or_clause;
   friend AndClause OrClause::neg() const;

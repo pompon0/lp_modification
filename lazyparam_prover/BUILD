@@ -18,12 +18,6 @@ cc_library(
 )
 
 cc_library(
-    name = "alloc",
-    hdrs = ["alloc.h"],
-    deps = [":log"],
-)
-
-cc_library(
     name = "pred",
     hdrs = [
         "pred.h",
@@ -87,14 +81,25 @@ cc_binary(
 )
 
 cc_library(
+    name = "mgu",
+    hdrs = [
+        "mgu.h",
+        "kbo.h",
+        "constraint.h",
+    ],
+    deps = [
+        "//lazyparam_prover/syntax:syntax",
+        "//lazyparam_prover/memory:memory",
+    ],
+)
+
+cc_library(
     name = "prover",
     hdrs = [
         "ctx.h",
         "alt.h",
         "eq_axioms.h",
-        "mgu.h",
         "ground.h",
-        "kbo.h",
         "tableau.h",
         "lazy.h",
         "index.h",

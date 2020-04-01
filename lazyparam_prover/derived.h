@@ -1,8 +1,10 @@
 #ifndef DERIVED_H_
 #define DERIVED_H_
 
-#include "lazyparam_prover/pred.h"
-#include "lazyparam_prover/pred_format.h"
+#include "lazyparam_prover/constraint.h"
+#include "lazyparam_prover/syntax/atom.h"
+#include "lazyparam_prover/syntax/clause.h"
+#include "lazyparam_prover/syntax/show.h"
 
 namespace tableau {
 
@@ -11,63 +13,97 @@ struct DerOrClause;
 
 struct DerOrClause {
   DerAndClause neg() const;
-  DerOrClause set_id_offset(u64 _id_offset) const {
-    DEBUG if(id_offset_!=0) error("id_offset = %, want %",id_offset_,0);
-    return DerOrClause(cost_,var_offset_,_id_offset,derived_,source_,constraints_);
-  }
-  OrClause derived() const { return derived_.shift(var_offset_).set_id_offset(id_offset_); }
-  size_t cost() const { return cost_; }
+  DerOrClause set_id_offset(u64 _id_offset) const { return DerOrClause(ptr,constraints_ptr,offset,_id_offset); }
+  DerOrClause shift(u64 _offset) const { return DerOrClause(ptr,constraints_ptr,offset+_offset,id_offset); }
+  VarRange var_range() const { return VAR_RANGE::ref(ptr); }
+
+  OrClause derived() const { return DERIVED::ref(ptr).shift(offset).set_id_offset(id_offset); }
+  size_t cost() const { return COST::ref(ptr); }
   
-  List<OrClause> source_list() const {
-    List<OrClause> source2;
-    for(auto l=source_; !l.empty(); l = l.tail()) {
-      source2 += l.head().shift(var_offset_);
+  size_t source_count() const { return SOURCES::size(ptr); }
+  OrClause source(size_t i) const { return SOURCES::ref(ptr,i).shift(offset); }
+  
+  size_t constraint_count() const { return CONSTRAINTS::size(constraints_ptr); }
+  OrderAtom constraint(size_t i) const { return CONSTRAINTS::ref(ptr,i); }
+
+  DerOrClause(size_t cost, OrClause cla) {
+    Builder b(1,0);
+    b.set_cost(cost);
+    b.set_source(0,cla);
+    b.set_derived(cla);
+    *this = b.build();
+  }
+
+  DerOrClause append_constraints(vec<OrderAtom> _constraints) const {
+    Builder b(source_count(),constraint_count()+_constraints.size());
+    b.set_cost(cost());
+    b.set_derived(derived());
+    for(size_t i=source_count(); i--;) b.set_source(i,source(i));
+    for(size_t i=constraint_count(); i--;) b.set_constraint(i,constraint(i));
+    for(size_t i=0; i<_constraints.size(); i++)
+      b.set_constraint(constraint_count()+i,_constraints[i]);
+    return b.build();
+  }
+
+  struct Builder {
+    Builder(size_t sources_count, size_t constraints_count) :
+      ptr(SOURCES::alloc(sources_count)),
+      constraints_ptr(CONSTRAINTS::alloc(constraints_count)) {
+      VAR_RANGE::ref(ptr) = {0,0};
     }
-    return source2;
-  }
-  
-  List<Constraint> constraints() const {
-    List<Constraint> constraints2;
-    for(auto c = constraints_; !c.empty(); c = c.tail()) {
-      constraints2 += c.head().shift(var_offset_);
+
+    Builder& set_cost(size_t cost){ COST::ref(ptr) = cost; return *this; }
+    Builder& set_derived(OrClause derived){
+      DERIVED::ref(ptr) = derived;
+      VAR_RANGE::ref(ptr) |= derived.var_range();
+      return *this;
     }
-    return constraints2;
-  }
-  
-  vec<OrClause> source() const {
-    vec<OrClause> s; for(auto l=source_; !l.empty(); l = l.tail()) s.push_back(l.head().shift(var_offset_));
-    return s;
-  }
+    Builder& set_source(size_t i, OrClause source) {
+      SOURCES::ref(ptr,i) = source;
+      VAR_RANGE::ref(ptr) |= source.var_range();
+      return *this;
+    }
+    Builder& set_constraint(size_t i, OrderAtom constraint) {
+      CONSTRAINTS::ref(constraints_ptr,i) = constraint;
+      VAR_RANGE::ref(ptr) |= constraint.var_range();
+      return *this;
+    }
+    DerOrClause build(){ return DerOrClause(ptr,constraints_ptr,0,0); }
+  private:
+    u8 *ptr;
+    u8 *constraints_ptr;
+  };
 
 private:
-  friend NoOffset<DerOrClause>;
-  DerOrClause(size_t _cost, size_t _var_offset, size_t _id_offset, NoOffset<OrClause> _derived, List<NoOffset<OrClause>> _source, List<Constraint> _constraints)
-    : cost_(_cost), var_offset_(_var_offset), id_offset_(_id_offset), derived_(_derived), source_(_source), constraints_(_constraints) {}
-  size_t cost_;
-  size_t var_offset_;
-  size_t id_offset_;
-  OrClause derived_;
-  List<OrClause> source_;
-  List<OrderAtom> constraints_;
-};
+  DerOrClause(u8 *_ptr, u8 *_constraints_ptr, size_t _offset, size_t _id_offset) 
+    : ptr(_ptr), constraints_ptr(_constraints_ptr), offset(_offset), id_offset(_id_offset) {} 
 
-template<> struct NoOffset<DerOrClause> : DerOrClause {
-  NoOffset(size_t _cost, NoOffset<OrClause> _derived, List<NoOffset<OrClause>> _source, List<Constraint> _constraints)
-    : DerOrClause(_cost,0,0,_derived,_source,_constraints) {} 
-  NoOffset(size_t _cost, NoOffset<OrClause> cla)
-    : NoOffset<DerOrClause>(_cost,cla,List<NoOffset<OrClause>>(cla),List<Constraint>()) {}
-  DerOrClause shift(NoOffset<DerOrClause> cla, size_t _var_offset) const {
-    return DerOrClause(cla.cost_,_var_offset,cla.id_offset_,cla.derived_,cla.source_,cla.constraints_);
-  }
+  using COST = Field<size_t>;
+  using DERIVED = Field<OrClause,COST>;
+  using VAR_RANGE = Field<VarRange,DERIVED>;
+  using SOURCES = ArrayField<OrClause,VAR_RANGE>;
+  using CONSTRAINTS = ArrayField<OrderAtom>;
+  u8 *ptr;
+  u8 *constraints_ptr;
+  size_t offset;
+  size_t id_offset;
 };
 
 struct DerAndClause { 
+  DerOrClause neg() const { return neg_or_clause; }
+  DerAndClause set_id_offset(u64 _id_offset) const { return DerAndClause(neg_or_clause.set_id_offset(_id_offset)); }
+  DerAndClause shift(size_t _offset) const { return DerAndClause(neg_or_clause.shift(_offset)); }
+  VarRange var_range() const { return neg_or_clause.var_range(); }
+  
   size_t cost() const { return neg_or_clause.cost(); }
   AndClause derived() const { return neg_or_clause.derived().neg(); }
-  DerAndClause set_id_offset(u64 _id_offset) { return DerAndClause(neg_or_clause.set_id_offset(_id_offset)); }
-  DerOrClause neg() const { return neg_or_clause; }
-  ListA<AndClause::Iso> source_list() const { return ListA<AndClause::Iso>(neg_or_clause.source_list()); }
-  List<Constraint> constraints() const { return neg_or_clause.constraints(); }
+
+  size_t source_count() const { return neg_or_clause.source_count(); }
+  AndClause source(size_t i) const { return neg_or_clause.source(i).neg(); }
+
+  size_t constraint_count() const { return neg_or_clause.constraint_count(); }
+  OrderAtom constraint(size_t i) const { return neg_or_clause.constraint(i); }
+
 private:
   explicit DerAndClause(DerOrClause _neg_or_clause) : neg_or_clause(_neg_or_clause) {}
   DerOrClause neg_or_clause;
@@ -76,7 +112,8 @@ private:
 
 DerAndClause DerOrClause::neg() const { return DerAndClause(*this); }
 
-
+struct NotAndForm;
+struct OrForm;
 
 struct NotAndForm {
   vec<DerOrClause> or_clauses;
@@ -100,7 +137,7 @@ inline OrForm::OrForm(const NotAndForm &f) {
 
 str show(const DerAndClause &cla) {
   vec<str> source;
-  for(auto c : cla.source_list().to_vec()) source.push_back(show(c));
+  for(size_t i=0; i<cla.source_count(); ++i) source.push_back(show(cla.source(i)));
   return util::fmt("%   [%]",show(cla.derived()),util::join(", ",source));
 }
 str show(const DerOrClause &cla) { return show(cla.derived()); }

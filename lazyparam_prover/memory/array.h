@@ -1,6 +1,10 @@
 #ifndef MEMORY_ARRAY_H_
 #define MEMORY_ARRAY_H_
 
+#include "lazyparam_prover/memory/alloc.h"
+#include "lazyparam_prover/memory/maybe.h"
+#include "lazyparam_prover/util/log.h"
+
 namespace tableau {
 
 template<typename E> struct Array {

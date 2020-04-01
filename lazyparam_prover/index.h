@@ -2,7 +2,11 @@
 #define INDEX_H_
 
 #include <algorithm>
-#include "lazyparam_prover/pred.h"
+
+#include "lazyparam_prover/syntax/term.h"
+#include "lazyparam_prover/syntax/atom.h"
+#include "lazyparam_prover/syntax/clause.h"
+#include "lazyparam_prover/syntax/show.h"
 #include "lazyparam_prover/mgu.h"
 #include "lazyparam_prover/ctx.h"
 

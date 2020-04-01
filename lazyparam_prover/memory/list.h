@@ -1,6 +1,9 @@
 #ifndef MEMORY_LIST_H_
 #define MEMORY_LIST_H_
 
+#include "lazyparam_prover/log.h"
+#include "lazyparam_prover/memory/alloc.h"
+
 namespace tableau {
 
 template<typename E> struct List {

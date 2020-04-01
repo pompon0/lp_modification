@@ -1,7 +1,9 @@
-#ifndef PRED_FORMAT_H_
-#define PRED_FORMAT_H_
+#ifndef SYNTAX_SHOW_H_
+#define SYNTAX_SHOW_H_
 
-#include "lazyparam_prover/pred.h"
+#include "lazyparam_prover/syntax/term.h"
+#include "lazyparam_prover/syntax/atom.h"
+#include "lazyparam_prover/syntax/clause.h"
 #include "lazyparam_prover/types.h"
 #include "lazyparam_prover/util/string.h"
 
@@ -60,5 +62,5 @@ str show(const AndClause cla) {
 
 } // namespace tableau
 
-#endif // PRED_FORMAT_H_
+#endif // SYNTAX_SHOW_H_
 

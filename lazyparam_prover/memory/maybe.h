@@ -1,6 +1,8 @@
 #ifndef MEMORY_MAYBE_H_
 #define MEMORY_MAYBE_H_
 
+#include "lazyparam_prover/util/log.h"
+
 namespace tableau {
 
 template<typename T> struct Maybe {

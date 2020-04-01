@@ -2,8 +2,9 @@
 #define TABLEAU_H_
 
 #include "lazyparam_prover/types.h"
-#include "lazyparam_prover/pred.h"
-#include "lazyparam_prover/pred_format.h"
+#include "lazyparam_prover/syntax/atom.h"
+#include "lazyparam_prover/syntax/clause.h"
+#include "lazyparam_prover/syntax/show.h"
 #include "lazyparam_prover/mgu.h"
 #include "lazyparam_prover/ground.h"
 #include "lazyparam_prover/kbo.h"

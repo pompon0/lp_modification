@@ -1,6 +1,8 @@
 #define DEBUG if(1)
 #include "gtest/gtest.h"
-#include "lazyparam_prover/alloc.h"
+#include "lazyparam_prover/memory/alloc.h"
+#include "lazyparam_prover/memory/array.h"
+#include "lazyparam_prover/memory/maybe.h"
 #include "lazyparam_prover/util/log.h"
 
 using namespace tableau;

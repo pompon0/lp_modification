@@ -1,7 +1,10 @@
 #ifndef GROUND_H_
 #define GROUND_H_
 
-#include "lazyparam_prover/pred.h"
+#include "lazyparam_prover/syntax/term.h"
+#include "lazyparam_prover/syntax/atom.h"
+#include "lazyparam_prover/syntax/clause.h"
+#include "lazyparam_prover/syntax/show.h"
 
 namespace tableau {
 
@@ -30,7 +33,7 @@ inline Atom ground(Atom a) { FRAME("ground(%)",show(a));
 
 // clears offset
 inline OrClause ground(OrClause cla) { FRAME("ground(%)",show(cla));
-  OrClause::Builder b(cla.atom_count(),0);
+  OrClause::Builder b(cla.atom_count());
   for(size_t i=cla.atom_count(); i--;) b.set_atom(i,ground(cla.atom(i)));
   return b.build();
 }

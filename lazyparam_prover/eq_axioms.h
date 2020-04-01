@@ -2,53 +2,51 @@
 #define EQ_AXIOMS_H_
 
 #include <map>
-#include "lazyparam_prover/util/log.h"
-#include "lazyparam_prover/pred.h"
-#include "lazyparam_prover/derived.h"
+#include "lazyparam_prover/log.h"
 #include "lazyparam_prover/types.h"
-#include "lazyparam_prover/pred_format.h"
+#include "lazyparam_prover/syntax/term.h"
+#include "lazyparam_prover/syntax/atom.h"
+#include "lazyparam_prover/syntax/clause.h"
+#include "lazyparam_prover/syntax/show.h"
+#include "lazyparam_prover/derived.h"
 
 namespace tableau {
 
-NoOffset<DerOrClause> refl_axiom() {
-  size_t var_count = 0;
-  NoOffset<Term> x(Var::make(var_count++));
-  OrClause::Builder b(1,var_count);
-  b.set_atom(0,Atom::eq(true,x,x));
-  return NoOffset<DerOrClause>(0,b.build());
+DerOrClause refl_axiom() {
+  Term x(Var(0));
+  return DerOrClause(0,OrClause({
+    Atom::eq(true,x,x)
+  }));
 }
 
-NoOffset<DerOrClause> symm_axiom() {
-  size_t var_count = 0;
-  NoOffset<Term> x(Var::make(var_count++));
-  NoOffset<Term> y(Var::make(var_count++));
-  OrClause::Builder b(2,var_count);
+DerOrClause symm_axiom() {
+  Term x(Var(0));
+  Term y(Var(1));
+  OrClause::Builder b(2);
   b.set_atom(0,Atom::eq(false,x,y));
   b.set_atom(1,Atom::eq(true,y,x));
-  return NoOffset<DerOrClause>(1,b.build());
+  return DerOrClause(1,b.build());
 }
 
 DerOrClause trans_axiom() {
-  size_t var_count = 0;
-  Term x(Var::make(var_count++));
-  Term y(Var::make(var_count++));
-  Term z(Var::make(var_count++));
-  OrClause::Builder b(3,var_count);
-  b.set_atom(0,Atom::eq(false,x,y));
-  b.set_atom(1,Atom::eq(false,y,z));
-  b.set_atom(2,Atom::eq(true,x,z));
-  return DerOrClause(3,b.build());
+  Term x(Var(0));
+  Term y(Var(1));
+  Term z(Var(2));
+  return DerOrClause(3,OrClause({
+    Atom::eq(false,x,y),
+    Atom::eq(false,y,z),
+    Atom::eq(true,x,z),
+  }));
 }
 
 
 DerOrClause cong_pred_axiom(u64 pred_name, u64 arg_count) {
-  size_t var_count = 2*arg_count;
   Atom::Builder lb(false,pred_name,arg_count);
   Atom::Builder rb(true,pred_name,arg_count);
-  OrClause::Builder cb(arg_count+2,var_count);
+  OrClause::Builder cb(arg_count+2);
   for(size_t i=0; i<arg_count; ++i) {
-    Term la(Var::make(2*i));
-    Term ra(Var::make(2*i+1));
+    Term la(Var(2*i));
+    Term ra(Var(2*i+1));
     cb.set_atom(i,Atom::eq(false,la,ra));
     lb.set_arg(i,la);
     rb.set_arg(i,ra);
@@ -59,13 +57,12 @@ DerOrClause cong_pred_axiom(u64 pred_name, u64 arg_count) {
 }
 
 DerOrClause cong_fun_axiom(u64 fun_name, u64 arg_count) {
-  size_t var_count = 2*arg_count;
   Fun::Builder lb(fun_name,arg_count);
   Fun::Builder rb(fun_name,arg_count);
-  OrClause::Builder cb(arg_count+1,var_count);
+  OrClause::Builder cb(arg_count+1);
   for(size_t i=0; i<arg_count; ++i) {
-    Term la(Var::make(2*i));
-    Term ra(Var::make(2*i+1));
+    Term la(Var(2*i));
+    Term ra(Var(2*i+1));
     cb.set_atom(i,Atom::eq(false,la,ra));
     lb.set_arg(i,la);
     rb.set_arg(i,ra);
@@ -107,7 +104,10 @@ struct ArityCtx {
   }
 
   void traverse(const OrClause &c) { for(size_t i=c.atom_count(); i--;) traverse(c.atom(i)); }
-  void traverse(const DerOrClause &c) { traverse(c.derived()); for(auto cla : c.source()) traverse(cla); }
+  void traverse(const DerOrClause &c) {
+    traverse(c.derived());
+    for(size_t i=c.source_count(); i--;) traverse(c.source(i));
+  }
   void traverse(const NotAndForm &f) { for(const auto &c : f.or_clauses) traverse(c); }
 };
 
@@ -116,14 +116,18 @@ bool has_equality(OrForm f) {
   return ctx.pred_count[Atom::EQ]>0;
 }
 
+// every (a!=a /\ ...) is subsumed by (a!=a)
 OrForm add_refl_constraints(OrForm f) {
   for(auto &c : f.and_clauses) {
+    vec<OrderAtom> rc;
     auto d = c.derived();
     for(size_t i=0; i<d.atom_count(); ++i) {
       auto a = d.atom(i);
       if(a.pred()==Atom::EQ && !a.sign()) {
-      c = c.constraints() + Constraint::neq(a.arg(0),a.arg(1));
+        rc.push_back(OrderAtom(OrderAtom::NE,a.arg(0),a.arg(1)));
+      }
     }
+    c = c.neg().append_constraints(rc).neg();
   }
   return f;
 }
@@ -156,19 +160,19 @@ struct FlatClauseBuilder {
   size_t cost;
 
   FlatClauseBuilder(DerAndClause cla) {
-    cost = cla.cost;
-    var_count = cla.derived.var_count;
-    source_clauses = cla.source;
-    for(auto atom : cla.derived.atoms) flatten_Atom(atom);
+    cost = cla.cost();
+    var_count = cla.derived().var_range().end;
+    for(size_t i=0; i<cla.source_count(); i++) {
+      source_clauses.push_back(cla.source(i));
+    }
+    auto d = cla.derived();
+    for(size_t i=d.atom_count(); i--;) flatten_Atom(d.atom(i));
   }
 
   Var introduce_var(Term t) {
     switch(t.type()) {
       case Term::VAR: {
-        AndClause cla;
-        cla.atoms = {Atom::eq(false,t,t)};
-        cla.var_count = var_count;
-        source_clauses.push_back(cla);
+        source_clauses.push_back(AndClause({Atom::eq(false,t,t)}));
         return Var(t);
       }
       case Term::FUN: {
@@ -176,14 +180,11 @@ struct FlatClauseBuilder {
         Fun fv = flatten_Term(fa);
         // (f(a1..an)!=f(v1..vn)) (f(a1..an)=f(v1..vn) /\ f(v1..vn)=x /\ f(a1..an)!=x)
         // -> (f(v1..vn)=x /\ f(a1..an)!=x)
-        Var x = Var::make(var_count++);
+        Var x(var_count++);
         auto fa_fv = Atom::eq(true,Term(fa),Term(fv));
         auto fv_x = Atom::eq(true,Term(fv),Term(x));
         auto fa_x = Atom::eq(true,Term(fa),Term(x));
-        AndClause cla;
-        cla.atoms = {fa_fv,fv_x,fa_x.neg()};
-        cla.var_count = var_count;
-        source_clauses.push_back(cla);
+        source_clauses.push_back(AndClause({fa_fv,fv_x,fa_x.neg()}));
         atoms.push_back(fv_x);
         return x;
       }
@@ -195,17 +196,16 @@ struct FlatClauseBuilder {
     // (a1!=v1)..(an!=vn)
     // (a1=v1 /\../\ an=vn /\ f(a1..an)!=f(v1..vn))
     // -> (f(a1..an)!=f(v1..vn))
-    AndClause cla;
+    vec<Atom> cla;
     Fun::Builder fb(fa.fun(),fa.arg_count());
     for(size_t i=0; i<fa.arg_count(); ++i){
       Var vi = introduce_var(fa.arg(i));
-      cla.atoms.push_back(Atom::eq(true,fa.arg(i),Term(vi)));
+      cla.push_back(Atom::eq(true,fa.arg(i),Term(vi)));
       fb.set_arg(i,Term(vi));
     }
     auto fv = fb.build();
-    cla.atoms.push_back(Atom::eq(false,Term(fa),Term(fv)));
-    source_clauses.push_back(cla);
-    cla.var_count = var_count;
+    cla.push_back(Atom::eq(false,Term(fa),Term(fv)));
+    source_clauses.push_back(AndClause(cla));
     return fv;
   }
 
@@ -216,48 +216,42 @@ struct FlatClauseBuilder {
       if(l.type()==Term::FUN) {
         // (..l=r) (l=l2 /\ l2=r /\ l!=r)
         Term l2(flatten_Term(Fun(l)));
-        AndClause cla;
-        cla.atoms = {Atom::eq(true,l,l2),Atom::eq(a.sign(),l2,r),Atom::eq(!a.sign(),l,r)};
-        cla.var_count = var_count;
-        source_clauses.push_back(cla);
+        source_clauses.push_back(
+          AndClause({Atom::eq(true,l,l2),Atom::eq(a.sign(),l2,r),Atom::eq(!a.sign(),l,r)}));
         l = l2;
       }
       if(r.type()==Term::FUN) {
         // (..l=r) (r=r2 /\ l=r2 /\ l!=r)
         Term r2(flatten_Term(Fun(r)));
-        AndClause cla;
-        cla.atoms = {Atom::eq(true,r,r2),Atom::eq(a.sign(),l,r2),Atom::eq(!a.sign(),l,r)};
-        cla.var_count = var_count;
-        source_clauses.push_back(cla);
+        source_clauses.push_back(
+          AndClause({Atom::eq(true,r,r2),Atom::eq(a.sign(),l,r2),Atom::eq(!a.sign(),l,r)}));
         r = r2;
       }
       atoms.push_back(Atom::eq(a.sign(),l,r));
     } else {
       Atom::Builder b(a.sign(),a.pred(),a.arg_count());
       // (... p(a1..an)) (a1=v1 /\../\ an=vn /\ !p(a1..an) /\ p(v1..vn)) -> (... p(v1..vn))
-      AndClause cla;
+      vec<Atom> cla;
       for(size_t i=0; i<a.arg_count(); ++i) {
         Var v = introduce_var(a.arg(i));
-        cla.atoms.push_back(Atom::eq(true,a.arg(i),Term(v)));
+        cla.push_back(Atom::eq(true,a.arg(i),Term(v)));
         b.set_arg(i,Term(v));
       }
       auto pv = b.build();
-      cla.atoms.push_back(a.neg());
-      cla.atoms.push_back(pv);
-      cla.var_count = var_count;
-      source_clauses.push_back(cla);
+      cla.push_back(a.neg());
+      cla.push_back(pv);
+      source_clauses.push_back(AndClause(cla));
       atoms.push_back(pv);
     }
   }
 
   DerAndClause build() const {
-    AndClause cla(var_count);
-    cla.atoms = atoms;
-    DerAndClause dc;
-    dc.derived = cla;
-    dc.source = source_clauses;
-    dc.cost = cost;
-    return dc;
+    DerOrClause::Builder b(source_clauses.size(),0);
+    b.set_cost(cost);
+    b.set_derived(AndClause(atoms).neg());
+    for(size_t i=0; i<source_clauses.size(); ++i)
+      b.set_source(i,source_clauses[i].neg());
+    return b.build().neg();
   }
 };
 
@@ -278,45 +272,66 @@ OrForm reduce_monotonicity_and_append_eq_axioms(OrForm _f) {
 }
 
 NotAndForm append_restricted_transitivity_axioms(NotAndForm f) {
-  size_t var_count = 0;
-  Term a(Var::make(var_count++));
-  Term b(Var::make(var_count++));
-  Term c(Var::make(var_count++));
+  Term a(Var(0));
+  Term b(Var(1));
+  Term c(Var(2));
 
   // -[a=b] symm(a,b)
-  List<OrClause> e;
-  OrClause::Builder symm1(2,2);
-  symm1.set_atom(0,Atom::slow_make(false,Atom::EQ_TRANS_POS,{a,b}));
-  symm1.set_atom(1,Atom::slow_make(true,Atom::EQ_SYMM,{a,b}));
-  f.or_clauses.push_back(DerOrClause(0,symm1.build(),e,List<Constraint>()));
+  {
+    DerOrClause::Builder symm1(0,0);
+    symm1.set_cost(0);
+    symm1.set_derived(OrClause({
+      Atom(false,Atom::EQ_TRANS_POS,{a,b}),
+      Atom(true,Atom::EQ_SYMM,{a,b}),
+    }));
+    f.or_clauses.push_back(symm1.build());
+  }
   // -[b=a] symm(a,b)
-  OrClause::Builder symm2(2,2);
-  symm2.set_atom(0,Atom::slow_make(false,Atom::EQ_TRANS_POS,{b,a}));
-  symm2.set_atom(1,Atom::slow_make(true,Atom::EQ_SYMM,{a,b}));
-  OrClause::Builder symm2s(2,2);
-  symm2s.set_atom(0,Atom::slow_make(false,Atom::EQ,{b,a}));
-  symm2s.set_atom(1,Atom::slow_make(true,Atom::EQ,{a,b}));
-  f.or_clauses.push_back(DerOrClause(0,symm2.build(),symm2s.build() + e,List<Constraint>()));
+  {
+    DerOrClause::Builder symm2(1,0);
+    symm2.set_cost(0);
+    symm2.set_derived(OrClause({
+      Atom(false,Atom::EQ_TRANS_POS,{b,a}),
+      Atom(true,Atom::EQ_SYMM,{a,b}),
+    }));
+    symm2.set_source(0,OrClause({
+      Atom(false,Atom::EQ,{b,a}),
+      Atom(true,Atom::EQ,{a,b}),
+    }));
+    f.or_clauses.push_back(symm2.build());
+  }
   // -symm(a,b) b/=c a=c
-  OrClause::Builder trans_pos(3,3);
-  trans_pos.set_atom(0,Atom::slow_make(false,Atom::EQ_SYMM,{a,b}));
-  trans_pos.set_atom(1,Atom::slow_make(false,Atom::EQ,{b,c}));
-  trans_pos.set_atom(2,Atom::slow_make(true,Atom::EQ,{a,c}));
-  OrClause::Builder trans_pos_s(3,3);
-  trans_pos_s.set_atom(0,Atom::slow_make(false,Atom::EQ,{a,b}));
-  trans_pos_s.set_atom(1,Atom::slow_make(false,Atom::EQ,{b,c}));
-  trans_pos_s.set_atom(2,Atom::slow_make(true,Atom::EQ,{a,c}));
-  f.or_clauses.push_back(DerOrClause(1,trans_pos.build(),trans_pos_s.build() + e, List<Constraint>()));
+  {
+    DerOrClause::Builder trans_pos(1,0);
+    trans_pos.set_cost(1);
+    trans_pos.set_derived(OrClause({
+      Atom(false,Atom::EQ_SYMM,{a,b}),
+      Atom(false,Atom::EQ,{b,c}),
+      Atom(true,Atom::EQ,{a,c}),
+    }));
+    trans_pos.set_source(0,OrClause({
+      Atom(false,Atom::EQ,{a,b}),
+      Atom(false,Atom::EQ,{b,c}),
+      Atom(true,Atom::EQ,{a,c}),
+    }));
+    f.or_clauses.push_back(trans_pos.build());
+  }
   // {a=b} a/=c b/=c
-  OrClause::Builder trans_neg(3,3);
-  trans_neg.set_atom(0,Atom::slow_make(true,Atom::EQ_TRANS_NEG,{a,b}));
-  trans_neg.set_atom(1,Atom::slow_make(false,Atom::EQ,{b,c}));
-  trans_neg.set_atom(2,Atom::slow_make(false,Atom::EQ,{a,c}));
-  OrClause::Builder trans_neg_s(3,3);
-  trans_neg_s.set_atom(0,Atom::slow_make(true,Atom::EQ,{a,b}));
-  trans_neg_s.set_atom(1,Atom::slow_make(false,Atom::EQ,{b,c}));
-  trans_neg_s.set_atom(2,Atom::slow_make(false,Atom::EQ,{a,c}));
-  f.or_clauses.push_back(DerOrClause(0,trans_neg.build(),trans_neg_s.build() + e, List<Constraint>()));
+  {
+    DerOrClause::Builder trans_neg(1,0);
+    trans_neg.set_cost(0);
+    trans_neg.set_derived(OrClause({
+      Atom(true,Atom::EQ_TRANS_NEG,{a,b}),
+      Atom(false,Atom::EQ,{b,c}),
+      Atom(false,Atom::EQ,{a,c}),
+    }));
+    trans_neg.set_source(0,OrClause({
+      Atom(true,Atom::EQ,{a,b}),
+      Atom(false,Atom::EQ,{b,c}),
+      Atom(false,Atom::EQ,{a,c}),
+    }));
+    f.or_clauses.push_back(trans_neg.build());
+  }
   return f;
 }
 
@@ -328,7 +343,7 @@ OrForm append_eq_axioms_with_restricted_transitivity(OrForm _f) {
   for(auto fa : ctx.fun_arity) if(fa.second) f.or_clauses.push_back(cong_fun_axiom(fa.first,fa.second));
   for(auto &dc : f.or_clauses) {
     auto c = dc.derived();
-    OrClause::Builder b(c.atom_count(),c.var_count());
+    OrClause::Builder b(c.atom_count());
     for(size_t i=c.atom_count(); i--;) {
       Atom a = c.atom(i);
       if(a.pred()==Atom::EQ) {
@@ -337,7 +352,12 @@ OrForm append_eq_axioms_with_restricted_transitivity(OrForm _f) {
         b.set_atom(i,ab.build());
       } else b.set_atom(i,a);
     }
-    dc = DerOrClause(dc.cost(),b.build(),dc.source_list(),dc.constraints());
+    DerOrClause::Builder db(dc.source_count(),dc.constraint_count());
+    db.set_cost(dc.cost());
+    db.set_derived(b.build());
+    for(size_t i=dc.source_count(); i--;) db.set_source(i,dc.source(i));
+    for(size_t i=dc.constraint_count(); i--;) db.set_constraint(i,dc.constraint(i));
+    dc = db.build();
   }
   f.or_clauses.push_back(refl_axiom());
   f = append_restricted_transitivity_axioms(f);

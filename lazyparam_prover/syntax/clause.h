@@ -15,12 +15,20 @@ private:
   using ATOMS = ArrayField<Atom,VAR_RANGE>;
   u8 *ptr;
   size_t offset;
-  OrClause(u8 *_ptr, size_t _offset) : ptr(_ptr), offset(_offset) {}
+  size_t id_offset;
+  OrClause(u8 *_ptr, size_t _offset, size_t _id_offset) : ptr(_ptr), offset(_offset), id_offset(_id_offset) {}
 public:
+  OrClause(const vec<Atom> &_atoms) {
+    Builder b(_atoms.size());
+    for(size_t i = _atoms.size(); i--;) b.set_atom(i,_atoms[i]);
+    *this = b.build();
+  }
+
   VarRange var_range() const { return VAR_RANGE::ref(ptr)+offset; }
   size_t atom_count() const { return ATOMS::size(ptr); } 
-  Atom atom(size_t i) const { return ATOMS::ref(ptr,i).shift(offset); }
-  OrClause shift(size_t _offset) const { return OrClause(ptr,offset+_offset); }
+  Atom atom(size_t i) const { return ATOMS::ref(ptr,i).shift(offset).set_id(id_offset+i); }
+  OrClause shift(size_t _offset) const { return OrClause(ptr,offset+_offset,id_offset); }
+  OrClause set_id_offset(size_t _id_offset) const { return OrClause(ptr,offset,_id_offset); }
   AndClause neg() const;
 
   struct Builder {
@@ -34,7 +42,7 @@ public:
       ATOMS::ref(ptr,i) = a;
       VAR_RANGE::ref(ptr) |= a.var_range();
     }
-    OrClause build(){ return OrClause(ptr,0); }
+    OrClause build(){ return OrClause(ptr,0,0); }
   }; 
 };
 
@@ -49,6 +57,11 @@ struct AndClause {
   size_t atom_count() const { return neg_or_clause.atom_count(); }
   Atom atom(size_t i) const { return neg_or_clause.atom(i).neg(); }
   OrClause neg() const { return neg_or_clause; }
+
+  AndClause(vec<Atom> _atoms) : AndClause(OrClause([&_atoms]{
+    for(auto &a : _atoms) a = a.neg();
+    return _atoms;
+  }())) {}
 private:
   explicit AndClause(OrClause _neg_or_clause) : neg_or_clause(_neg_or_clause) {}
   OrClause neg_or_clause;

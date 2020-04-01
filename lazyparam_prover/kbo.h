@@ -3,6 +3,7 @@
 
 #include "lazyparam_prover/util/short.h"
 #include "lazyparam_prover/util/string.h"
+#include "lazyparam_prover/memory/list.h"
 #include "lazyparam_prover/syntax/term.h"
 #include "lazyparam_prover/syntax/atom.h"
 #include "lazyparam_prover/syntax/clause.h"
@@ -15,6 +16,7 @@
 namespace tableau {
 
 struct KBO {
+  using Res = OrderAtom::Relation;
 public:
   size_t size(){ return val.size(); }
   void resize(size_t n){ val.resize(n); var_occ.resize(n,0); }
@@ -51,7 +53,7 @@ public:
 
   // returning false invalidates the object 
   bool push_constraint(OrderAtom c) {
-    if(a.status()==OrderAtom::TRUE) return 1;
+    if(c.status()==OrderAtom::TRUE) return 1;
     return check_and_push_constraint_with_log(constraints,c);
   }
 private:
@@ -69,7 +71,8 @@ private:
   } 
 
   bool check_and_push_constraint_with_log(List<OrderAtom> &constraints, OrderAtom c) {
-    c = c.reduce(Ctx(*this));
+    Ctx ctx(*this);
+    c = c.reduce(ctx);
     switch(c.status()) {
     case OrderAtom::TRUE: return true;
     case OrderAtom::UNKNOWN: constraints += c; return true;
@@ -96,7 +99,7 @@ private:
     int neg = 0;
     int weight = 0;
   
-    static inline Res cmp(u64 l, u64 r) { return l<r ? L : l>r ? G : E; }
+    static inline Res cmp(u64 l, u64 r) { return l<r ? OrderAtom::L : l>r ? OrderAtom::G : OrderAtom::E; }
 
     inline void accum(Term t, int f) { FRAME("Balance.accum()");
       t = kbo.val.shallow_eval(t);
@@ -122,12 +125,14 @@ private:
     }
 
     inline Res cmp_accum(Res lex) { FRAME("cmp_accum");
-      if(pos && neg) return N;
-      if(pos && !neg) return weight>0 || (weight==0 && lex==G) ? G : N;
-      if(!pos && neg) return weight<0 || (weight==0 && lex==L) ? L : N;
-      return weight<0 ? L : weight>0 ? G : lex;
+      if(pos && neg) return OrderAtom::U;
+      if(pos && !neg) return weight>0 || (weight==0 && lex==OrderAtom::G) ? OrderAtom::G : OrderAtom::U;
+      if(!pos && neg) return weight<0 || (weight==0 && lex==OrderAtom::L) ? OrderAtom::L : OrderAtom::U;
+      return weight<0 ? OrderAtom::L : weight>0 ? OrderAtom::G : lex;
     }
-    
+   
+    Res operator()(Term l, Term r){ return cmp(l,r); }
+
     inline Res cmp(Term l, Term r) { FRAME("Ctx.cmp(%,%)",show(l),show(r));
       //TODO: replace with hash cons
       l = kbo.val.shallow_eval(l);
@@ -145,17 +150,17 @@ private:
           //TODO: replace with hash cons
           for(size_t i=0; i<ac; ++i) {
             Res lex = cmp(lf.arg(i),rf.arg(i));
-            if(lex==E) continue;
+            if(lex==OrderAtom::E) continue;
             while(++i<ac){ accum(lf.arg(i),1); accum(rf.arg(i),-1); }
             return cmp_accum(lex);
           }
-          return E;
+          return OrderAtom::E;
         }
       } else {
         //TODO: replace with hash cons
         accum(l,1);
         accum(r,-1);
-        return l==r ? E : cmp_accum(N);
+        return l==r ? OrderAtom::E : cmp_accum(OrderAtom::U);
       }
     }
   };

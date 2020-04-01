@@ -4,7 +4,10 @@
 #include "tptp.pb.h"
 #include "solutions.pb.h"
 #include "google/protobuf/io/coded_stream.h"
-#include "lazyparam_prover/pred.h"
+#include "lazyparam_prover/syntax/term.h"
+#include "lazyparam_prover/syntax/atom.h"
+#include "lazyparam_prover/syntax/clause.h"
+#include "lazyparam_prover/syntax/show.h"
 #include "lazyparam_prover/derived.h"
 #include "lazyparam_prover/kbo.h"
 #include "lazyparam_prover/ground.h"
@@ -38,7 +41,7 @@ struct ParseCtx {
     FRAME("parse_term(%)",t.DebugString());
     switch(t.type()){
       case tptp::Term::VAR: {
-        return Term(Var::make(var_names(t.name())));
+        return Term(Var(var_names(t.name())));
       }
       case tptp::Term::EXP: {
         size_t ac = t.args().size();
@@ -112,7 +115,7 @@ struct ParseCtx {
     default:
       error("unexpected f.formula_case() = %",f.formula_case());
     }
-    OrClause::Builder b(atoms.size(),var_names.size());
+    OrClause::Builder b(atoms.size());
     for(size_t i=0; i<atoms.size(); ++i) b.set_atom(i,atoms[i]);
     return b.build();
   }
@@ -206,24 +209,24 @@ struct ProtoCtx {
 
   solutions::Derivation proto_derAndClause(const DerAndClause &cla, const KBO &val) const { FRAME("proto_derAndClause()");
     solutions::Derivation d;
-    d.set_cost(cla.cost);
+    d.set_cost(cla.cost());
     auto derived = d.mutable_derived();
     derived->set_name("derived");
     derived->set_role(tptp::Input::PLAIN);
     derived->set_language(tptp::Input::CNF);
-    *(derived->mutable_formula()) = proto_orClause(ground(val.eval(cla.derived.neg())));
-    for(const auto &s : cla.source) {
+    *(derived->mutable_formula()) = proto_orClause(ground(val.eval(cla.derived().neg())));
+    for(size_t i=0; i<cla.source_count(); ++i) {
       auto ps = d.add_sources();
       auto pg = ps->mutable_ground();
       pg->set_name("ground");
       pg->set_role(tptp::Input::PLAIN);
       pg->set_language(tptp::Input::CNF);
-      *(pg->mutable_formula()) = proto_orClause(ground(val.eval(s.neg())));
+      *(pg->mutable_formula()) = proto_orClause(ground(val.eval(cla.source(i).neg())));
       auto pss = ps->mutable_source();
       pss->set_name("source");
       pss->set_role(tptp::Input::PLAIN);
       pss->set_language(tptp::Input::CNF);
-      *(pss->mutable_formula()) = proto_orClause(s.neg());
+      *(pss->mutable_formula()) = proto_orClause(cla.source(i).neg());
     }
     return d;
   }

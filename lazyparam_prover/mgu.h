@@ -1,12 +1,14 @@
 #ifndef MGU_H_
 #define MGU_H_
 
-#include "lazyparam_prover/types.h"
-#include "lazyparam_prover/pred.h"
-#include "lazyparam_prover/derived.h"
-#include "lazyparam_prover/alloc.h"
 #include "lazyparam_prover/log.h"
-#include "lazyparam_prover/pred_format.h"
+#include "lazyparam_prover/types.h"
+#include "lazyparam_prover/memory/array.h"
+#include "lazyparam_prover/syntax/term.h"
+#include "lazyparam_prover/syntax/atom.h"
+#include "lazyparam_prover/syntax/show.h"
+#include "lazyparam_prover/syntax/clause.h"
+#include "lazyparam_prover/derived.h"
 #include "lazyparam_prover/util/string.h"
 
 namespace tableau {
@@ -131,7 +133,7 @@ public:
     switch(t.type()) {
       case Term::VAR: {
         u64 id = Var(t).id();
-        if(auto mv = val[id]) return eval(mv.get()); else return Term(Var::make(id));
+        if(auto mv = val[id]) return eval(mv.get()); else return Term(Var(id));
       }
       case Term::FUN: {
         Fun tf(t);
@@ -152,34 +154,33 @@ public:
     return b.build();
   }
 
-  // clears offset
-  // FIXME: var_count gets invalidated due to evaluation
   inline OrClause eval(OrClause cla) const { FRAME("eval(%)",show(cla));
-    OrClause::Builder b(cla.atom_count(),cla.var_count());
+    OrClause::Builder b(cla.atom_count());
     for(size_t i=cla.atom_count(); i--;) b.set_atom(i,eval(cla.atom(i)));
     return b.build();
   }
 
-  // FIXME: var_count gets invalidated due to evaluation
   inline AndClause eval(AndClause cla) const { return eval(cla.neg()).neg(); }
 
-  inline Constraint eval(Constraint c) const {
-    List<Constraint::Pair> or_;
-    for(auto o = c.or_; !o.empty(); o = o.tail())
-      or_ += Constraint::Pair{eval(o.head().l),eval(o.head().r)};
-    c.or_ = or_;
-    return c;
+  inline OrderAtom::TermPair eval(OrderAtom::TermPair p) const {
+    return {eval(p.a),eval(p.b)};
   }
 
-  // FIXME var_offset,id_offset and var_counts get invalidated
+  inline OrderAtom eval(OrderAtom c) const {
+    OrderAtom::Builder b(c.rel(),c.pair_count());
+    for(size_t i=c.pair_count(); i--;) b.set_pair(i,eval(c.pair(i)));
+    return b.build();
+  }
+
   inline DerOrClause eval(DerOrClause cla) const {
-    return DerOrClause(cla.cost,
-        eval(cla.derived()),
-        cla.source.traverse(eval),
-        cla.constraints.traverse(eval));
+    DerOrClause::Builder b(cla.source_count(),cla.constraint_count());
+    b.set_cost(cla.cost());
+    b.set_derived(eval(cla.derived()));
+    for(size_t i=cla.source_count(); i--;) b.set_source(i,eval(cla.source(i)));
+    for(size_t i=cla.constraint_count(); i--;) b.set_constraint(i,eval(cla.constraint(i)));
+    return b.build();
   }
 
-  // FIXME: var_count gets invalidated due to evaluation
   inline DerAndClause eval(DerAndClause cla) const { return eval(cla.neg()).neg(); }
 
 

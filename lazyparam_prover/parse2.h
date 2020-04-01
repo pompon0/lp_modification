@@ -1,8 +1,6 @@
 #ifndef PARSE2_H_
 #define PARSE2_H_
 
-#include "tptp.pb.h"
-
 #include "Forwards.hpp"
 #include "Kernel/Clause.hpp"
 #include "Kernel/Formula.hpp"
@@ -10,9 +8,17 @@
 #include "Kernel/Unit.hpp"
 #include "Parse/TPTP.hpp"
 #include "Shell/TPTPPrinter.hpp"
+// Vampire defines __APPLE__ macro, which makes
+// other libraries freak out.
+#undef __APPLE__
+
+
+#include "tptp.pb.h"
 
 #include "lazyparam_prover/util/string.h"
-#include "lazyparam_prover/pred.h"
+#include "lazyparam_prover/syntax/term.h"
+#include "lazyparam_prover/syntax/atom.h"
+#include "lazyparam_prover/syntax/clause.h"
 #include "lazyparam_prover/log.h"
 
 namespace tableau {

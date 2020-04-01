@@ -17,3 +17,13 @@ cc_library(
     "//lazyparam_prover:types",
   ],
 )
+
+cc_test(
+    name = "alloc_test",
+    srcs = ["alloc_test.cc"],
+    deps = [
+        ":memory",
+        "//lazyparam_prover/util:util",
+        "@gtest//:gtest_main",
+    ],
+)

@@ -18,16 +18,16 @@ cc_library(
 )
 
 cc_library(
-    name = "pred",
+    name = "derived",
     hdrs = [
-        "pred.h",
-        "pred_format.h",
+        "constraint.h",
         "derived.h",
     ],
     deps = [
         ":log",
         ":types",
-        ":alloc",
+        "//lazyparam_prover/memory:memory",
+        "//lazyparam_prover/syntax:syntax",
     ],
 )
 
@@ -38,7 +38,7 @@ cc_library(
     ],
     deps = [
         ":types",
-        ":pred",
+        "//lazyparam_prover/syntax:syntax",
         "//tptp_parser/proto:tptp_cc_proto",
         "@com_google_protobuf//:protobuf",
     ],
@@ -49,9 +49,10 @@ cc_library(
     hdrs = [
         "parse2.h",
     ],
+    copts = ["-std=c++11"],
     deps = [
         ":types",
-        ":pred",
+        "//lazyparam_prover/syntax:syntax",
         "//tptp_parser/proto:tptp_cc_proto",
         # vampire agressively takes over signal handling of the whole binary
         # in particular it severly reduces the global memory limits.
@@ -64,6 +65,7 @@ cc_library(
 cc_binary(
     name = "tool",
     srcs = ["tool.cc"],
+    copts = ["-std=c++11"],
     deps = [
         "//tptp_parser/proto:tptp_cc_proto",
         ":parse2",
@@ -88,6 +90,7 @@ cc_library(
         "constraint.h",
     ],
     deps = [
+        ":derived",
         "//lazyparam_prover/syntax:syntax",
         "//lazyparam_prover/memory:memory",
     ],
@@ -110,20 +113,11 @@ cc_library(
         "//tptp_parser/proto:solutions_cc_proto",
         ":log",
         ":parse",
-        ":pred",
+        "//lazyparam_prover/syntax:syntax",
         ":types",
+        ":mgu",
         "//lazyparam_prover/util:util",
         "@com_google_protobuf//:protobuf",
-    ],
-)
-
-cc_test(
-    name = "alloc_test",
-    srcs = ["alloc_test.cc"],
-    deps = [
-        ":prover",
-        "//lazyparam_prover/util:util",
-        "@gtest//:gtest_main",
     ],
 )
 
@@ -144,15 +138,6 @@ cc_test(
     deps = [
         ":prover",
         "//lazyparam_prover/util:util",
-        "@gtest//:gtest_main",
-    ],
-)
-
-cc_test(
-    name = "pred_test",
-    srcs = ["pred_test.cc"],
-    deps = [
-        ":prover",
         "@gtest//:gtest_main",
     ],
 )

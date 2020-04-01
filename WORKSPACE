@@ -62,17 +62,32 @@ http_file(
     urls = ["https://storage.googleapis.com/tptp/tptp_problems.zip"],
     sha256 = "f56cd27648898713e83e2e0dc69e295b316ba4b7acad0e41d7667610b666c5f0",
 )
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 http_archive(
+  name = "rules_proto",
+  sha256 = "602e7161d9195e50246177e7c55b2f39950a9cf7366f74ed5f22fd45750cd208",
+  strip_prefix = "rules_proto-97d8af4dc474595af3900dd85cb3a29ad28cc313",
+  urls = [
+    "https://mirror.bazel.build/github.com/bazelbuild/rules_proto/archive/97d8af4dc474595af3900dd85cb3a29ad28cc313.tar.gz",
+    "https://github.com/bazelbuild/rules_proto/archive/97d8af4dc474595af3900dd85cb3a29ad28cc313.tar.gz",
+  ],
+)
+load("@rules_proto//proto:repositories.bzl", "rules_proto_dependencies", "rules_proto_toolchains")
+rules_proto_dependencies()
+rules_proto_toolchains()
+
+
+"""http_archive(
     name = "com_google_protobuf",
-    strip_prefix = "protobuf-3.11.2",
-    urls = ["https://github.com/google/protobuf/archive/v3.11.2.zip"],
-    sha256 = "e4f8bedb19a93d0dccc359a126f51158282e0b24d92e0cad9c76a9699698268d",
+    strip_prefix = "protobuf-3.11.4",
+    urls = ["https://github.com/google/protobuf/archive/v3.11.4.zip"],
+    sha256 = "9748c0d90e54ea09e5e75fb7fac16edce15d2028d4356f32211cfa3c0e956564"
 )
 
 load("@com_google_protobuf//:protobuf_deps.bzl", "protobuf_deps")
 
-protobuf_deps()
+protobuf_deps()"""
 
 http_archive(
     name = "gtest",

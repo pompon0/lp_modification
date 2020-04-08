@@ -29,7 +29,8 @@ import (
 
 ////////////////////////////////////////////
 
-// run "gcloud auth application-default login" before executing this binary
+// run "gcloud auth configure-docker", so that binary is able to push to container registry
+// run "gcloud auth application-default login" so that binary has access to GCP.
 var workerAddr = flag.String("worker_addr","worker-su5lpnpdhq-uc.a.run.app:443","worker service address")
 
 var reportDir = flag.String("report_dir","","")

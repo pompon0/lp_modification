@@ -89,6 +89,7 @@ private:
         }*/
       }
       return false;
+    default: error("c.status() = %",c.status());
     }
   }
 

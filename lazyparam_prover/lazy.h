@@ -115,7 +115,7 @@ struct SplitBuilder {
   vec<Atom> atoms;
   vec<AndClause> source;
   vec<OrderAtom> constraints;
-  DerAndClause out() {
+  DerAndClause out() { FRAME("out");
     DerOrClause::Builder b(source.size(),constraints.size());
     b.set_cost(cost);
     b.set_derived(AndClause(atoms).neg());
@@ -128,14 +128,14 @@ struct SplitBuilder {
   Valuation val;
   u64 next_pred;
 
-  SplitBuilder(const DerAndClause &cla, u64 _next_pred) {
+  SplitBuilder(const DerAndClause &cla, u64 _next_pred) { FRAME("SplitBuilder");
     next_pred = _next_pred;
     var_count = cla.var_range().end;
     val.resize(cla.var_range().end); // enough for substitutions
     cost = cla.cost();
     for(size_t i=0; i<cla.source_count(); ++i) source.push_back(cla.source(i));
     DEBUG if(cla.constraint_count()>0) error("unexpected constraints");
-    for(size_t i=0; i<cla.derived().atom_count(); ++i) {
+    for(size_t i=0; i<cla.derived().atom_count(); ++i) { FRAME("processing %",show(cla.derived().atom(i)));
       auto a = cla.derived().atom(i);
       if(a.pred()!=Atom::EQ) {
         atoms.push_back(a);
@@ -240,7 +240,7 @@ struct SplitBuilder {
           for(size_t i=0; i<rc; ++i) b.set_arg(lc+i,rf.arg(i));
           atoms.push_back(b.build());
 
-          {
+          { FRAME("T(x,y) /\\ f(x)-/>w /\\ g(y)->w");
             DerOrClause::Builder c1(1,2);
             c1.set_cost(1);
             Term w(Var(var_count++));
@@ -249,7 +249,7 @@ struct SplitBuilder {
             c1.set_constraint(1,OrderAtom(OrderAtom::LE,w,r));
             c1.set_source(0,trans_axiom(l,r,w).neg());
             extra.push_back(reduce_vars(c1.build().neg()));
-          } { 
+          } { FRAME("T(x,y) /\\ g(y)-/>w /\\ f(x)->w"); 
             DerOrClause::Builder c2(2,2);
             c2.set_cost(1);
             Term w(Var(var_count++));
@@ -267,8 +267,8 @@ struct SplitBuilder {
   }
 };
 
-OrForm conv(OrForm f) {
-  //info("before =\n%\n",show(f));
+OrForm conv(OrForm f) { FRAME("lazy::conv");
+  info("before =\n%\n",show(f));
   ArityCtx ac; ac.traverse(NotAndForm(f));
   f = flatten_OrForm(f);
   //info("flattened =\n%\n",show(f));
@@ -282,14 +282,13 @@ OrForm conv(OrForm f) {
     next_pred = b.next_pred;
   }
   // ==> x-/>x
-  DerAndClause refl;
-  refl.cost = 0;
-  refl.derived.var_count = 0;
-  Term x(Var::make(refl.derived.var_count++));
-  refl.derived.atoms.push_back(red(false,x,x));
-  refl.source.push_back(refl_axiom(x));
-  f2.and_clauses.push_back(refl);
-  //info("after =\n%\n",show(f2));
+  DerOrClause::Builder refl(1,0);
+  refl.set_cost(0);
+  Term x(Var(0));
+  refl.set_derived(OrClause({red(true,x,x)}));
+  refl.set_source(0,refl_axiom(x).neg());
+  f2.and_clauses.push_back(refl.build().neg());
+  info("after =\n%\n",show(f2));
   return f2; 
 }
 

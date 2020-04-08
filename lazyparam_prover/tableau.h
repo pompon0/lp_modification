@@ -5,6 +5,7 @@
 #include "lazyparam_prover/syntax/atom.h"
 #include "lazyparam_prover/syntax/clause.h"
 #include "lazyparam_prover/syntax/show.h"
+#include "lazyparam_prover/memory/variant.h"
 #include "lazyparam_prover/mgu.h"
 #include "lazyparam_prover/ground.h"
 #include "lazyparam_prover/kbo.h"
@@ -147,9 +148,9 @@ struct Cont {
     // do not use f->dcla from now on
     state.nodes_used += dcla.cost();
     auto cla = dcla.derived();
-    state.val.resize(cla.var_count());
-    for(auto c = dcla.constraints(); !c.empty(); c = c.tail()) {
-      state.val.push_constraint(c.head());
+    state.val.resize(cla.var_range().end);
+    for(size_t i=dcla.constraint_count(); i--;){
+      state.val.push_constraint(dcla.constraint(i));
     }
     if(f->strong_id>=0) if(!state.val.mgu(f->branch.true_.head(),cla.atom(f->strong_id))) return;
     state.clauses_used += dcla;
@@ -208,7 +209,7 @@ struct Cont {
       {
         // add constraints (wrt path)
         for(auto b = f->next.true_; !b.empty(); b = b.tail())
-          if(!state.val.push_constraint(Constraint::neq(a,b.head()))) return;
+          if(!state.val.push_constraint(OrderAtom::neq(a,b.head()))) return;
         WeakConnectionsFrame::Builder cb;
         cb->nodes_limit = f->nodes_limit;
         cb->atoms = f->atoms.tail();
@@ -326,8 +327,9 @@ ProverOutput prove_loop(const Ctx &ctx, OrForm form) { FRAME("prove_loop()");
   if(has_equality(form)) { 
     //form = reduce_monotonicity_and_append_eq_axioms(form);
     //form = append_eq_axioms_with_restricted_transitivity(form);
+    //form = 
+    lazy::conv(form);
     form = append_eq_axioms(form);
-    //form = lazy::conv(form);
   }
   size_t cont_count = 0;
   size_t limit = 0;

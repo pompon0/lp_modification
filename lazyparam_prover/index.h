@@ -112,7 +112,7 @@ public:
       // allocate c1
       val.rewind(s1);
       auto c1 = _c1.shift(val.size()).derived();
-      val.resize(c1.var_count());
+      val.resize(c1.var_range().end);
       auto s2 = val.snapshot(); 
       for(size_t i1=0; i1<c1.atom_count(); ++i1) {
         auto h = Index::atom_hash(c1.atom(i1));
@@ -121,7 +121,7 @@ public:
           // allocate c2
           val.rewind(s2);
           auto c2 = or_clauses[x.clause_id].shift(val.size()).derived();
-          val.resize(c2.var_count());
+          val.resize(c2.var_range().end);
           // unify
           if(c1.atom(i1).sign()==c2.atom(x.atom_id).sign()) continue;
           if(!val.mgu(c1.atom(i1),c2.atom(x.atom_id))) continue;

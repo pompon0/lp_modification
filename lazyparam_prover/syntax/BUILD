@@ -16,6 +16,16 @@ cc_library(
 )
 
 cc_test(
+  name = "term_test",
+  srcs = ["term_test.cc"],
+  deps = [
+    ":syntax",
+    "//lazyparam_prover/util:util",
+    "@gtest//:gtest_main",
+  ],
+)
+
+cc_test(
   name = "clause_test",
   srcs = ["clause_test.cpp"],
   deps = [

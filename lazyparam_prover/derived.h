@@ -24,7 +24,7 @@ struct DerOrClause {
   OrClause source(size_t i) const { return SOURCES::ref(ptr,i).shift(offset); }
   
   size_t constraint_count() const { return CONSTRAINTS::size(constraints_ptr); }
-  OrderAtom constraint(size_t i) const { return CONSTRAINTS::ref(ptr,i); }
+  OrderAtom constraint(size_t i) const { return CONSTRAINTS::ref(constraints_ptr,i); }
 
   DerOrClause(size_t cost, OrClause cla) {
     Builder b(1,0);
@@ -48,22 +48,22 @@ struct DerOrClause {
   struct Builder {
     Builder(size_t sources_count, size_t constraints_count) :
       ptr(SOURCES::alloc(sources_count)),
-      constraints_ptr(CONSTRAINTS::alloc(constraints_count)) {
+      constraints_ptr(CONSTRAINTS::alloc(constraints_count)) { FRAME("DerOrClause::Builder(%,%)",sources_count,constraints_count);
       VAR_RANGE::ref(ptr) = {0,0};
     }
 
     Builder& set_cost(size_t cost){ COST::ref(ptr) = cost; return *this; }
-    Builder& set_derived(OrClause derived){
+    Builder& set_derived(OrClause derived){ FRAME("set_derived");
       DERIVED::ref(ptr) = derived;
       VAR_RANGE::ref(ptr) |= derived.var_range();
       return *this;
     }
-    Builder& set_source(size_t i, OrClause source) {
+    Builder& set_source(size_t i, OrClause source) { FRAME("set_source(%)",i);
       SOURCES::ref(ptr,i) = source;
       VAR_RANGE::ref(ptr) |= source.var_range();
       return *this;
     }
-    Builder& set_constraint(size_t i, OrderAtom constraint) {
+    Builder& set_constraint(size_t i, OrderAtom constraint) { FRAME("set_contraint(%)",i);
       CONSTRAINTS::ref(constraints_ptr,i) = constraint;
       VAR_RANGE::ref(ptr) |= constraint.var_range();
       return *this;

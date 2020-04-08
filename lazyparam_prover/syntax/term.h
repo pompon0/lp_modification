@@ -21,6 +21,9 @@ struct VarRange {
   VarRange operator+(size_t offset) const {
     return {begin+offset,end+offset};
   }
+  bool operator==(const VarRange &b) const {
+    return begin==b.begin && end==b.end;
+  }
 };
 
 struct Term {
@@ -58,7 +61,7 @@ private:
   using FUN = Field<u64,VAR_RANGE>;
   using ARGS = ArrayField<Term,FUN>;
   Term term;
-  static Term _Fun(u64 fun, const vec<Term> &args) {
+  static Term _Fun(u64 fun, const vec<Term> &args) { FRAME("_Fun(%)",fun);
     Builder b(fun,args.size());
     for(size_t i=0; i<args.size(); ++i) b.set_arg(i,args[i]);
     return Term(b.build());
@@ -86,7 +89,7 @@ public:
       FUN::ref(ptr) = _fun;
       //TODO: in DEBUG mode, check if all elements have been set
     }
-    void set_arg(size_t i, Term a) {
+    void set_arg(size_t i, Term a) { FRAME("set_arg(%)",i);
       ARGS::ref(ptr,i) = a;
       VAR_RANGE::ref(ptr) |= a.var_range();
     }
@@ -94,10 +97,10 @@ public:
   };
 };
 
-VarRange Term::var_range() const {
+VarRange Term::var_range() const { FRAME("var_range()");
   switch(type()) {
   case VAR: return Var(*this).var_range();
-  case FUN: return Term(*this).var_range();
+  case FUN: return Fun(*this).var_range();
   default: error("<type=%>.var_range()",type());
   }
 }

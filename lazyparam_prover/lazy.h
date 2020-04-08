@@ -213,7 +213,7 @@ struct SplitBuilder {
           {
             DerOrClause::Builder c1(0,1);
             c1.set_cost(1);
-            c1.set_derived(AndClause({a.neg(),red(false,l,r)}).neg());
+            c1.set_derived(AndClause({b.build().neg(),red(false,l,r)}).neg());
             c1.set_constraint(0,OrderAtom(OrderAtom::NE,l,r));
             extra.push_back(reduce_vars(c1.build().neg()));
           }
@@ -221,7 +221,7 @@ struct SplitBuilder {
             DerOrClause::Builder c2(2,2);
             c2.set_cost(1);
             Term w(Var(var_count++));
-            c2.set_derived(AndClause({a.neg(),red(false,r,w),red(true,l,w)}).neg());
+            c2.set_derived(AndClause({b.build().neg(),red(false,r,w),red(true,l,w)}).neg());
             c2.set_constraint(0,OrderAtom(OrderAtom::NE,r,w));
             c2.set_constraint(1,OrderAtom(OrderAtom::LE,w,l));
             c2.set_source(0,trans_axiom(r,l,w).neg());
@@ -244,7 +244,7 @@ struct SplitBuilder {
             DerOrClause::Builder c1(1,2);
             c1.set_cost(1);
             Term w(Var(var_count++));
-            c1.set_derived(AndClause({a.neg(),red(false,l,w),red(true,r,w)}).neg());
+            c1.set_derived(AndClause({b.build().neg(),red(false,l,w),red(true,r,w)}).neg());
             c1.set_constraint(0,OrderAtom(OrderAtom::NE,l,w));
             c1.set_constraint(1,OrderAtom(OrderAtom::LE,w,r));
             c1.set_source(0,trans_axiom(l,r,w).neg());
@@ -253,7 +253,7 @@ struct SplitBuilder {
             DerOrClause::Builder c2(2,2);
             c2.set_cost(1);
             Term w(Var(var_count++));
-            c2.set_derived(AndClause({a.neg(),red(true,l,w),red(false,r,w)}).neg());
+            c2.set_derived(AndClause({b.build().neg(),red(true,l,w),red(false,r,w)}).neg());
             c2.set_constraint(0,OrderAtom(OrderAtom::NE,r,w));
             c2.set_constraint(1,OrderAtom(OrderAtom::LE,w,l));
             c2.set_source(0,trans_axiom(r,l,w).neg());
@@ -268,7 +268,7 @@ struct SplitBuilder {
 };
 
 OrForm conv(OrForm f) { FRAME("lazy::conv");
-  info("before =\n%\n",show(f));
+  //info("before =\n%\n",show(f));
   ArityCtx ac; ac.traverse(NotAndForm(f));
   f = flatten_OrForm(f);
   //info("flattened =\n%\n",show(f));
@@ -288,7 +288,7 @@ OrForm conv(OrForm f) { FRAME("lazy::conv");
   refl.set_derived(OrClause({red(true,x,x)}));
   refl.set_source(0,refl_axiom(x).neg());
   f2.and_clauses.push_back(refl.build().neg());
-  info("after =\n%\n",show(f2));
+  //info("after =\n%\n",show(f2));
   return f2; 
 }
 

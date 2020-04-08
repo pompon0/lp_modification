@@ -12,63 +12,63 @@
 
 namespace tableau {
 
-DerOrClause refl_axiom() {
+DerAndClause neg_refl_axiom() {
   Term x(Var(0));
-  return DerOrClause(0,OrClause({
-    Atom::eq(true,x,x)
+  return DerAndClause(0,AndClause({
+    Atom::eq(false,x,x),
   }));
 }
 
-DerOrClause symm_axiom() {
+DerAndClause neg_symm_axiom() {
   Term x(Var(0));
   Term y(Var(1));
-  OrClause::Builder b(2);
-  b.set_atom(0,Atom::eq(false,x,y));
-  b.set_atom(1,Atom::eq(true,y,x));
-  return DerOrClause(1,b.build());
+  return DerAndClause(1,AndClause({
+    Atom::eq(true,x,y),
+    Atom::eq(false,y,x),
+  }));
 }
 
-DerOrClause trans_axiom() {
+DerAndClause neg_trans_axiom() {
   Term x(Var(0));
   Term y(Var(1));
   Term z(Var(2));
-  return DerOrClause(3,OrClause({
-    Atom::eq(false,x,y),
-    Atom::eq(false,y,z),
-    Atom::eq(true,x,z),
+  return DerAndClause(3,AndClause({
+    Atom::eq(true,x,y),
+    Atom::eq(true,y,z),
+    Atom::eq(false,x,z),
   }));
 }
 
 
-DerOrClause cong_pred_axiom(u64 pred_name, u64 arg_count) {
-  Atom::Builder lb(false,pred_name,arg_count);
-  Atom::Builder rb(true,pred_name,arg_count);
-  OrClause::Builder cb(arg_count+2);
+DerAndClause neg_cong_pred_axiom(u64 pred_name, u64 arg_count) {
+  Atom::Builder lb(true,pred_name,arg_count);
+  Atom::Builder rb(false,pred_name,arg_count);
+  AndClause::Builder cb(arg_count+2);
   for(size_t i=0; i<arg_count; ++i) {
     Term la(Var(2*i));
     Term ra(Var(2*i+1));
-    cb.set_atom(i,Atom::eq(false,la,ra));
+    cb.set_atom(i,Atom::eq(true,la,ra));
     lb.set_arg(i,la);
     rb.set_arg(i,ra);
   }
   cb.set_atom(arg_count,lb.build()); 
   cb.set_atom(arg_count+1,rb.build());
-  return DerOrClause(3,cb.build());
+  return DerAndClause(3,cb.build());
 }
 
-DerOrClause cong_fun_axiom(u64 fun_name, u64 arg_count) {
+DerAndClause neg_cong_fun_axiom(u64 fun_name, u64 arg_count) {
   Fun::Builder lb(fun_name,arg_count);
   Fun::Builder rb(fun_name,arg_count);
-  OrClause::Builder cb(arg_count+1);
+  AndClause::Builder cb(arg_count+1);
   for(size_t i=0; i<arg_count; ++i) {
     Term la(Var(2*i));
     Term ra(Var(2*i+1));
-    cb.set_atom(i,Atom::eq(false,la,ra));
+    cb.set_atom(i,Atom::eq(true,la,ra));
     lb.set_arg(i,la);
     rb.set_arg(i,ra);
   }
-  cb.set_atom(arg_count,Atom::eq(true,Term(lb.build()),Term(rb.build()))); 
-  return DerOrClause(3,cb.build());
+  cb.set_atom(arg_count,Atom::eq(false,Term(lb.build()),Term(rb.build()))); 
+  return DerAndClause(3,cb.build());
 }
 
 struct ArityCtx {
@@ -103,16 +103,16 @@ struct ArityCtx {
     return;
   }
 
-  void traverse(const OrClause &c) { for(size_t i=c.atom_count(); i--;) traverse(c.atom(i)); }
-  void traverse(const DerOrClause &c) {
+  void traverse(const AndClause &c) { for(size_t i=c.atom_count(); i--;) traverse(c.atom(i)); }
+  void traverse(const DerAndClause &c) {
     traverse(c.derived());
     for(size_t i=c.source_count(); i--;) traverse(c.source(i));
   }
-  void traverse(const NotAndForm &f) { for(const auto &c : f.or_clauses) traverse(c); }
+  void traverse(const OrForm &f) { for(const auto &c : f.and_clauses) traverse(c); }
 };
 
 bool has_equality(OrForm f) {
-  ArityCtx ctx; ctx.traverse(NotAndForm(f));
+  ArityCtx ctx; ctx.traverse(f);
   return ctx.pred_count[Atom::EQ]>0;
 }
 
@@ -127,7 +127,7 @@ OrForm add_refl_constraints(OrForm f) {
         rc.push_back(OrderAtom(OrderAtom::NE,a.arg(0),a.arg(1)));
       }
     }
-    c = c.neg().append_constraints(rc).neg();
+    c = c.append_constraints(rc);
   }
   return f;
 }
@@ -139,15 +139,15 @@ OrForm append_eq_axioms(OrForm _f) {
   // 549/2003 use refl + symm only (my CNF)
   // 740/2003 use refl + symm + mono (my CNF)
   // 640/2003 use refl + symm + trans (my CNF)
-  NotAndForm f(add_refl_constraints(_f));
+  OrForm f(add_refl_constraints(_f));
   ArityCtx ctx; ctx.traverse(f);
-  f.or_clauses.push_back(refl_axiom());
-  f.or_clauses.push_back(symm_axiom());
-  f.or_clauses.push_back(trans_axiom());
-  for(auto pa : ctx.pred_arity) if(pa.first!=Atom::EQ && pa.second) f.or_clauses.push_back(cong_pred_axiom(pa.first,pa.second));
-  for(auto fa : ctx.fun_arity) if(fa.second) f.or_clauses.push_back(cong_fun_axiom(fa.first,fa.second));
+  f.and_clauses.push_back(neg_refl_axiom());
+  f.and_clauses.push_back(neg_symm_axiom());
+  f.and_clauses.push_back(neg_trans_axiom());
+  for(auto pa : ctx.pred_arity) if(pa.first!=Atom::EQ && pa.second) f.and_clauses.push_back(neg_cong_pred_axiom(pa.first,pa.second));
+  for(auto fa : ctx.fun_arity) if(fa.second) f.and_clauses.push_back(neg_cong_fun_axiom(fa.first,fa.second));
   //info("f + axioms = \n%",show(OrForm(f)));
-  return OrForm(f);
+  return f;
 }
 
 
@@ -246,12 +246,12 @@ struct FlatClauseBuilder {
   }
 
   DerAndClause build() const {
-    DerOrClause::Builder b(source_clauses.size(),0);
+    DerAndClause::Builder b(source_clauses.size(),0);
     b.set_cost(cost);
-    b.set_derived(AndClause(atoms).neg());
+    b.set_derived(AndClause(atoms));
     for(size_t i=0; i<source_clauses.size(); ++i)
-      b.set_source(i,source_clauses[i].neg());
-    return b.build().neg();
+      b.set_source(i,source_clauses[i]);
+    return b.build();
   }
 };
 
@@ -262,88 +262,87 @@ inline OrForm flatten_OrForm(OrForm f) {
 }
 
 OrForm reduce_monotonicity_and_append_eq_axioms(OrForm _f) {
-  NotAndForm f(flatten_OrForm(_f));
-  f.or_clauses.push_back(refl_axiom());
-  f.or_clauses.push_back(symm_axiom());
-  f.or_clauses.push_back(trans_axiom());
+  OrForm f(flatten_OrForm(_f));
+  f.and_clauses.push_back(neg_refl_axiom());
+  f.and_clauses.push_back(neg_symm_axiom());
+  f.and_clauses.push_back(neg_trans_axiom());
   //info("f = \n%",show(_f));
   //info("m(f) + axioms = \n%",show(OrForm(f)));
   return OrForm(f);
 }
 
-NotAndForm append_restricted_transitivity_axioms(NotAndForm f) {
+OrForm append_restricted_transitivity_axioms(OrForm f) {
   Term a(Var(0));
   Term b(Var(1));
   Term c(Var(2));
 
   // -[a=b] symm(a,b)
   {
-    DerOrClause::Builder symm1(0,0);
+    DerAndClause::Builder symm1(0,0);
     symm1.set_cost(0);
-    symm1.set_derived(OrClause({
-      Atom(false,Atom::EQ_TRANS_POS,{a,b}),
-      Atom(true,Atom::EQ_SYMM,{a,b}),
+    symm1.set_derived(AndClause({
+      Atom(true,Atom::EQ_TRANS_POS,{a,b}),
+      Atom(false,Atom::EQ_SYMM,{a,b}),
     }));
-    f.or_clauses.push_back(symm1.build());
+    f.and_clauses.push_back(symm1.build());
   }
   // -[b=a] symm(a,b)
   {
-    DerOrClause::Builder symm2(1,0);
+    DerAndClause::Builder symm2(1,0);
     symm2.set_cost(0);
-    symm2.set_derived(OrClause({
-      Atom(false,Atom::EQ_TRANS_POS,{b,a}),
-      Atom(true,Atom::EQ_SYMM,{a,b}),
+    symm2.set_derived(AndClause({
+      Atom(true,Atom::EQ_TRANS_POS,{b,a}),
+      Atom(false,Atom::EQ_SYMM,{a,b}),
     }));
-    symm2.set_source(0,OrClause({
-      Atom(false,Atom::EQ,{b,a}),
-      Atom(true,Atom::EQ,{a,b}),
+    symm2.set_source(0,AndClause({
+      Atom(true,Atom::EQ,{b,a}),
+      Atom(false,Atom::EQ,{a,b}),
     }));
-    f.or_clauses.push_back(symm2.build());
+    f.and_clauses.push_back(symm2.build());
   }
   // -symm(a,b) b/=c a=c
   {
-    DerOrClause::Builder trans_pos(1,0);
+    DerAndClause::Builder trans_pos(1,0);
     trans_pos.set_cost(1);
-    trans_pos.set_derived(OrClause({
-      Atom(false,Atom::EQ_SYMM,{a,b}),
-      Atom(false,Atom::EQ,{b,c}),
-      Atom(true,Atom::EQ,{a,c}),
+    trans_pos.set_derived(AndClause({
+      Atom(true,Atom::EQ_SYMM,{a,b}),
+      Atom(true,Atom::EQ,{b,c}),
+      Atom(false,Atom::EQ,{a,c}),
     }));
-    trans_pos.set_source(0,OrClause({
-      Atom(false,Atom::EQ,{a,b}),
-      Atom(false,Atom::EQ,{b,c}),
-      Atom(true,Atom::EQ,{a,c}),
+    trans_pos.set_source(0,AndClause({
+      Atom(true,Atom::EQ,{a,b}),
+      Atom(true,Atom::EQ,{b,c}),
+      Atom(false,Atom::EQ,{a,c}),
     }));
-    f.or_clauses.push_back(trans_pos.build());
+    f.and_clauses.push_back(trans_pos.build());
   }
   // {a=b} a/=c b/=c
   {
-    DerOrClause::Builder trans_neg(1,0);
+    DerAndClause::Builder trans_neg(1,0);
     trans_neg.set_cost(0);
-    trans_neg.set_derived(OrClause({
-      Atom(true,Atom::EQ_TRANS_NEG,{a,b}),
-      Atom(false,Atom::EQ,{b,c}),
-      Atom(false,Atom::EQ,{a,c}),
+    trans_neg.set_derived(AndClause({
+      Atom(false,Atom::EQ_TRANS_NEG,{a,b}),
+      Atom(true,Atom::EQ,{b,c}),
+      Atom(true,Atom::EQ,{a,c}),
     }));
-    trans_neg.set_source(0,OrClause({
-      Atom(true,Atom::EQ,{a,b}),
-      Atom(false,Atom::EQ,{b,c}),
-      Atom(false,Atom::EQ,{a,c}),
+    trans_neg.set_source(0,AndClause({
+      Atom(false,Atom::EQ,{a,b}),
+      Atom(true,Atom::EQ,{b,c}),
+      Atom(true,Atom::EQ,{a,c}),
     }));
-    f.or_clauses.push_back(trans_neg.build());
+    f.and_clauses.push_back(trans_neg.build());
   }
   return f;
 }
 
 
-OrForm append_eq_axioms_with_restricted_transitivity(OrForm _f) {
-  NotAndForm f(_f);
+OrForm append_eq_axioms_with_restricted_transitivity(OrForm f) {
   ArityCtx ctx; ctx.traverse(f);
-  for(auto pa : ctx.pred_arity) if(pa.first!=Atom::EQ && pa.second) f.or_clauses.push_back(cong_pred_axiom(pa.first,pa.second));
-  for(auto fa : ctx.fun_arity) if(fa.second) f.or_clauses.push_back(cong_fun_axiom(fa.first,fa.second));
-  for(auto &dc : f.or_clauses) {
+  for(auto pa : ctx.pred_arity) if(pa.first!=Atom::EQ && pa.second) f.and_clauses.push_back(neg_cong_pred_axiom(pa.first,pa.second));
+  for(auto fa : ctx.fun_arity) if(fa.second) f.and_clauses.push_back(neg_cong_fun_axiom(fa.first,fa.second));
+  for(auto &dc : f.and_clauses) {
     auto c = dc.derived();
-    OrClause::Builder b(c.atom_count());
+    AndClause::Builder b(c.atom_count());
     for(size_t i=c.atom_count(); i--;) {
       Atom a = c.atom(i);
       if(a.pred()==Atom::EQ) {
@@ -352,14 +351,14 @@ OrForm append_eq_axioms_with_restricted_transitivity(OrForm _f) {
         b.set_atom(i,ab.build());
       } else b.set_atom(i,a);
     }
-    DerOrClause::Builder db(dc.source_count(),dc.constraint_count());
+    DerAndClause::Builder db(dc.source_count(),dc.constraint_count());
     db.set_cost(dc.cost());
     db.set_derived(b.build());
     for(size_t i=dc.source_count(); i--;) db.set_source(i,dc.source(i));
     for(size_t i=dc.constraint_count(); i--;) db.set_constraint(i,dc.constraint(i));
     dc = db.build();
   }
-  f.or_clauses.push_back(refl_axiom());
+  f.and_clauses.push_back(neg_refl_axiom());
   f = append_restricted_transitivity_axioms(f);
   //info("f + axioms = \n%",show(OrForm(f)));
   return OrForm(f);
@@ -369,14 +368,14 @@ OrForm append_eq_axioms_with_restricted_transitivity(OrForm _f) {
 /////////////////////////////////////////////////////////////////////////////
 
 struct Index {
-  struct OrClauseWithAtom { size_t i; DerOrClause cla; };
+  struct AndClauseWithAtom { size_t i; DerAndClause cla; };
   static size_t atom_hash(Atom a) { return (a.pred()-Atom::PRED_MIN)<<1|a.sign(); }
 private:
-  vec<OrClauseWithAtom> empty;
-  vec<vec<vec<OrClauseWithAtom>>> map; // atom -> cost -> OrClauseWithAtom
+  vec<AndClauseWithAtom> empty;
+  vec<vec<vec<AndClauseWithAtom>>> map; // atom -> cost -> AndClauseWithAtom
 public:
-  Index(const NotAndForm &f) { FRAME("Index");
-    for(auto cla : f.or_clauses) {
+  Index(const OrForm &f) { FRAME("Index");
+    for(auto cla : f.and_clauses) {
       //DEBUG info("cla.derived.atom_count() = %",cla.derived().atom_count());
       for(size_t i=0; i<cla.derived().atom_count(); ++i) {
         //DEBUG info("Index i=%",i);
@@ -391,7 +390,7 @@ public:
   }
 
   // find all atoms with same pred and opposite sign
-  const vec<OrClauseWithAtom>& operator()(Atom a, size_t max_cost) const {
+  const vec<AndClauseWithAtom>& operator()(Atom a, size_t max_cost) const {
     auto h = atom_hash(a)^1;
     return h>=map.size() ? empty : max_cost<map[h].size() ? map[h][max_cost] : map[h].back();
   }

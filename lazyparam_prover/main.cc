@@ -25,7 +25,7 @@ int main(int argc, char **argv) {
 
   str file_raw((std::istreambuf_iterator<char>(std::cin)), (std::istreambuf_iterator<char>()));
   ParseCtx parse_ctx;
-  OrForm f(parse_ctx.parse_notAndForm(file_raw));
+  OrForm f(parse_ctx.parse_orForm(file_raw));
 
   auto emergency_block = new char[1000*1000];
   try {

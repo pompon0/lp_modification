@@ -29,7 +29,7 @@ public:
   
   inline bool equal(Term x, Term y){ return val.equal(x,y); }
   inline bool equal_mod_sign(Atom x, Atom y) { return val.equal_mod_sign(x,y); } 
-  inline OrClause eval(OrClause cla) const { return val.eval(cla); }
+  inline AndClause eval(AndClause cla) const { return val.eval(cla); }
   
   // unifies atoms ignoring the sign, validates constraints afterwards 
   // returning false invalidates the object 

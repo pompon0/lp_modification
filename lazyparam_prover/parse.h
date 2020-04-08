@@ -115,13 +115,13 @@ struct ParseCtx {
     default:
       error("unexpected f.formula_case() = %",f.formula_case());
     }
-    OrClause::Builder b(atoms.size());
-    for(size_t i=0; i<atoms.size(); ++i) b.set_atom(i,atoms[i]);
-    return b.build();
+    AndClause::Builder b(atoms.size());
+    for(size_t i=0; i<atoms.size(); ++i) b.set_atom(i,atoms[i].neg());
+    return b.build().neg();
   }
 
-  NotAndForm parse_notAndForm(const tptp::File &file) {
-    NotAndForm form;
+  OrForm parse_orForm(const tptp::File &file) {
+    OrForm form;
     for(const tptp::Input &input : file.input()) {
       if(input.language()!=tptp::Input::CNF)
         error("input.language() = %, want CNF",input.language());
@@ -130,7 +130,7 @@ struct ParseCtx {
       case tptp::Input::PLAIN:
       case tptp::Input::NEGATED_CONJECTURE: {
         OrClause cla = parse_orClause(input.formula());
-        form.or_clauses.push_back(DerOrClause(cla.atom_count()>1,cla));
+        form.and_clauses.push_back(DerAndClause(cla.atom_count()>1,cla.neg()));
         break;
       }
       default:
@@ -140,14 +140,14 @@ struct ParseCtx {
     return form;
   }
 
-  NotAndForm parse_notAndForm(const str &file_raw) { FRAME("parse_notAndForm()");
+  OrForm parse_orForm(const str &file_raw) { FRAME("parse_notAndForm()");
     tptp::File file;
     auto stream = new google::protobuf::io::CodedInputStream((const uint8_t*)(&file_raw[0]),file_raw.size());
     stream->SetRecursionLimit(100000000);
     if(!file.ParseFromCodedStream(stream)) {
       error("failed to parse input");
     }
-    return parse_notAndForm(file);
+    return parse_orForm(file);
   }
 };
 
@@ -214,14 +214,14 @@ struct ProtoCtx {
     derived->set_name("derived");
     derived->set_role(tptp::Input::PLAIN);
     derived->set_language(tptp::Input::CNF);
-    *(derived->mutable_formula()) = proto_orClause(ground(val.eval(cla.derived().neg())));
+    *(derived->mutable_formula()) = proto_orClause(ground(val.eval(cla.derived())).neg());
     for(size_t i=0; i<cla.source_count(); ++i) {
       auto ps = d.add_sources();
       auto pg = ps->mutable_ground();
       pg->set_name("ground");
       pg->set_role(tptp::Input::PLAIN);
       pg->set_language(tptp::Input::CNF);
-      *(pg->mutable_formula()) = proto_orClause(ground(val.eval(cla.source(i).neg())));
+      *(pg->mutable_formula()) = proto_orClause(ground(val.eval(cla.source(i))).neg());
       auto pss = ps->mutable_source();
       pss->set_name("source");
       pss->set_role(tptp::Input::PLAIN);
@@ -242,15 +242,15 @@ struct ProtoCtx {
     return proof;
   }
 
-  tptp::File proto_notAndForm(const NotAndForm &f) const { FRAME("proto_notAndForm()");
+  tptp::File proto_orForm(const OrForm &f) const { FRAME("proto_notAndForm()");
     tptp::File file;
     size_t i = 0;
-    for(const auto &cla : f.or_clauses) {
+    for(const auto &cla : f.and_clauses) {
       auto input = file.add_input();
       input->set_name(util::fmt("a%",i++));
       input->set_role(tptp::Input::PLAIN);
       input->set_language(tptp::Input::CNF);
-      *(input->mutable_formula()) = proto_orClause(cla.derived());
+      *(input->mutable_formula()) = proto_orClause(cla.derived().neg());
     }
     return file;
   }

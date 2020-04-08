@@ -154,13 +154,11 @@ public:
     return b.build();
   }
 
-  inline OrClause eval(OrClause cla) const { FRAME("eval(%)",show(cla));
-    OrClause::Builder b(cla.atom_count());
+  inline AndClause eval(AndClause cla) const { FRAME("eval(%)",show(cla));
+    AndClause::Builder b(cla.atom_count());
     for(size_t i=cla.atom_count(); i--;) b.set_atom(i,eval(cla.atom(i)));
     return b.build();
   }
-
-  inline AndClause eval(AndClause cla) const { return eval(cla.neg()).neg(); }
 
   inline OrderAtom::TermPair eval(OrderAtom::TermPair p) const {
     return {eval(p.a),eval(p.b)};
@@ -172,17 +170,14 @@ public:
     return b.build();
   }
 
-  inline DerOrClause eval(DerOrClause cla) const {
-    DerOrClause::Builder b(cla.source_count(),cla.constraint_count());
+  inline DerAndClause eval(DerAndClause cla) const {
+    DerAndClause::Builder b(cla.source_count(),cla.constraint_count());
     b.set_cost(cla.cost());
     b.set_derived(eval(cla.derived()));
     for(size_t i=cla.source_count(); i--;) b.set_source(i,eval(cla.source(i)));
     for(size_t i=cla.constraint_count(); i--;) b.set_constraint(i,eval(cla.constraint(i)));
     return b.build();
   }
-
-  inline DerAndClause eval(DerAndClause cla) const { return eval(cla.neg()).neg(); }
-
 
   str DebugString() const {
     vec<str> l;

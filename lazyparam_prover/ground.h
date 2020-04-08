@@ -32,8 +32,8 @@ inline Atom ground(Atom a) { FRAME("ground(%)",show(a));
 }
 
 // clears offset
-inline OrClause ground(OrClause cla) { FRAME("ground(%)",show(cla));
-  OrClause::Builder b(cla.atom_count());
+inline AndClause ground(AndClause cla) { FRAME("ground(%)",show(cla));
+  AndClause::Builder b(cla.atom_count());
   for(size_t i=cla.atom_count(); i--;) b.set_atom(i,ground(cla.atom(i)));
   return b.build();
 }

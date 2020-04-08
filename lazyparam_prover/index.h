@@ -14,24 +14,24 @@ namespace tableau {
 
 struct ClauseIndex {
 private:
-  vec<DerOrClause> or_clauses;
+  vec<DerAndClause> and_clauses;
   vec<bool> is_starting_clause;
   struct AtomClauseId { size_t atom_id, clause_id; };
   vec<vec<AtomClauseId>> map;
 public:
   //TODO: eliminate clauses with unmatchable atoms
-  struct OrClauseWithAtom { size_t i; DerOrClause cla; };
+  struct AndClauseWithAtom { size_t i; DerAndClause cla; };
 
   struct Filter {
-    Maybe<OrClauseWithAtom> next() { FRAME("ClauseIndex::Filter::next()");
+    Maybe<AndClauseWithAtom> next() { FRAME("ClauseIndex::Filter::next()");
       for(;next_id<atoms->size(); next_id++) {
         auto &a = (*atoms)[next_id];
-        if(index->or_clauses[a.clause_id].cost()>cost_limit) return Maybe<OrClauseWithAtom>();
+        if(index->and_clauses[a.clause_id].cost()>cost_limit) return Maybe<AndClauseWithAtom>();
         if(starting_clause_id>a.clause_id && index->is_starting_clause[a.clause_id]) continue;
         next_id++;
-        return Maybe<OrClauseWithAtom>({a.atom_id,index->or_clauses[a.clause_id]});
+        return Maybe<AndClauseWithAtom>({a.atom_id,index->and_clauses[a.clause_id]});
       }
-      return Maybe<OrClauseWithAtom>(); 
+      return Maybe<AndClauseWithAtom>(); 
     }
     Filter(
         size_t _cost_limit,
@@ -54,12 +54,12 @@ public:
   struct State {
     explicit State(const ClauseIndex *_index) : index(_index), next_starting_clause_id(0) {}
 
-    Maybe<DerOrClause> next_starting_clause() {
-      for(auto &i = next_starting_clause_id; i<index->or_clauses.size(); i++) {
+    Maybe<DerAndClause> next_starting_clause() {
+      for(auto &i = next_starting_clause_id; i<index->and_clauses.size(); i++) {
         if(index->is_starting_clause[i])
-          return Maybe<DerOrClause>(index->or_clauses[i++]);
+          return Maybe<DerAndClause>(index->and_clauses[i++]);
       }
-      return Maybe<DerOrClause>();
+      return Maybe<DerAndClause>();
     }
     Filter get_matches(Atom atom, size_t cost_limit) {
       DEBUG if(next_starting_clause_id==0) error("next_starting_clause == 0");
@@ -77,27 +77,27 @@ public:
     size_t next_starting_clause_id; 
   };
 
-  ClauseIndex(const NotAndForm &f) : or_clauses(f.or_clauses) { FRAME("ClauseIndex");
-    std::stable_sort(or_clauses.begin(),or_clauses.end(),
-      [](const DerOrClause &a, const DerOrClause &b){ return a.cost()<b.cost(); });
-    is_starting_clause.resize(or_clauses.size());
+  ClauseIndex(const OrForm &f) : and_clauses(f.and_clauses) { FRAME("ClauseIndex");
+    std::stable_sort(and_clauses.begin(),and_clauses.end(),
+      [](const DerAndClause &a, const DerAndClause &b){ return a.cost()<b.cost(); });
+    is_starting_clause.resize(and_clauses.size());
     size_t id_offset = 0;
     // assign offsets to atoms
-    // and mark the starting clauses (all negative ones)
-    for(size_t i=or_clauses.size(); i--;) {
-      auto &c = or_clauses[i];
+    // and mark the starting clauses (all positive ones)
+    for(size_t i=and_clauses.size(); i--;) {
+      auto &c = and_clauses[i];
       c = c.set_id_offset(id_offset);
       auto d = c.derived();
       id_offset += d.atom_count();
       bool starting = true;
       for(size_t j=d.atom_count(); j--;)
-        starting &= !d.atom(j).sign();
+        starting &= d.atom(j).sign();
       is_starting_clause[i] = starting;
     }
     map.assign(id_offset,{});
     vec<vec<AtomClauseId>> preindex;
-    for(size_t i=0; i<or_clauses.size(); ++i) {
-      auto c = or_clauses[i].derived();
+    for(size_t i=0; i<and_clauses.size(); ++i) {
+      auto c = and_clauses[i].derived();
       for(size_t j=0; j<c.atom_count(); ++j){
         auto h = Index::atom_hash(c.atom(j));
         if(h>=preindex.size()) preindex.resize(h+1);
@@ -108,7 +108,7 @@ public:
     
     Valuation val;
     auto s1 = val.snapshot();
-    for(auto _c1 : or_clauses) {
+    for(auto _c1 : and_clauses) {
       // allocate c1
       val.rewind(s1);
       auto c1 = _c1.shift(val.size()).derived();
@@ -120,7 +120,7 @@ public:
         for(auto x : preindex[h^1]) {
           // allocate c2
           val.rewind(s2);
-          auto c2 = or_clauses[x.clause_id].shift(val.size()).derived();
+          auto c2 = and_clauses[x.clause_id].shift(val.size()).derived();
           val.resize(c2.var_range().end);
           // unify
           if(c1.atom(i1).sign()==c2.atom(x.atom_id).sign()) continue;
@@ -134,8 +134,8 @@ public:
       for(const auto &v : map) {
         size_t cost = 0;
         for(auto a : v) {
-          if(or_clauses[a.clause_id].cost()<cost) error("cost not monotone");
-          cost = or_clauses[a.clause_id].cost();
+          if(and_clauses[a.clause_id].cost()<cost) error("cost not monotone");
+          cost = and_clauses[a.clause_id].cost();
         }
       }
     }

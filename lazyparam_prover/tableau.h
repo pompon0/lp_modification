@@ -21,13 +21,13 @@
 namespace tableau {
 
 struct Branch {
-  List<Atom> true_;
   List<Atom> false_;
+  List<Atom> true_;
 };
 
 inline str show(Branch b) {
   vec<str> atoms;
-  for(auto bt = b.true_; !bt.empty(); bt = bt.tail()) atoms.push_back(show(bt.head()));
+  for(auto bt = b.false_; !bt.empty(); bt = bt.tail()) atoms.push_back(show(bt.head()));
   return util::fmt("[%]",util::join(", ",atoms));
 }
 
@@ -40,14 +40,14 @@ struct SearchState {
 
   KBO val;
   size_t nodes_used = 0;
-  List<DerOrClause> clauses_used;
+  List<DerAndClause> clauses_used;
 
   // cannot return the proto, because parsing context is not available.
   // This means that Valuation has to be included in the ProverOutput.
   ptr<OrForm> get_proof() {
     auto proof = util::make<OrForm>();
     for(auto l=clauses_used; !l.empty(); l = l.tail()) {
-      proof->and_clauses.push_back(l.head().neg());
+      proof->and_clauses.push_back(l.head());
     }
     return proof;
   }
@@ -56,7 +56,7 @@ struct SearchState {
     KBO::Snapshot val;
     tableau::Snapshot stack;
     size_t nodes_used;
-    List<DerOrClause> clauses_used;
+    List<DerAndClause> clauses_used;
     ClauseIndex::State cla_index;
   };
 
@@ -138,7 +138,7 @@ struct Cont {
   struct _StrongFrame {
     size_t nodes_limit;
     Branch branch;
-    DerOrClause dcla;
+    DerAndClause dcla;
     ssize_t strong_id;
   };
   using StrongFrame = Variant<Frame,Frame::STRONG,_StrongFrame>;
@@ -152,7 +152,7 @@ struct Cont {
     for(size_t i=dcla.constraint_count(); i--;){
       state.val.push_constraint(dcla.constraint(i));
     }
-    if(f->strong_id>=0) if(!state.val.mgu(f->branch.true_.head(),cla.atom(f->strong_id))) return;
+    if(f->strong_id>=0) if(!state.val.mgu(f->branch.false_.head(),cla.atom(f->strong_id))) return;
     state.clauses_used += dcla;
     
     WeakConnectionsFrame::Builder b;
@@ -187,7 +187,7 @@ struct Cont {
       cb->next = f->next;
       auto tail = Frame(cb.build())+frames.tail();
       // try to match with lemma
-      for(auto b = f->next.false_; !b.empty(); b = b.tail()) {
+      for(auto b = f->next.true_; !b.empty(); b = b.tail()) {
         if(atom_hash!=Index::atom_hash(b.head())) continue;
         if(!state.val.equal_mod_sign(a,b.head())) continue;
         WeakConnectionsFrame::Builder cb;
@@ -197,7 +197,7 @@ struct Cont {
         return;
       }
       // try to unify with path
-      for(auto b = f->next.true_; !b.empty(); b = b.tail()) {
+      for(auto b = f->next.false_; !b.empty(); b = b.tail()) {
         if((atom_hash^1)!=Index::atom_hash(b.head())) continue;
         WeakUnifyFrame::Builder ub;
         ub->a1 = a;
@@ -208,14 +208,14 @@ struct Cont {
       // assume that <a> doesn't occur in the path or lemmas
       {
         // add constraints (wrt path)
-        for(auto b = f->next.true_; !b.empty(); b = b.tail())
+        for(auto b = f->next.false_; !b.empty(); b = b.tail())
           if(!state.val.push_constraint(OrderAtom::neq(a,b.head()))) return;
         WeakConnectionsFrame::Builder cb;
         cb->nodes_limit = f->nodes_limit;
         cb->atoms = f->atoms.tail();
-        cb->branches = Branch{a + f->next.true_, f->next.false_} + f->branches;
+        cb->branches = Branch{a + f->next.false_, f->next.true_} + f->branches;
         cb->branch_count = f->branch_count + 1;
-        cb->next = Branch { f->next.true_, a + f->next.false_};
+        cb->next = Branch { f->next.false_, a + f->next.true_};
         alts(Cont{Frame(cb.build())+frames.tail()});
       }
     } else if(f->branch_count) {
@@ -274,7 +274,7 @@ struct Cont {
   struct _WeakFrame { size_t min_cost; size_t nodes_limit; Branch branch; };
   using WeakFrame = Variant<Frame,Frame::WEAK,_WeakFrame>;
 
-  template<typename Alts> void weak(State &state, WeakFrame f, Alts alts) const { FRAME("weak(%)",show(f->branch.true_.head())); 
+  template<typename Alts> void weak(State &state, WeakFrame f, Alts alts) const { FRAME("weak(%)",show(f->branch.false_.head())); 
     size_t budget = f->nodes_limit - state.nodes_used;
     COUNTER("expand");
     if(budget<f->min_cost) return;
@@ -285,7 +285,7 @@ struct Cont {
       tail += Frame(b.build());
     }
     
-    auto matches = state.cla_index.get_matches(f->branch.true_.head(),budget);
+    auto matches = state.cla_index.get_matches(f->branch.false_.head(),budget);
     while(auto mca = matches.next()) {
       auto ca = mca.get();
       DEBUG if(ca.cla.cost()>budget) error("ca.cla.cost()>budget");
@@ -333,7 +333,7 @@ ProverOutput prove_loop(const Ctx &ctx, OrForm form) { FRAME("prove_loop()");
   size_t cont_count = 0;
   size_t limit = 0;
   //info("ClauseIndex begin");
-  ClauseIndex idx((NotAndForm)form);
+  ClauseIndex idx(form);
   //info("ClauseIndex end");
   for(;!ctx.done();) {
     limit++; // avoid incrementing limit before context check

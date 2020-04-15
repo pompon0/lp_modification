@@ -178,13 +178,13 @@ struct SplitBuilder {
           {
             DerAndClause::Builder c1(0,1);
             c1.set_cost(1);
-            c1.set_derived(AndClause({a,red(true,l,r)}));
+            c1.set_derived(AndClause({a.neg(),red(false,l,r)}));
             c1.set_constraint(0,OrderAtom(OrderAtom::NE,l,r));
             extra.push_back(reduce_vars(c1.build()));
           } {
             DerAndClause::Builder c2(1,1);
             c2.set_cost(1);
-            c2.set_derived(AndClause({a,red(true,r,l)}));
+            c2.set_derived(AndClause({a.neg(),red(false,r,l)}));
             c2.set_constraint(0,OrderAtom(OrderAtom::NE,r,l));
             c2.set_source(0,neg_symm_axiom(l,r));
             extra.push_back(reduce_vars(c2.build()));
@@ -204,7 +204,7 @@ struct SplitBuilder {
           {
             DerAndClause::Builder c1(0,1);
             c1.set_cost(1);
-            c1.set_derived(AndClause({b.build(),red(true,l,r)}));
+            c1.set_derived(AndClause({b.build().neg(),red(false,l,r)}));
             c1.set_constraint(0,OrderAtom(OrderAtom::NE,l,r));
             extra.push_back(reduce_vars(c1.build()));
           }
@@ -212,7 +212,7 @@ struct SplitBuilder {
             DerAndClause::Builder c2(2,2);
             c2.set_cost(1);
             Term w(Var(var_count++));
-            c2.set_derived(AndClause({b.build(),red(true,r,w),red(false,l,w)}));
+            c2.set_derived(AndClause({b.build().neg(),red(false,r,w),red(true,l,w)}));
             c2.set_constraint(0,OrderAtom(OrderAtom::NE,r,w));
             c2.set_constraint(1,OrderAtom(OrderAtom::LE,w,l));
             c2.set_source(0,neg_trans_axiom(r,l,w));
@@ -235,7 +235,7 @@ struct SplitBuilder {
             DerAndClause::Builder c1(1,2);
             c1.set_cost(1);
             Term w(Var(var_count++));
-            c1.set_derived(AndClause({b.build(),red(true,l,w),red(false,r,w)}));
+            c1.set_derived(AndClause({b.build().neg(),red(false,l,w),red(true,r,w)}));
             c1.set_constraint(0,OrderAtom(OrderAtom::NE,l,w));
             c1.set_constraint(1,OrderAtom(OrderAtom::LE,w,r));
             c1.set_source(0,neg_trans_axiom(l,r,w));
@@ -244,7 +244,7 @@ struct SplitBuilder {
             DerAndClause::Builder c2(2,2);
             c2.set_cost(1);
             Term w(Var(var_count++));
-            c2.set_derived(AndClause({b.build(),red(false,l,w),red(true,r,w)}));
+            c2.set_derived(AndClause({b.build().neg(),red(true,l,w),red(false,r,w)}));
             c2.set_constraint(0,OrderAtom(OrderAtom::NE,r,w));
             c2.set_constraint(1,OrderAtom(OrderAtom::LE,w,l));
             c2.set_source(0,neg_trans_axiom(r,l,w));

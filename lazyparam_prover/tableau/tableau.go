@@ -15,16 +15,25 @@ import (
   "github.com/golang/protobuf/proto"
   tpb "github.com/pompon0/tptp_benchmark_go/tptp_parser/proto/tptp_go_proto"
   spb "github.com/pompon0/tptp_benchmark_go/tptp_parser/proto/solutions_go_proto"
+  ppb "github.com/pompon0/tptp_benchmark_go/lazyparam_prover/prover_go_proto"
 )
 
 const tableau_bin_path = "__main__/lazyparam_prover/main"
 
-func Prove(ctx context.Context, tptpFOFProblem []byte) (*spb.ProverOutput,error) {
+func ProveAxiomaticEq(ctx context.Context, tptpFOFProblem []byte) (*spb.ProverOutput,error) {
+  return Prove(ctx,tptpFOFProblem,ppb.Transformation_AXIOMATIC_EQ)
+}
+
+func ProveLPModification(ctx context.Context, tptpFOFProblem []byte) (*spb.ProverOutput,error) {
+  return Prove(ctx,tptpFOFProblem,ppb.Transformation_LP_MODIFICATION)
+}
+
+func Prove(ctx context.Context, tptpFOFProblem []byte, trans ppb.Transformation) (*spb.ProverOutput,error) {
   tptpCNF,err := eprover.FOFToCNF(ctx,tptpFOFProblem)
   if err!=nil { return nil,fmt.Errorf("eprover.FOFToCNF(): %v",err) }
   cnf,err := tool.TptpToProto(ctx,tool.CNF,tptpCNF)
   if err!=nil { return nil,fmt.Errorf("tool.TptpToProto(): %v",err) }
-  out,err := Tableau(ctx,cnf,true)
+  out,err := Tableau(ctx,cnf,true,trans,false)
   if err!=nil {
     if err==context.DeadlineExceeded {
       return &spb.ProverOutput{Solved:false},nil
@@ -35,7 +44,7 @@ func Prove(ctx context.Context, tptpFOFProblem []byte) (*spb.ProverOutput,error)
   return out,nil
 }
 
-func Tableau(ctx context.Context, cnfProblem *tpb.File, streamStdErr bool) (*spb.ProverOutput,error) {
+func Tableau(ctx context.Context, cnfProblem *tpb.File, streamStdErr bool, trans ppb.Transformation, transOnly bool) (*spb.ProverOutput,error) {
   var inBuf,outBuf,errBuf bytes.Buffer
   cnfProblemBytes, err := proto.Marshal(cnfProblem)
   if err!=nil { return nil,fmt.Errorf("proto.Marshal(): %v",err) }
@@ -48,7 +57,11 @@ func Tableau(ctx context.Context, cnfProblem *tpb.File, streamStdErr bool) (*spb
   }
   gracefulExitTimeout := 200*time.Millisecond
   timeout -= gracefulExitTimeout
-  cmd := exec.CommandContext(ctx,utils.Runfile(tableau_bin_path),fmt.Sprintf("--timeout=%v",timeout))
+  cmd := exec.CommandContext(ctx,utils.Runfile(tableau_bin_path),
+    fmt.Sprintf("--timeout=%v",timeout),
+    fmt.Sprintf("--trans=%v",trans),
+    fmt.Sprintf("--trans_only=%v",transOnly),
+  )
   cmd.Stdin = &inBuf
   cmd.Stdout = &outBuf
   if streamStdErr {

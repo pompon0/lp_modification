@@ -8,9 +8,11 @@ enum Prover{
   UNKNOWN = 0;
   VAMPIRE = 1;
   EPROVER = 2;
-  LEANCOP = 3;
+  LEANCOP_BMTP = 3;
   LEANCOP_PROLOG = 4;
-  LAZY_PARAMODULATION = 5;
+  reserved 5;
+  GPRUSAK_AXIOMATIC_EQ = 6;
+  GPRUSAK_LP_MODIFICATION = 7;
 }
 
 message Req {

@@ -242,7 +242,7 @@ struct ProtoCtx {
     return proof;
   }
 
-  tptp::File proto_orForm(const OrForm &f) const { FRAME("proto_notAndForm()");
+  tptp::File proto_orForm(const OrForm &f) const { FRAME("proto_orForm()");
     tptp::File file;
     size_t i = 0;
     for(const auto &cla : f.and_clauses) {

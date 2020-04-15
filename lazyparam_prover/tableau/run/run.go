@@ -43,7 +43,7 @@ func run(ctx context.Context) error {
   //fmt.Printf("%s",string(tptp))
   ctxProve,cancel := context.WithTimeout(ctx,*timeout)
   defer cancel()
-  out,err := tableau.Prove(ctxProve,tptp)
+  out,err := tableau.ProveLPModification(ctxProve,tptp)
   if err!=nil { return fmt.Errorf("Tableau(%q): %v",*caseName,err) }
   if !out.Solved {
     log.Printf("not solved")

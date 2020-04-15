@@ -321,15 +321,7 @@ ProverOutput prove(const Ctx &ctx, const ClauseIndex &cla_index, size_t limit) {
 }
 
 ProverOutput prove_loop(const Ctx &ctx, OrForm form) { FRAME("prove_loop()");
-  SCOPE("prove_loop");
-  // TODO: restrict it further to the case when equality atoms are reachable from all possible starting clause sets
-  // TODO: look for starting sets with unreachable clauses - iteratively eliminate them
-  if(has_equality(form)) { 
-    //form = reduce_monotonicity_and_append_eq_axioms(form);
-    //form = append_eq_axioms_with_restricted_transitivity(form);
-    //form = lazy::conv(form);
-    form = append_eq_axioms(form);
-  }
+  SCOPE("prove_loop"); 
   size_t cont_count = 0;
   size_t limit = 0;
   //info("ClauseIndex begin");

@@ -64,8 +64,10 @@ func (s *server) Prove(ctx context.Context, req *pb.Req) (*pb.Resp,error) {
       c.Output,err = leancop.Prove(proverCtx,req.TptpProblem)
     case pb.Prover_LEANCOP_PROLOG:
       c.Output,err = leancop.PrologProve(proverCtx,req.TptpProblem)
-    case pb.Prover_LAZY_PARAMODULATION:
-      c.Output,err = tableau.Prove(proverCtx,req.TptpProblem)
+    case pb.Prover_GPRUSAK_AXIOMATIC_EQ:
+      c.Output,err = tableau.ProveAxiomaticEq(proverCtx,req.TptpProblem)
+    case pb.Prover_GPRUSAK_LP_MODIFICATION:
+      c.Output,err = tableau.ProveLPModification(proverCtx,req.TptpProblem)
     default:
       return nil,status.New(codes.InvalidArgument,"unknown prover").Err()
   }

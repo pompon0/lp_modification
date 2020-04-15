@@ -346,7 +346,7 @@ OrForm append_eq_axioms_with_restricted_transitivity(OrForm f) {
     for(size_t i=c.atom_count(); i--;) {
       Atom a = c.atom(i);
       if(a.pred()==Atom::EQ) {
-        Atom::Builder ab(a.sign(),a.sign()?Atom::EQ_TRANS_POS:Atom::EQ_TRANS_NEG,a.arg_count());
+        Atom::Builder ab(a.sign(),!a.sign()?Atom::EQ_TRANS_POS:Atom::EQ_TRANS_NEG,a.arg_count());
         for(size_t j=a.arg_count(); j--;) ab.set_arg(j,a.arg(j));
         b.set_atom(i,ab.build());
       } else b.set_atom(i,a);

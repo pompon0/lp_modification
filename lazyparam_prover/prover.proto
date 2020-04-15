@@ -1,0 +1,10 @@
+syntax = "proto3";
+package prover;
+
+enum Transformation {
+  UNKNOWN = 0;
+  AXIOMATIC_EQ = 1;
+  AXIOMATIC_EQ_FLAT = 2;
+  AXIOMATIC_EQ_RESTRICTED_TRANS = 3;
+  LP_MODIFICATION = 4;
+}

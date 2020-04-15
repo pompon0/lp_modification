@@ -1,5 +1,33 @@
+load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
+
 package(
-  default_visibility = ["//visibility:public"],
+    default_visibility = ["//visibility:public"],
+)
+
+proto_library(
+    name = "prover_proto",
+    srcs = ["prover.proto"],
+)
+
+cc_proto_library(
+    name = "prover_cc_proto",
+    deps = [":prover_proto"],
+)
+
+go_proto_library(
+    name = "prover_go_proto",
+    importpath = "github.com/pompon0/tptp_benchmark_go/lazyparam_prover/prover_go_proto",
+    proto = ":prover_proto",
+)
+
+cc_library(
+    name = "enum_flag",
+    hdrs = ["enum_flag.h"],
+    deps = [
+        "@abseil//absl/strings:strings",
+        "@com_google_protobuf//:protobuf",
+        "//lazyparam_prover/util:util",
+    ],
 )
 
 cc_library(
@@ -156,7 +184,9 @@ cc_binary(
     name = "main",
     srcs = ["main.cc"],
     deps = [
+        ":enum_flag",
         ":prover",
+        ":prover_cc_proto",
         "@abseil//absl/flags:flag",
         "@abseil//absl/flags:parse",
     ],

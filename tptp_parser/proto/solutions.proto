@@ -44,6 +44,7 @@ message ProverOutput {
   bool killed = 8;
   Proof proof = 9;
   tptp.File cnf_problem = 6;
+  tptp.File transformed_problem = 10;
   reserved 4;
 }
 

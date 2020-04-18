@@ -60,7 +60,7 @@ func (s *server) Prove(ctx context.Context, req *pb.Req) (*pb.Resp,error) {
       c.Output,err = vampire.Prove(proverCtx,req.TptpProblem)
     case pb.Prover_EPROVER:
       c.Output,err = eprover.Prove(proverCtx,req.TptpProblem)
-    case pb.Prover_LEANCOP:
+    case pb.Prover_LEANCOP_BMTP:
       c.Output,err = leancop.Prove(proverCtx,req.TptpProblem)
     case pb.Prover_LEANCOP_PROLOG:
       c.Output,err = leancop.PrologProve(proverCtx,req.TptpProblem)

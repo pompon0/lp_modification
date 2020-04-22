@@ -33,10 +33,8 @@ str show_pred_name(u64 pred) {
   case Atom::EQ_TRANS_POS: return "[eq]";
   case Atom::EQ_TRANS_NEG: return "{eq}";
   case Atom::EQ_SYMM: return "symm";
-  case Atom::TRANS_TARGET: return "trans_target";
-  case Atom::TRANS_RED: return "trans_red";
-  case Atom::MONO_RED: return "mono_red";
   }
+  DEBUG if(s64(pred)<0) error("unnamed pred %",s64(pred));
   return util::fmt("p%",pred);
 }
 

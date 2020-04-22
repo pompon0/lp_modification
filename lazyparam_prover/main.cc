@@ -58,11 +58,9 @@ AndClause remove_eq(AndClause cla, u64 pred) {
 }
 
 DerAndClause remove_eq(DerAndClause cla, u64 pred) {
-  DerAndClause::Builder b(cla.source_count(),cla.constraint_count());
-  b.set_cost(cla.cost());
-  b.set_derived(remove_eq(cla.derived(),pred));
-  for(size_t i=cla.source_count(); i--;) b.set_source(i,remove_eq(cla.source(i),pred));
-  for(size_t i=cla.constraint_count(); i--;) b.set_constraint(i,cla.constraint(i));
+  auto b = cla.to_builder();
+  b.derived = remove_eq(b.derived,pred);
+  for(auto &s : b.sources) s = remove_eq(s,pred);
   return b.build();
 }
 

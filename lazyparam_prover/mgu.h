@@ -171,11 +171,9 @@ public:
   }
 
   inline DerAndClause eval(DerAndClause cla) const {
-    DerAndClause::Builder b(cla.source_count(),cla.constraint_count());
-    b.set_cost(cla.cost());
-    b.set_derived(eval(cla.derived()));
-    for(size_t i=cla.source_count(); i--;) b.set_source(i,eval(cla.source(i)));
-    for(size_t i=cla.constraint_count(); i--;) b.set_constraint(i,eval(cla.constraint(i)));
+    auto b = cla.to_builder();
+    for(auto &s : b.sources) s = eval(s);
+    for(auto &c : b.constraints) c = eval(c);
     return b.build();
   }
 

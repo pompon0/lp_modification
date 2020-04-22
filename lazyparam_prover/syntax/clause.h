@@ -46,6 +46,11 @@ public:
   }; 
 };
 
+static inline AndClause emptyAndClause() {
+  static AndClause empty({});
+  return empty;
+}
+
 struct OrClause {
   struct Iso {
     using From = AndClause;

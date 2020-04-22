@@ -25,14 +25,14 @@ struct DerAndClause {
   OrderAtom constraint(size_t i) const { return CONSTRAINTS::ref(constraints_ptr,i); }
 
   DerAndClause(size_t cost, AndClause cla) {
-    Builder b(1,0);
-    b.set_cost(cost);
-    b.set_source(0,cla);
-    b.set_derived(cla);
+    Builder b;
+    b.cost = cost;
+    b.derived = cla;
+    b.sources.push_back(cla);
     *this = b.build();
   }
 
-  DerAndClause append_constraints(vec<OrderAtom> _constraints) const {
+  /*DerAndClause append_constraints(vec<OrderAtom> _constraints) const {
     Builder b(source_count(),constraint_count()+_constraints.size());
     b.set_cost(cost());
     b.set_derived(derived());
@@ -41,36 +41,42 @@ struct DerAndClause {
     for(size_t i=0; i<_constraints.size(); i++)
       b.set_constraint(constraint_count()+i,_constraints[i]);
     return b.build();
-  }
+  }*/
 
   struct Builder {
-    Builder(size_t sources_count, size_t constraints_count) :
-      ptr(SOURCES::alloc(sources_count)),
-      constraints_ptr(CONSTRAINTS::alloc(constraints_count)) { FRAME("DerAndClause::Builder(%,%)",sources_count,constraints_count);
-      VAR_RANGE::ref(ptr) = {0,0};
-    }
+    size_t offset = 0;
+    size_t id_offset = 0;
+    size_t cost = 0;
+    AndClause derived = emptyAndClause();
+    vec<AndClause> sources;
+    vec<OrderAtom> constraints;
 
-    Builder& set_cost(size_t cost){ COST::ref(ptr) = cost; return *this; }
-    Builder& set_derived(AndClause derived){ FRAME("set_derived");
+    DerAndClause build() {
+      auto ptr = SOURCES::alloc(sources.size());
+      auto constraints_ptr = CONSTRAINTS::alloc(constraints.size());
+      VarRange var_range{0,0};
+      var_range |= derived.var_range();
+      for(auto &s : sources) var_range |= s.var_range();
+      for(auto &c : constraints) var_range |= c.var_range();
+      VAR_RANGE::ref(ptr) = var_range;
+      COST::ref(ptr) = cost;
       DERIVED::ref(ptr) = derived;
-      VAR_RANGE::ref(ptr) |= derived.var_range();
-      return *this;
+      for(size_t i=0; i<sources.size(); i++) SOURCES::ref(ptr,i) = sources[i];
+      for(size_t i=0; i<constraints.size(); i++) CONSTRAINTS::ref(constraints_ptr,i) = constraints[i];
+      return DerAndClause(ptr,constraints_ptr,offset,id_offset);
     }
-    Builder& set_source(size_t i, AndClause source) { FRAME("set_source(%)",i);
-      SOURCES::ref(ptr,i) = source;
-      VAR_RANGE::ref(ptr) |= source.var_range();
-      return *this;
-    }
-    Builder& set_constraint(size_t i, OrderAtom constraint) { FRAME("set_contraint(%)",i);
-      CONSTRAINTS::ref(constraints_ptr,i) = constraint;
-      VAR_RANGE::ref(ptr) |= constraint.var_range();
-      return *this;
-    }
-    DerAndClause build(){ return DerAndClause(ptr,constraints_ptr,0,0); }
-  private:
-    u8 *ptr;
-    u8 *constraints_ptr;
   };
+
+  Builder to_builder() {
+    Builder b;
+    b.offset = offset;
+    b.id_offset = id_offset;
+    b.cost = cost();
+    b.derived = derived();
+    for(size_t i=source_count(); i--;) b.sources.push_back(source(i));
+    for(size_t i=constraint_count(); i--;) b.constraints.push_back(constraint(i));
+    return b;
+  }
 
 private:
   DerAndClause(u8 *_ptr, u8 *_constraints_ptr, size_t _offset, size_t _id_offset) 

@@ -119,15 +119,15 @@ bool has_equality(OrForm f) {
 // every (a!=a /\ ...) is subsumed by (a!=a)
 OrForm add_refl_constraints(OrForm f) {
   for(auto &c : f.and_clauses) {
-    vec<OrderAtom> rc;
+    auto b = c.to_builder();
     auto d = c.derived();
     for(size_t i=0; i<d.atom_count(); ++i) {
       auto a = d.atom(i);
       if(a.pred()==Atom::EQ && !a.sign()) {
-        rc.push_back(OrderAtom(OrderAtom::NE,a.arg(0),a.arg(1)));
+        b.constraints.push_back(OrderAtom(OrderAtom::NE,a.arg(0),a.arg(1)));
       }
     }
-    c = c.append_constraints(rc);
+    c = b.build();
   }
   return f;
 }
@@ -246,11 +246,10 @@ struct FlatClauseBuilder {
   }
 
   DerAndClause build() const {
-    DerAndClause::Builder b(source_clauses.size(),0);
-    b.set_cost(cost);
-    b.set_derived(AndClause(atoms));
-    for(size_t i=0; i<source_clauses.size(); ++i)
-      b.set_source(i,source_clauses[i]);
+    DerAndClause::Builder b;
+    b.cost = cost;
+    b.derived = AndClause(atoms);
+    b.sources = source_clauses;
     return b.build();
   }
 };
@@ -278,23 +277,23 @@ OrForm append_restricted_transitivity_axioms(OrForm f) {
 
   // -[a=b] symm(a,b)
   {
-    DerAndClause::Builder symm1(0,0);
-    symm1.set_cost(0);
-    symm1.set_derived(AndClause({
+    DerAndClause::Builder symm1;
+    symm1.cost = 0;
+    symm1.derived = AndClause({
       Atom(true,Atom::EQ_TRANS_POS,{a,b}),
       Atom(false,Atom::EQ_SYMM,{a,b}),
-    }));
+    });
     f.and_clauses.push_back(symm1.build());
   }
   // -[b=a] symm(a,b)
   {
-    DerAndClause::Builder symm2(1,0);
-    symm2.set_cost(0);
-    symm2.set_derived(AndClause({
+    DerAndClause::Builder symm2;
+    symm2.cost = 0;
+    symm2.derived = AndClause({
       Atom(true,Atom::EQ_TRANS_POS,{b,a}),
       Atom(false,Atom::EQ_SYMM,{a,b}),
-    }));
-    symm2.set_source(0,AndClause({
+    });
+    symm2.sources.push_back(AndClause({
       Atom(true,Atom::EQ,{b,a}),
       Atom(false,Atom::EQ,{a,b}),
     }));
@@ -302,14 +301,14 @@ OrForm append_restricted_transitivity_axioms(OrForm f) {
   }
   // -symm(a,b) b/=c a=c
   {
-    DerAndClause::Builder trans_pos(1,0);
-    trans_pos.set_cost(1);
-    trans_pos.set_derived(AndClause({
+    DerAndClause::Builder trans_pos;
+    trans_pos.cost = 1;
+    trans_pos.derived = AndClause({
       Atom(true,Atom::EQ_SYMM,{a,b}),
       Atom(true,Atom::EQ,{b,c}),
       Atom(false,Atom::EQ,{a,c}),
-    }));
-    trans_pos.set_source(0,AndClause({
+    });
+    trans_pos.sources.push_back(AndClause({
       Atom(true,Atom::EQ,{a,b}),
       Atom(true,Atom::EQ,{b,c}),
       Atom(false,Atom::EQ,{a,c}),
@@ -318,14 +317,14 @@ OrForm append_restricted_transitivity_axioms(OrForm f) {
   }
   // {a=b} a/=c b/=c
   {
-    DerAndClause::Builder trans_neg(1,0);
-    trans_neg.set_cost(0);
-    trans_neg.set_derived(AndClause({
+    DerAndClause::Builder trans_neg;
+    trans_neg.cost = 0;
+    trans_neg.derived = AndClause({
       Atom(false,Atom::EQ_TRANS_NEG,{a,b}),
       Atom(true,Atom::EQ,{b,c}),
       Atom(true,Atom::EQ,{a,c}),
-    }));
-    trans_neg.set_source(0,AndClause({
+    });
+    trans_neg.sources.push_back(AndClause({
       Atom(false,Atom::EQ,{a,b}),
       Atom(true,Atom::EQ,{b,c}),
       Atom(true,Atom::EQ,{a,c}),
@@ -351,11 +350,8 @@ OrForm append_eq_axioms_with_restricted_transitivity(OrForm f) {
         b.set_atom(i,ab.build());
       } else b.set_atom(i,a);
     }
-    DerAndClause::Builder db(dc.source_count(),dc.constraint_count());
-    db.set_cost(dc.cost());
-    db.set_derived(b.build());
-    for(size_t i=dc.source_count(); i--;) db.set_source(i,dc.source(i));
-    for(size_t i=dc.constraint_count(); i--;) db.set_constraint(i,dc.constraint(i));
+    auto db = dc.to_builder();
+    db.derived = b.build();
     dc = db.build();
   }
   f.and_clauses.push_back(neg_refl_axiom());

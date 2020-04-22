@@ -22,10 +22,7 @@ public:
     EQ_TRANS_POS = u64(-2),
     EQ_TRANS_NEG = u64(-3),
     EQ_SYMM = u64(-4),
-    MONO_RED = u64(-5),
-    TRANS_RED = u64(-6),
-    TRANS_TARGET = u64(-7),
-    PRED_MIN = TRANS_TARGET,
+    PRED_MIN = EQ_SYMM,
   };
 
   VarRange var_range() const { return VAR_RANGE::ref(ptr)+offset; }

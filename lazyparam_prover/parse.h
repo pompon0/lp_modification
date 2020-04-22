@@ -154,6 +154,9 @@ struct ParseCtx {
 struct ProtoCtx {
   ProtoCtx(const ParseCtx &pc) : pred_names(pc.pred_names.rev()), fun_names(pc.fun_names.rev()) {
     fun_names[Fun::EXTRA_CONST] = "c";
+    pred_names[Atom::EQ_TRANS_POS] = "eq_trans_pos_";
+    pred_names[Atom::EQ_TRANS_NEG] = "eq_trans_neg_";
+    pred_names[Atom::EQ_SYMM] = "symm_";
   }
   std::map<size_t,str> pred_names;
   std::map<size_t,str> fun_names;
@@ -186,7 +189,7 @@ struct ProtoCtx {
       f.mutable_pred()->set_type(tptp::Formula::Pred::EQ);
     } else {
       f.mutable_pred()->set_type(tptp::Formula::Pred::CUSTOM);
-      //DEBUG if(!pred_names.count(a.pred())) error("pred_names.count(%) = 0",a.pred());
+      DEBUG if(!pred_names.count(a.pred()) && s64(a.pred()<0)) error("pred_names.count(%) = 0",s64(a.pred()));
       f.mutable_pred()->set_name(pred_names.count(a.pred()) ? pred_names.at(a.pred()) : util::fmt("unknownPred%",a.pred()));
     }
     for(size_t i=0; i<a.arg_count(); ++i)

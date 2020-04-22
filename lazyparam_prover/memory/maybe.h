@@ -5,12 +5,15 @@
 
 namespace tableau {
 
+
+struct Nothing {};
 template<typename T> struct Maybe {
 private:
   u8 data[sizeof(T)];
   bool present;
 public:
   Maybe() : present(0) {}
+  Maybe(Nothing) : Maybe() {}
   explicit Maybe(const T &v) : present(1) { new(data)T(v); }
   explicit operator bool() const { return present; } 
   T get() const {
@@ -21,6 +24,9 @@ public:
     return present == m.present && (!present || get()==m.get());
   }
 };
+
+static inline Nothing nothing(){ return {}; }
+template<typename T> static inline Maybe<T> just(const T &v) { return Maybe<T>(v); }
 
 }  // namespace tableau
 

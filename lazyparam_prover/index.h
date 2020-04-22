@@ -57,9 +57,9 @@ public:
     Maybe<DerAndClause> next_starting_clause() {
       for(auto &i = next_starting_clause_id; i<index->and_clauses.size(); i++) {
         if(index->is_starting_clause[i])
-          return Maybe<DerAndClause>(index->and_clauses[i++]);
+          return just(index->and_clauses[i++]);
       }
-      return Maybe<DerAndClause>();
+      return nothing();
     }
     Filter get_matches(Atom atom, size_t cost_limit) {
       DEBUG if(next_starting_clause_id==0) error("next_starting_clause == 0");

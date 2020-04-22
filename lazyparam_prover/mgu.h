@@ -172,6 +172,7 @@ public:
 
   inline DerAndClause eval(DerAndClause cla) const {
     auto b = cla.to_builder();
+    b.derived = eval(b.derived);
     for(auto &s : b.sources) s = eval(s);
     for(auto &c : b.constraints) c = eval(c);
     return b.build();

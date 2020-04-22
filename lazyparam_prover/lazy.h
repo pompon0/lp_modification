@@ -45,11 +45,16 @@ struct VarMap {
   vec<size_t> V;
   size_t n;
   
-  VarMap(const AndClause &cla) : V(cla.var_range().end,0), n(0) {
-    for(size_t i=cla.atom_count(); i--;) count(cla.atom(i));
+  VarMap(const DerAndClause &cla) : V(cla.var_range().end,0), n(0) {
+    count(cla.derived());
+    for(size_t i=cla.source_count(); i--;) count(cla.source(i)); 
+    for(size_t i=cla.constraint_count(); i--;) count(cla.constraint(i)); 
     for(auto &i : V) if(i!=0) i = n++;
   }
+  void count(AndClause cla) { for(size_t i=cla.atom_count(); i--;) count(cla.atom(i)); }
   void count(Atom a) { for(size_t i=a.arg_count(); i--;) count(a.arg(i)); }
+  void count(OrderAtom c){ for(size_t i=c.pair_count(); i--;) count(c.pair(i)); }
+  void count(OrderAtom::TermPair p) { count(p.a); count(p.b); }
   void count(Term t) {
     switch(t.type()) {
       case Term::VAR: V[Var(t).id()]++; break;
@@ -97,7 +102,7 @@ struct VarMap {
 };
 
 DerAndClause reduce_vars(DerAndClause cla) {
-  VarMap M(cla.derived());
+  VarMap M(cla);
   auto b = cla.to_builder();
   b.derived = M.map(b.derived);
   for(auto &s : b.sources) s = M.map(s);

@@ -32,17 +32,6 @@ struct DerAndClause {
     *this = b.build();
   }
 
-  /*DerAndClause append_constraints(vec<OrderAtom> _constraints) const {
-    Builder b(source_count(),constraint_count()+_constraints.size());
-    b.set_cost(cost());
-    b.set_derived(derived());
-    for(size_t i=source_count(); i--;) b.set_source(i,source(i));
-    for(size_t i=constraint_count(); i--;) b.set_constraint(i,constraint(i));
-    for(size_t i=0; i<_constraints.size(); i++)
-      b.set_constraint(constraint_count()+i,_constraints[i]);
-    return b.build();
-  }*/
-
   struct Builder {
     size_t offset = 0;
     size_t id_offset = 0;
@@ -76,6 +65,17 @@ struct DerAndClause {
     for(size_t i=source_count(); i--;) b.sources.push_back(source(i));
     for(size_t i=constraint_count(); i--;) b.constraints.push_back(constraint(i));
     return b;
+  }
+
+  friend bool operator==(const DerAndClause &a, const DerAndClause &b) {
+    bool ok = a.cost()==b.cost();
+    ok &= a.derived()==b.derived();
+    ok &= a.source_count()==b.source_count();
+    ok &= a.constraint_count()==b.constraint_count();
+    if(!ok) return false;
+    for(size_t i=a.source_count(); i--;) ok &= a.source(i)==b.source(i);
+    for(size_t i=a.constraint_count(); i--;) ok &= a.constraint(i)==b.constraint(i);
+    return ok;
   }
 
 private:

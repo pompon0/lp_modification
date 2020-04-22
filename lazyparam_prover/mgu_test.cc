@@ -44,3 +44,28 @@ TEST(MGU,equal) {
   ASSERT_FALSE(V.equal(fy,x));
   ASSERT_FALSE(V.equal(y,ffx));
 }
+
+TEST(MGU,eval) {
+  StreamLogger _(std::cerr);
+  Valuation V; V.resize(1);
+  Term c(Fun(0,{}));
+  Term x(Var(0));
+  ASSERT_TRUE(V.mgu(c,x));
+
+  Atom a(false,5,{c,x});
+  Atom b(false,5,{c,c});
+  AndClause ca({a,b,a});
+  AndClause cb({b,b,b});
+  DerAndClause::Builder builder;
+  builder.derived = ca;
+  builder.sources = {ca,ca,cb};
+  builder.constraints = {OrderAtom::neq(a,b)};
+  auto before = builder.build();
+  builder.derived = cb;
+  builder.sources = {cb,cb,cb};
+  builder.constraints = {OrderAtom::neq(b,b)};
+  auto got = V.eval(before);
+  auto want = builder.build();
+  ASSERT_FALSE(before==got);
+  ASSERT_EQ(got,want);
+}

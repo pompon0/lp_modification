@@ -9,7 +9,12 @@ namespace tableau {
 struct OrderAtom {
   enum Relation { L = 1, G = 2, E = 4, LE = L|E, GE = G|E, NE = L|G, U = L|G|E };
   enum Status { TRUE, FALSE, UNKNOWN };
-  struct TermPair { Term a,b; };
+  struct TermPair {
+    Term a,b;
+    friend bool operator==(const TermPair a, const TermPair b) {
+      return a.a==b.a && a.b==b.b;
+    }
+  };
   
   Status status() const { return status_; }
   VarRange var_range() const { return VAR_RANGE::ref(ptr); }
@@ -63,6 +68,14 @@ struct OrderAtom {
   }
 
   OrderAtom(Relation rel, Term l, Term r) : OrderAtom(Builder(rel,1).set_pair(0,{l,r}).build()) {}
+
+  friend bool operator==(const OrderAtom &a, const OrderAtom &b) {
+    bool ok = a.rel()==b.rel();
+    ok &= a.pair_count()==b.pair_count();
+    if(!ok) return false;
+    for(size_t i=a.pair_count(); i--;) ok &= a.pair(i)==b.pair(i);
+    return ok;
+  }
 
 private:
   using VAR_RANGE = Field<VarRange>;

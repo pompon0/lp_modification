@@ -17,7 +17,8 @@ private:
   vec<DerAndClause> and_clauses;
   vec<bool> is_starting_clause;
   struct AtomClauseId { size_t atom_id, clause_id; };
-  vec<vec<AtomClauseId>> map;
+  vec<vec<AtomClauseId>> sets;
+  vec<size_t> map;
 public:
   //TODO: eliminate clauses with unmatchable atoms
   struct AndClauseWithAtom { size_t i; DerAndClause cla; };
@@ -65,7 +66,7 @@ public:
       DEBUG if(next_starting_clause_id==0) error("next_starting_clause == 0");
       return Filter(
         cost_limit,
-        &index->map[atom.id()],
+        &index->sets[index->map[atom.id()]],
         next_starting_clause_id-1,
         index);
     }
@@ -95,12 +96,12 @@ public:
       is_starting_clause[i] = starting;
     }
     map.assign(id_offset,{});
-    vec<vec<AtomClauseId>> preindex;
+    auto &preindex = sets;
     for(size_t i=0; i<and_clauses.size(); ++i) {
       auto c = and_clauses[i].derived();
       for(size_t j=0; j<c.atom_count(); ++j){
         auto h = Index::atom_hash(c.atom(j));
-        if(h>=preindex.size()) preindex.resize(h+1);
+        if((h|1)>=preindex.size()) preindex.resize((h|1)+1);
         preindex[h].push_back({j,i});
       }
     }
@@ -116,22 +117,27 @@ public:
       auto s2 = val.snapshot(); 
       for(size_t i1=0; i1<c1.atom_count(); ++i1) {
         auto h = Index::atom_hash(c1.atom(i1));
-        if((h^1)>=preindex.size()) continue;
-        for(auto x : preindex[h^1]) {
-          // allocate c2
-          val.rewind(s2);
-          auto c2 = and_clauses[x.clause_id].shift(val.size()).derived();
-          val.resize(c2.var_range().end);
-          // unify
-          if(c1.atom(i1).sign()==c2.atom(x.atom_id).sign()) continue;
-          if(!val.mgu(c1.atom(i1),c2.atom(x.atom_id))) continue;
-          map[c1.atom(i1).id()].push_back(x);
+        if(preindex[h^1].size()>100) {
+          map[c1.atom(i1).id()] = h^1;
+        } else {
+          map[c1.atom(i1).id()] = sets.size();
+          sets.push_back({});
+          for(auto x : preindex[h^1]) {
+            // allocate c2
+            val.rewind(s2);
+            auto c2 = and_clauses[x.clause_id].shift(val.size()).derived();
+            val.resize(c2.var_range().end);
+            // unify
+            if(c1.atom(i1).sign()==c2.atom(x.atom_id).sign()) continue;
+            if(!val.mgu(c1.atom(i1),c2.atom(x.atom_id))) continue;
+            sets.back().push_back(x);
+          }
         }
       }
     }
 
     DEBUG {
-      for(const auto &v : map) {
+      for(const auto &v : sets) {
         size_t cost = 0;
         for(auto a : v) {
           if(and_clauses[a.clause_id].cost()<cost) error("cost not monotone");

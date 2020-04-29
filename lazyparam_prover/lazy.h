@@ -35,7 +35,7 @@ inline AndClause neg_refl_axiom(Term a) {
 }
 
 inline Atom red(bool sign, Term f, Term w) {
-  Atom::Builder b(sign,Atom::EQ_TRANS_POS,2);
+  Atom::Builder b(sign,Atom::EQ_TRANS_POS,2,false);
   b.set_arg(0,f);
   b.set_arg(1,w);
   return b.build();
@@ -73,7 +73,7 @@ struct VarMap {
     return AndClause(x);
   }
   Atom map(Atom a) {
-    Atom::Builder b(a.sign(),a.pred(),a.arg_count());
+    Atom::Builder b(a.sign(),a.pred(),a.arg_count(),a.strong_only());
     for(size_t i=a.arg_count(); i--;) b.set_arg(i,map(a.arg(i)));
     return b.build();
   }
@@ -199,10 +199,10 @@ struct SplitBuilder {
           // ==> T(x,y) /\ y-/>w /\ f(x)->w  [y!=w /\ f(x)>=w]
           Fun lf(l);
           size_t lc = lf.arg_count();
-          Atom::Builder b(false,next_pred++,lc+1);
+          Atom::Builder b(false,next_pred++,lc+1,true);
           for(size_t i=lc; i--;) b.set_arg(i,lf.arg(i));
           b.set_arg(lc,r);
-          auto a = b.build().set_strong_only();
+          auto a = b.build();
           atoms.push_back(a);
 
           {
@@ -234,10 +234,10 @@ struct SplitBuilder {
           // ==> T(x,y) /\ g(y)-/>w /\ f(x)->w  [g(y)!=w /\ f(x)>=w]
           Fun lf(l), rf(r);
           size_t lc = lf.arg_count(), rc = rf.arg_count();
-          Atom::Builder b(false,next_pred++,lc+rc);
+          Atom::Builder b(false,next_pred++,lc+rc,true);
           for(size_t i=0; i<lc; ++i) b.set_arg(i,lf.arg(i));
           for(size_t i=0; i<rc; ++i) b.set_arg(lc+i,rf.arg(i));
-          auto a = b.build().set_strong_only();
+          auto a = b.build();
           atoms.push_back(a);
 
           { FRAME("T(x,y) /\\ f(x)-/>w /\\ g(y)->w");

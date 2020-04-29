@@ -10,7 +10,7 @@ using namespace tableau;
 TEST(pred,neg) {
   bool sign = true;
   size_t pred_name = 7;
-  Atom::Builder b(sign,pred_name,2);
+  Atom::Builder b(sign,pred_name,2,false);
   b.set_arg(0,Term(Var(0)));
   b.set_arg(1,Term(Var(4)));
   Atom a = b.build();

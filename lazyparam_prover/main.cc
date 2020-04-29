@@ -46,7 +46,7 @@ OrForm apply_trans(OrForm f) {
 
 Atom remove_eq(Atom a, u64 pred) {
   if(a.pred()!=Atom::EQ) return a;
-  Atom::Builder b(a.sign(),pred,a.arg_count());
+  Atom::Builder b(a.sign(),pred,a.arg_count(),a.strong_only());
   for(size_t i=a.arg_count(); i--;) b.set_arg(i,a.arg(i));
   return b.build();
 }

@@ -177,6 +177,7 @@ struct Cont {
   };
   using StrongFrame = Variant<Frame,Frame::STRONG,_StrongFrame>;
   template<typename Alts> void strong(State &state, StrongFrame f, Alts alts) const { FRAME("strong(%,%)",show(f->dcla),f->strong_id);
+    state.stats.strong_steps++;
     auto cla = state.allocate(f->dcla);
     if(f->strong_id>=0) if(!state.val.mgu(f->branch.false_.head(),cla.atom(f->strong_id))) return;
 
@@ -241,8 +242,10 @@ struct Cont {
       // assume that <a> doesn't occur in the path or lemmas
       {
         // add constraints (wrt path)
-        for(auto b = f->next.false_; !b.empty(); b = b.tail())
-          if(!state.val.push_constraint(OrderAtom::neq(a,b.head()))) return;
+        if(!a.strong_only()) {
+          for(auto b = f->next.false_; !b.empty(); b = b.tail())
+            if(!state.val.push_constraint(OrderAtom::neq(a,b.head()))) return;
+        }
         WeakConnectionsFrame::Builder cb;
         cb->nodes_limit = f->nodes_limit;
         cb->atoms = f->atoms.tail();

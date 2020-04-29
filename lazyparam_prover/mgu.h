@@ -156,7 +156,7 @@ public:
   // clears offset
   inline Atom eval(Atom a) const { FRAME("eval(%)",show(a));
     size_t ac = a.arg_count();
-    Atom::Builder b(a.sign(),a.pred(),ac);
+    Atom::Builder b(a.sign(),a.pred(),ac,a.strong_only());
     for(size_t i=ac; i--;) b.set_arg(i,eval(a.arg(i)));
     return b.build();
   }

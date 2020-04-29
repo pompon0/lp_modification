@@ -36,6 +36,7 @@ message Proof {
 }
 
 message ProverStats {
+  int64 strong_steps = 2;
   int64 strong_only_steps = 1;
 }
 

@@ -46,21 +46,23 @@ public:
   inline bool strong_only() const { return strong_only_; }
 
   explicit Atom(bool sign, u64 pred, const vec<Term> &args) {
-    Builder b(sign,pred,args.size());
+    Builder b(sign,pred,args.size(),false);
     for(size_t i=0; i<args.size(); ++i) b.set_arg(i,args[i]);
     *this = b.build();
   }
 
   static inline Atom eq(bool sign, Term l, Term r) {
-    return Builder(sign,EQ,2).set_arg(0,l).set_arg(1,r).build();
+    return Builder(sign,EQ,2,false).set_arg(0,l).set_arg(1,r).build();
   }
 
   struct Builder {
   private:
     bool sign_;
     u8 *ptr;
+    bool strong_only_;
   public:
-    Builder(bool _sign, u64 _pred, u64 _arg_count) : sign_(_sign), ptr(ARGS::alloc(_arg_count)) {
+    Builder(bool _sign, u64 _pred, u64 _arg_count, bool _strong_only)
+        : sign_(_sign), ptr(ARGS::alloc(_arg_count)), strong_only_(_strong_only) {
       COUNTER("Atom::Builder");
       VAR_RANGE::ref(ptr) = {0,0};
       PRED::ref(ptr) = _pred;
@@ -73,7 +75,7 @@ public:
     }
     inline Atom build() {
       //DEBUG for(size_t i=0; i<ARGS::size(ptr); ++i) if(!ARGS::ref(ptr,i)) error("Atom::build() arg(%) not set",i);
-      return Atom(ptr,0,sign_,0,false);
+      return Atom(ptr,0,sign_,0,strong_only_);
     }
   };
 };

@@ -175,6 +175,7 @@ struct SplitBuilder {
           // ==> T(x,y) /\ x-/>y  [x!=y]
           // ==> T(x,y) /\ y-/>x  [y!=x]
           Atom a(false,next_pred++,{l,r});
+          a = a.set_strong_only();
           atoms.push_back(a);
 
           {
@@ -201,12 +202,13 @@ struct SplitBuilder {
           Atom::Builder b(false,next_pred++,lc+1);
           for(size_t i=lc; i--;) b.set_arg(i,lf.arg(i));
           b.set_arg(lc,r);
-          atoms.push_back(b.build());
+          auto a = b.build().set_strong_only();
+          atoms.push_back(a);
 
           {
             DerAndClause::Builder c1;
             c1.cost = 1;
-            c1.derived = AndClause({b.build().neg(),red(false,l,r)});
+            c1.derived = AndClause({a.neg(),red(false,l,r)});
             c1.constraints = {OrderAtom(OrderAtom::NE,l,r)};
             extra.push_back(reduce_vars(c1.build()));
           }
@@ -214,7 +216,7 @@ struct SplitBuilder {
             DerAndClause::Builder c2;
             c2.cost = 1;
             Term w(val.allocate(Var(0)));
-            c2.derived = AndClause({b.build().neg(),red(false,r,w),red(true,l,w)});
+            c2.derived = AndClause({a.neg(),red(false,r,w),red(true,l,w)});
             c2.constraints = {
               OrderAtom(OrderAtom::NE,r,w),
               OrderAtom(OrderAtom::LE,w,l),
@@ -235,13 +237,14 @@ struct SplitBuilder {
           Atom::Builder b(false,next_pred++,lc+rc);
           for(size_t i=0; i<lc; ++i) b.set_arg(i,lf.arg(i));
           for(size_t i=0; i<rc; ++i) b.set_arg(lc+i,rf.arg(i));
-          atoms.push_back(b.build());
+          auto a = b.build().set_strong_only();
+          atoms.push_back(a);
 
           { FRAME("T(x,y) /\\ f(x)-/>w /\\ g(y)->w");
             DerAndClause::Builder c1;
             c1.cost = 1;
             Term w(val.allocate(Var(0)));
-            c1.derived = AndClause({b.build().neg(),red(false,l,w),red(true,r,w)});
+            c1.derived = AndClause({a.neg(),red(false,l,w),red(true,r,w)});
             c1.constraints = {
               OrderAtom(OrderAtom::NE,l,w),
               OrderAtom(OrderAtom::LE,w,r),
@@ -252,7 +255,7 @@ struct SplitBuilder {
             DerAndClause::Builder c2;
             c2.cost = 1;
             Term w(val.allocate(Var(0)));
-            c2.derived = AndClause({b.build().neg(),red(true,l,w),red(false,r,w)});
+            c2.derived = AndClause({a.neg(),red(true,l,w),red(false,r,w)});
             c2.constraints = {
               OrderAtom(OrderAtom::NE,r,w),
               OrderAtom(OrderAtom::LE,w,l),

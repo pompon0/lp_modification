@@ -112,7 +112,6 @@ DerAndClause reduce_vars(DerAndClause cla) {
 
 struct SplitBuilder {
   size_t cost;
-  size_t var_count;
   vec<Atom> atoms;
   vec<AndClause> source;
   vec<OrderAtom> constraints;
@@ -129,10 +128,9 @@ struct SplitBuilder {
   Valuation val;
   u64 next_pred;
 
-  SplitBuilder(const DerAndClause &cla, u64 _next_pred) { FRAME("SplitBuilder");
+  SplitBuilder(DerAndClause cla, u64 _next_pred) { FRAME("SplitBuilder");
     next_pred = _next_pred;
-    var_count = cla.var_range().end;
-    val.resize(cla.var_range().end); // enough for substitutions
+    cla = val.allocate(cla);
     cost = cla.cost();
     for(size_t i=0; i<cla.source_count(); ++i) source.push_back(cla.source(i));
     DEBUG if(cla.constraint_count()>0) error("unexpected constraints");
@@ -162,7 +160,7 @@ struct SplitBuilder {
         } else {
           // f(x)=g(y) /\ C
           // ==> f(x)->w /\ g(y)->w /\ C  [f(x)>=w /\ g(y)>=w]
-          Term w(Var(var_count++));
+          Term w(val.allocate(Var(0)));
           atoms.push_back(red(true,l,w));
           atoms.push_back(red(true,r,w));
           constraints.push_back(OrderAtom(OrderAtom::LE,w,l));
@@ -215,7 +213,7 @@ struct SplitBuilder {
           {
             DerAndClause::Builder c2;
             c2.cost = 1;
-            Term w(Var(var_count++));
+            Term w(val.allocate(Var(0)));
             c2.derived = AndClause({b.build().neg(),red(false,r,w),red(true,l,w)});
             c2.constraints = {
               OrderAtom(OrderAtom::NE,r,w),
@@ -242,7 +240,7 @@ struct SplitBuilder {
           { FRAME("T(x,y) /\\ f(x)-/>w /\\ g(y)->w");
             DerAndClause::Builder c1;
             c1.cost = 1;
-            Term w(Var(var_count++));
+            Term w(val.allocate(Var(0)));
             c1.derived = AndClause({b.build().neg(),red(false,l,w),red(true,r,w)});
             c1.constraints = {
               OrderAtom(OrderAtom::NE,l,w),
@@ -253,7 +251,7 @@ struct SplitBuilder {
           } { FRAME("T(x,y) /\\ g(y)-/>w /\\ f(x)->w"); 
             DerAndClause::Builder c2;
             c2.cost = 1;
-            Term w(Var(var_count++));
+            Term w(val.allocate(Var(0)));
             c2.derived = AndClause({b.build().neg(),red(true,l,w),red(false,r,w)});
             c2.constraints = {
               OrderAtom(OrderAtom::NE,r,w),
@@ -268,7 +266,6 @@ struct SplitBuilder {
         }
       }
     }
-    val.resize(var_count);
   }
 };
 

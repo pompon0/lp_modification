@@ -16,7 +16,7 @@ public:
   Maybe(Nothing) : Maybe() {}
   explicit Maybe(const T &v) : present(1) { new(data)T(v); }
   explicit operator bool() const { return present; } 
-  T get() const {
+  const T& get() const {
     DEBUG if(!present) error("Maybe::get(): not present");
     return *(T*)data;
   }

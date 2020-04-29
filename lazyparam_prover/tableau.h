@@ -42,6 +42,16 @@ struct SearchState {
   size_t nodes_used = 0;
   List<DerAndClause> clauses_used;
 
+  AndClause allocate(DerAndClause dcla) { FRAME("strong_unify()");
+    dcla = val.allocate(dcla);
+    clauses_used += dcla;
+    nodes_used += dcla.cost();
+    for(size_t i=dcla.constraint_count(); i--;){
+      val.push_constraint(dcla.constraint(i));
+    }
+    return dcla.derived();
+  }
+
   // cannot return the proto, because parsing context is not available.
   // This means that Valuation has to be included in the ProverOutput.
   ptr<OrForm> get_proof() {
@@ -134,7 +144,28 @@ struct Cont {
       alts(Cont{List<Frame>(Frame(b.build()))});
     }
   }
-  
+
+  Maybe<List<Atom>> strong_resolution(State &state, size_t nodes_limit, List<Atom> todo) const { FRAME("strong_resolution()");
+    List<Atom> checked;
+    for(;!todo.empty(); todo = todo.tail()) {
+      auto a = todo.head();
+      // Look for strong only atoms.
+      if(!a.strong_only()) { checked += a; continue; }
+      size_t budget = nodes_limit - state.nodes_used;
+      auto filter = state.cla_index.get_matches(a,budget);
+      auto mca = filter.next();
+      if(!mca) return nothing();
+      // Filter out those which have more that 1 possible unification.
+      if(filter.next()) { checked += a; continue; }
+      auto ca = mca.get();
+      // Connect the new clause and analyze the new atoms recursively.
+      auto cla = state.allocate(ca.cla);
+      if(!state.val.mgu(a,cla.atom(ca.i))) return nothing();
+      for(size_t i=cla.atom_count(); i--;) if(i!=ca.i) todo += cla.atom(i);
+    }
+    return just(checked);
+  }
+
   struct _StrongFrame {
     size_t nodes_limit;
     Branch branch;
@@ -142,26 +173,21 @@ struct Cont {
     ssize_t strong_id;
   };
   using StrongFrame = Variant<Frame,Frame::STRONG,_StrongFrame>;
-
   template<typename Alts> void strong(State &state, StrongFrame f, Alts alts) const { FRAME("strong(%,%)",show(f->dcla),f->strong_id);
-    auto dcla = f->dcla.shift(state.val.size());
-    // do not use f->dcla from now on
-    state.nodes_used += dcla.cost();
-    auto cla = dcla.derived();
-    state.val.resize(cla.var_range().end);
-    for(size_t i=dcla.constraint_count(); i--;){
-      state.val.push_constraint(dcla.constraint(i));
-    }
+    auto cla = state.allocate(f->dcla);
     if(f->strong_id>=0) if(!state.val.mgu(f->branch.false_.head(),cla.atom(f->strong_id))) return;
-    state.clauses_used += dcla;
+
+    List<Atom> todo;
+    for(ssize_t i=cla.atom_count(); i--;) if(i!=f->strong_id) todo += cla.atom(i);
+    auto matoms = strong_resolution(state,f->nodes_limit,todo);
+    if(!matoms) return;
     
     WeakConnectionsFrame::Builder b;
     b->nodes_limit = f->nodes_limit;
-    b->atoms = List<Atom>();
+    b->atoms = matoms.get();
     b->branches = List<Branch>();
     b->branch_count = 0;
     b->next = f->branch;
-    for(ssize_t i=0,n=cla.atom_count(); i<n; ++i) if(i!=f->strong_id) b->atoms += cla.atom(i);
     alts(Cont{Frame(b.build()) + frames.tail()});
   }
 
@@ -178,6 +204,7 @@ struct Cont {
       Atom a = f->atoms.head(); 
 
       // try to do weak connection for each atom of the clause, or add a != constraint.
+      // TODO: add constraints preventing clauses becoming contradictory
       auto atom_hash = Index::atom_hash(a);
       WeakConnectionsFrame::Builder cb;
       cb->nodes_limit = f->nodes_limit;
@@ -187,6 +214,7 @@ struct Cont {
       cb->next = f->next;
       auto tail = Frame(cb.build())+frames.tail();
       // try to match with lemma
+      // TODO: lazy lemma - keep track of constraints which will allow you to close a branch early
       for(auto b = f->next.true_; !b.empty(); b = b.tail()) {
         if(atom_hash!=Index::atom_hash(b.head())) continue;
         if(!state.val.equal_mod_sign(a,b.head())) continue;
@@ -197,12 +225,14 @@ struct Cont {
         return;
       }
       // try to unify with path
-      for(auto b = f->next.false_; !b.empty(); b = b.tail()) {
-        if((atom_hash^1)!=Index::atom_hash(b.head())) continue;
-        WeakUnifyFrame::Builder ub;
-        ub->a1 = a;
-        ub->a2 = b.head();
-        alts(Cont{Frame(ub.build())+tail});
+      if(!a.strong_only()) {
+        for(auto b = f->next.false_; !b.empty(); b = b.tail()) {
+          if((atom_hash^1)!=Index::atom_hash(b.head())) continue;
+          WeakUnifyFrame::Builder ub;
+          ub->a1 = a;
+          ub->a2 = b.head();
+          alts(Cont{Frame(ub.build())+tail});
+        }
       }
       
       // assume that <a> doesn't occur in the path or lemmas

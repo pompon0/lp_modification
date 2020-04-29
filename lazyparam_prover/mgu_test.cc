@@ -7,9 +7,9 @@ using namespace tableau;
 
 TEST(MGU,flat_loop) {
   StreamLogger _(std::cerr);
-  Term var0(Var(0));
-  Term var1(Var(1));
-  Valuation V; V.resize(2);
+  Valuation V;
+  Term var0(V.allocate(Var(0)));
+  Term var1(V.allocate(Var(0)));
   ASSERT_TRUE(V.mgu(var1,var0));
   ASSERT_TRUE(V.mgu(var0,var1));
   ASSERT_TRUE(!V[0]);
@@ -18,9 +18,9 @@ TEST(MGU,flat_loop) {
 
 TEST(MGU,nonflat_loop) {
   StreamLogger _(std::cerr);
-  Valuation V; V.resize(2);
-  Term v0(Var(0));
-  Term v1(Var(1));
+  Valuation V;
+  Term v0(V.allocate(Var(0)));
+  Term v1(V.allocate(Var(0)));
   u64 f = 0;
   ASSERT_TRUE(V.mgu(v0,Term(Fun(f,{v1}))));
   ASSERT_FALSE(V.mgu(v1,Term(Fun(f,{v0}))));
@@ -28,10 +28,10 @@ TEST(MGU,nonflat_loop) {
 
 TEST(MGU,equal) {
   StreamLogger _(std::cerr);
-  Valuation V; V.resize(2);
+  Valuation V;
   u64 f = 0;
-  Term x(Var(0));
-  Term y(Var(1));
+  Term x(V.allocate(Var(0)));
+  Term y(V.allocate(Var(0)));
   Term fx(Fun(f,{x}));
   Term ffx(Fun(f,{fx}));
   Term fy(Fun(f,{y}));
@@ -47,9 +47,9 @@ TEST(MGU,equal) {
 
 TEST(MGU,eval) {
   StreamLogger _(std::cerr);
-  Valuation V; V.resize(1);
+  Valuation V;
   Term c(Fun(0,{}));
-  Term x(Var(0));
+  Term x(V.allocate(Var(0)));
   ASSERT_TRUE(V.mgu(c,x));
 
   Atom a(false,5,{c,x});

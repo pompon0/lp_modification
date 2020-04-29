@@ -8,9 +8,8 @@ using namespace tableau;
 TEST(KBO,simple) {
   StreamLogger _(std::cerr);
   KBO kbo;
-  kbo.resize(2);
-  Term x(Var(0));
-  Term y(Var(1));
+  Term x(kbo.allocate(Var(0)));
+  Term y(kbo.allocate(Var(0)));
   auto f = [](auto ...a){ return Term(Fun(0,{a...})); };
   auto g = [](auto ...a){ return Term(Fun(1,{a...})); };
   auto h = [](auto ...a){ return Term(Fun(2,{a...})); };

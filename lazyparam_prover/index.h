@@ -33,6 +33,7 @@ public:
       }
       return Maybe<AndClauseWithAtom>(); 
     }
+
     Filter(
         size_t _cost_limit,
         const vec<AtomClauseId> *_atoms,
@@ -111,8 +112,7 @@ public:
     for(auto _c1 : and_clauses) {
       // allocate c1
       val.rewind(s1);
-      auto c1 = _c1.shift(val.size()).derived();
-      val.resize(c1.var_range().end);
+      auto c1 = val.allocate(_c1).derived();
       auto s2 = val.snapshot(); 
       for(size_t i1=0; i1<c1.atom_count(); ++i1) {
         auto h = Index::atom_hash(c1.atom(i1));
@@ -120,8 +120,7 @@ public:
         for(auto x : preindex[h^1]) {
           // allocate c2
           val.rewind(s2);
-          auto c2 = and_clauses[x.clause_id].shift(val.size()).derived();
-          val.resize(c2.var_range().end);
+          auto c2 = val.allocate(and_clauses[x.clause_id]).derived();
           // unify
           if(c1.atom(i1).sign()==c2.atom(x.atom_id).sign()) continue;
           if(!val.mgu(c1.atom(i1),c2.atom(x.atom_id))) continue;

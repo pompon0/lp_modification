@@ -19,8 +19,15 @@ private:
   RewindArray<Term> val;
 public:
   using Snapshot = RewindArray<Term>::Snapshot;
-  void resize(size_t n){ val.resize(n); }
   size_t size() const { return val.size(); }
+  
+  template<typename T> T allocate(T t) {
+    VarRange r = t.var_range();
+    t = t.shift(val.size()-r.begin);
+    val.resize(val.size()+r.end-r.begin);
+    return t;
+  }
+
   Snapshot snapshot(){ return val.snapshot(); }
   void rewind(Snapshot s){ 
     val.rewind(s);

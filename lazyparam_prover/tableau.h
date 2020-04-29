@@ -149,8 +149,9 @@ struct Cont {
 
   Maybe<List<Atom>> strong_resolution(State &state, size_t nodes_limit, List<Atom> todo) const { FRAME("strong_resolution()");
     List<Atom> checked;
-    for(;!todo.empty(); todo = todo.tail()) {
+    while(!todo.empty()) {
       auto a = todo.head();
+      todo = todo.tail();
       // Look for strong only atoms.
       if(!a.strong_only()) { checked += a; continue; }
       size_t budget = nodes_limit - state.nodes_used;

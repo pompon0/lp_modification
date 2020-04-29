@@ -101,6 +101,7 @@ int main(int argc, char **argv) {
     
     outProto.set_cost(out.cost);
     outProto.set_continuation_count(out.cont_count);
+    *outProto.mutable_stats() = out.stats.to_proto();
     if(out.proof){
       outProto.set_solved(true);
       *outProto.mutable_proof() = pctx.proto_Proof(*out.proof,out.val);

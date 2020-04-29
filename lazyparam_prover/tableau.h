@@ -42,6 +42,8 @@ struct SearchState {
   size_t nodes_used = 0;
   List<DerAndClause> clauses_used;
 
+  Stats stats;
+
   AndClause allocate(DerAndClause dcla) { FRAME("strong_unify()");
     dcla = val.allocate(dcla);
     clauses_used += dcla;
@@ -157,6 +159,7 @@ struct Cont {
       if(!mca) return nothing();
       // Filter out those which have more that 1 possible unification.
       if(filter.next()) { checked += a; continue; }
+      state.stats.strong_only_steps++;
       auto ca = mca.get();
       // Connect the new clause and analyze the new atoms recursively.
       auto cla = state.allocate(ca.cla);
@@ -347,11 +350,18 @@ ProverOutput prove(const Ctx &ctx, const ClauseIndex &cla_index, size_t limit) {
   Cont::StartFrame::Builder b;
   b->nodes_limit = limit;
   auto res = alt::search(ctx,s,Cont{List<Cont::Frame>(Cont::Frame(b.build()))});
-  return {res.cont_count,limit,s.val,res.found ? s.get_proof() : 0};
+  return {
+    res.cont_count,
+    limit,
+    s.val,
+    res.found ? s.get_proof() : 0,
+    s.stats,
+  };
 }
 
 ProverOutput prove_loop(const Ctx &ctx, OrForm form) { FRAME("prove_loop()");
   SCOPE("prove_loop"); 
+  Stats stats;
   size_t cont_count = 0;
   size_t limit = 0;
   //info("ClauseIndex begin");
@@ -362,16 +372,22 @@ ProverOutput prove_loop(const Ctx &ctx, OrForm form) { FRAME("prove_loop()");
     DEBUG info("limit = %",limit);
     ProverOutput out = prove(ctx,idx,limit);
     out.cont_count += cont_count;
+    out.stats += stats;
     if(out.proof) {
       DEBUG info("SUCCESS");
       DEBUG info("%",show(*out.proof));
       return out;
     }
+    stats = out.stats;
     cont_count = out.cont_count;
     //std::cerr << "expands[" << limit << "]: " << profile.scopes["expand"].count << std::endl;
   }
   DEBUG info("FAILURE");
-  return {cont_count,limit}; 
+  ProverOutput out;
+  out.cont_count = cont_count;
+  out.cost = limit;
+  out.stats = stats;
+  return out; 
 }
 
 } // namespace tableau

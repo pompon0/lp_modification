@@ -26,7 +26,7 @@ inline Term ground(Term t) { FRAME("ground(%)",show(t));
 // clears offset
 inline Atom ground(Atom a) { FRAME("ground(%)",show(a));
   size_t ac = a.arg_count();
-  Atom::Builder b(a.sign(),a.pred(),ac);
+  Atom::Builder b(a.sign(),a.pred(),ac,a.strong_only());
   for(size_t i=ac; i--;) b.set_arg(i,ground(a.arg(i)));
   return b.build();
 }

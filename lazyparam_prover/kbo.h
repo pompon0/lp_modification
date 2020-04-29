@@ -18,8 +18,14 @@ namespace tableau {
 struct KBO {
   using Res = OrderAtom::Relation;
 public:
-  size_t size(){ return val.size(); }
-  void resize(size_t n){ val.resize(n); var_occ.resize(n,0); }
+  size_t size() const { return val.size(); }
+
+  template<typename T> T allocate(T t) {
+    t = val.allocate(t);
+    var_occ.resize(val.size(),0);
+    return t;
+  }
+
   struct Snapshot {
     Valuation::Snapshot val;
     List<OrderAtom> constraints;

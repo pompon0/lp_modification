@@ -35,10 +35,17 @@ message Proof {
   repeated Derivation clauses = 1;
 }
 
+message ProverStats {
+  int64 strong_steps = 2;
+  int64 strong_only_steps = 1;
+}
+
 message ProverOutput {
   int64 cost = 1;
   int64 continuation_count = 2;
   int64 extension_count = 3;
+  ProverStats stats = 11;
+
   bool solved = 5;
   bool oom = 7;
   bool killed = 8;

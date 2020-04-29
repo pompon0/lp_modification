@@ -46,7 +46,7 @@ OrForm apply_trans(OrForm f) {
 
 Atom remove_eq(Atom a, u64 pred) {
   if(a.pred()!=Atom::EQ) return a;
-  Atom::Builder b(a.sign(),pred,a.arg_count());
+  Atom::Builder b(a.sign(),pred,a.arg_count(),a.strong_only());
   for(size_t i=a.arg_count(); i--;) b.set_arg(i,a.arg(i));
   return b.build();
 }
@@ -101,6 +101,7 @@ int main(int argc, char **argv) {
     
     outProto.set_cost(out.cost);
     outProto.set_continuation_count(out.cont_count);
+    *outProto.mutable_stats() = out.stats.to_proto();
     if(out.proof){
       outProto.set_solved(true);
       *outProto.mutable_proof() = pctx.proto_Proof(*out.proof,out.val);

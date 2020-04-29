@@ -53,6 +53,7 @@ public:
   explicit operator Term() const { return term; }
   u64 id() const { return term.offset; }
   VarRange var_range() const { return {term.offset,term.offset+1}; }
+  Var shift(size_t offset) const { return Var(term.shift(offset)); }
 };
 
 struct Fun {
@@ -77,6 +78,7 @@ public:
   u64 arg_count() const { return ARGS::size(term.ptr); }
   Term arg(size_t i) const { return ARGS::ref(term.ptr,i).shift(term.offset); }
   VarRange var_range() const { return VAR_RANGE::ref(term.ptr)+term.offset; }
+  Fun shift(size_t offset) const { return Fun(term.shift(offset)); }
 
   struct Builder {
   private:

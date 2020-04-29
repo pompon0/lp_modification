@@ -69,7 +69,7 @@ struct ParseCtx {
       switch(f.pred().type()) {
       case tptp::Formula::Pred::CUSTOM: {
         size_t ac = f.pred().args().size();
-        Atom::Builder b(true,pred_names(f.pred().name()),ac);
+        Atom::Builder b(true,pred_names(f.pred().name()),ac,false);
         for(size_t i=0; i<ac; ++i)
           b.set_arg(i,parse_term(f.pred().args()[i]));
         return b.build();

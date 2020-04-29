@@ -41,8 +41,8 @@ DerAndClause neg_trans_axiom() {
 
 
 DerAndClause neg_cong_pred_axiom(u64 pred_name, u64 arg_count) {
-  Atom::Builder lb(true,pred_name,arg_count);
-  Atom::Builder rb(false,pred_name,arg_count);
+  Atom::Builder lb(true,pred_name,arg_count,false);
+  Atom::Builder rb(false,pred_name,arg_count,false);
   AndClause::Builder cb(arg_count+2);
   for(size_t i=0; i<arg_count; ++i) {
     Term la(Var(2*i));
@@ -229,7 +229,7 @@ struct FlatClauseBuilder {
       }
       atoms.push_back(Atom::eq(a.sign(),l,r));
     } else {
-      Atom::Builder b(a.sign(),a.pred(),a.arg_count());
+      Atom::Builder b(a.sign(),a.pred(),a.arg_count(),a.strong_only());
       // (... p(a1..an)) (a1=v1 /\../\ an=vn /\ !p(a1..an) /\ p(v1..vn)) -> (... p(v1..vn))
       vec<Atom> cla;
       for(size_t i=0; i<a.arg_count(); ++i) {
@@ -345,7 +345,7 @@ OrForm append_eq_axioms_with_restricted_transitivity(OrForm f) {
     for(size_t i=c.atom_count(); i--;) {
       Atom a = c.atom(i);
       if(a.pred()==Atom::EQ) {
-        Atom::Builder ab(a.sign(),!a.sign()?Atom::EQ_TRANS_POS:Atom::EQ_TRANS_NEG,a.arg_count());
+        Atom::Builder ab(a.sign(),!a.sign()?Atom::EQ_TRANS_POS:Atom::EQ_TRANS_NEG,a.arg_count(),a.strong_only());
         for(size_t j=a.arg_count(); j--;) ab.set_arg(j,a.arg(j));
         b.set_atom(i,ab.build());
       } else b.set_atom(i,a);

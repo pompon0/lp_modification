@@ -35,7 +35,7 @@ inline AndClause neg_refl_axiom(Term a) {
 }
 
 inline Atom red(bool sign, Term f, Term w) {
-  Atom::Builder b(sign,Atom::EQ_TRANS_POS,2);
+  Atom::Builder b(sign,Atom::EQ_TRANS_POS,2,false);
   b.set_arg(0,f);
   b.set_arg(1,w);
   return b.build();
@@ -73,7 +73,7 @@ struct VarMap {
     return AndClause(x);
   }
   Atom map(Atom a) {
-    Atom::Builder b(a.sign(),a.pred(),a.arg_count());
+    Atom::Builder b(a.sign(),a.pred(),a.arg_count(),a.strong_only());
     for(size_t i=a.arg_count(); i--;) b.set_arg(i,map(a.arg(i)));
     return b.build();
   }
@@ -112,7 +112,6 @@ DerAndClause reduce_vars(DerAndClause cla) {
 
 struct SplitBuilder {
   size_t cost;
-  size_t var_count;
   vec<Atom> atoms;
   vec<AndClause> source;
   vec<OrderAtom> constraints;
@@ -129,10 +128,9 @@ struct SplitBuilder {
   Valuation val;
   u64 next_pred;
 
-  SplitBuilder(const DerAndClause &cla, u64 _next_pred) { FRAME("SplitBuilder");
+  SplitBuilder(DerAndClause cla, u64 _next_pred) { FRAME("SplitBuilder");
     next_pred = _next_pred;
-    var_count = cla.var_range().end;
-    val.resize(cla.var_range().end); // enough for substitutions
+    cla = val.allocate(cla);
     cost = cla.cost();
     for(size_t i=0; i<cla.source_count(); ++i) source.push_back(cla.source(i));
     DEBUG if(cla.constraint_count()>0) error("unexpected constraints");
@@ -162,7 +160,7 @@ struct SplitBuilder {
         } else {
           // f(x)=g(y) /\ C
           // ==> f(x)->w /\ g(y)->w /\ C  [f(x)>=w /\ g(y)>=w]
-          Term w(Var(var_count++));
+          Term w(val.allocate(Var(0)));
           atoms.push_back(red(true,l,w));
           atoms.push_back(red(true,r,w));
           constraints.push_back(OrderAtom(OrderAtom::LE,w,l));
@@ -177,6 +175,7 @@ struct SplitBuilder {
           // ==> T(x,y) /\ x-/>y  [x!=y]
           // ==> T(x,y) /\ y-/>x  [y!=x]
           Atom a(false,next_pred++,{l,r});
+          a = a.set_strong_only();
           atoms.push_back(a);
 
           {
@@ -200,23 +199,24 @@ struct SplitBuilder {
           // ==> T(x,y) /\ y-/>w /\ f(x)->w  [y!=w /\ f(x)>=w]
           Fun lf(l);
           size_t lc = lf.arg_count();
-          Atom::Builder b(false,next_pred++,lc+1);
+          Atom::Builder b(false,next_pred++,lc+1,true);
           for(size_t i=lc; i--;) b.set_arg(i,lf.arg(i));
           b.set_arg(lc,r);
-          atoms.push_back(b.build());
+          auto a = b.build();
+          atoms.push_back(a);
 
           {
             DerAndClause::Builder c1;
             c1.cost = 1;
-            c1.derived = AndClause({b.build().neg(),red(false,l,r)});
+            c1.derived = AndClause({a.neg(),red(false,l,r)});
             c1.constraints = {OrderAtom(OrderAtom::NE,l,r)};
             extra.push_back(reduce_vars(c1.build()));
           }
           {
             DerAndClause::Builder c2;
             c2.cost = 1;
-            Term w(Var(var_count++));
-            c2.derived = AndClause({b.build().neg(),red(false,r,w),red(true,l,w)});
+            Term w(val.allocate(Var(0)));
+            c2.derived = AndClause({a.neg(),red(false,r,w),red(true,l,w)});
             c2.constraints = {
               OrderAtom(OrderAtom::NE,r,w),
               OrderAtom(OrderAtom::LE,w,l),
@@ -234,16 +234,17 @@ struct SplitBuilder {
           // ==> T(x,y) /\ g(y)-/>w /\ f(x)->w  [g(y)!=w /\ f(x)>=w]
           Fun lf(l), rf(r);
           size_t lc = lf.arg_count(), rc = rf.arg_count();
-          Atom::Builder b(false,next_pred++,lc+rc);
+          Atom::Builder b(false,next_pred++,lc+rc,true);
           for(size_t i=0; i<lc; ++i) b.set_arg(i,lf.arg(i));
           for(size_t i=0; i<rc; ++i) b.set_arg(lc+i,rf.arg(i));
-          atoms.push_back(b.build());
+          auto a = b.build();
+          atoms.push_back(a);
 
           { FRAME("T(x,y) /\\ f(x)-/>w /\\ g(y)->w");
             DerAndClause::Builder c1;
             c1.cost = 1;
-            Term w(Var(var_count++));
-            c1.derived = AndClause({b.build().neg(),red(false,l,w),red(true,r,w)});
+            Term w(val.allocate(Var(0)));
+            c1.derived = AndClause({a.neg(),red(false,l,w),red(true,r,w)});
             c1.constraints = {
               OrderAtom(OrderAtom::NE,l,w),
               OrderAtom(OrderAtom::LE,w,r),
@@ -253,8 +254,8 @@ struct SplitBuilder {
           } { FRAME("T(x,y) /\\ g(y)-/>w /\\ f(x)->w"); 
             DerAndClause::Builder c2;
             c2.cost = 1;
-            Term w(Var(var_count++));
-            c2.derived = AndClause({b.build().neg(),red(true,l,w),red(false,r,w)});
+            Term w(val.allocate(Var(0)));
+            c2.derived = AndClause({a.neg(),red(true,l,w),red(false,r,w)});
             c2.constraints = {
               OrderAtom(OrderAtom::NE,r,w),
               OrderAtom(OrderAtom::LE,w,l),
@@ -268,7 +269,6 @@ struct SplitBuilder {
         }
       }
     }
-    val.resize(var_count);
   }
 };
 

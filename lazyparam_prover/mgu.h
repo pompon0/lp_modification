@@ -19,8 +19,15 @@ private:
   RewindArray<Term> val;
 public:
   using Snapshot = RewindArray<Term>::Snapshot;
-  void resize(size_t n){ val.resize(n); }
   size_t size() const { return val.size(); }
+  
+  template<typename T> T allocate(T t) {
+    VarRange r = t.var_range();
+    t = t.shift(val.size()-r.begin);
+    val.resize(val.size()+r.end-r.begin);
+    return t;
+  }
+
   Snapshot snapshot(){ return val.snapshot(); }
   void rewind(Snapshot s){ 
     val.rewind(s);
@@ -149,7 +156,7 @@ public:
   // clears offset
   inline Atom eval(Atom a) const { FRAME("eval(%)",show(a));
     size_t ac = a.arg_count();
-    Atom::Builder b(a.sign(),a.pred(),ac);
+    Atom::Builder b(a.sign(),a.pred(),ac,a.strong_only());
     for(size_t i=ac; i--;) b.set_arg(i,eval(a.arg(i)));
     return b.build();
   }

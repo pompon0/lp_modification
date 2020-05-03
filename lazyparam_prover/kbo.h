@@ -35,19 +35,14 @@ public:
   
   inline bool equal(Term x, Term y){ return val.equal(x,y); }
   inline bool equal_mod_sign(Atom x, Atom y) { return val.equal_mod_sign(x,y); } 
-  inline AndClause eval(AndClause cla) const { return val.eval(cla); }
+  template<typename T> T eval(T t) const { return val.eval(t); }
+  Term shallow_eval(Term t) const { return val.shallow_eval(t); }
   
-  // unifies atoms ignoring the sign, validates constraints afterwards 
-  // returning false invalidates the object 
-  inline bool mgu(Atom x, Atom y) { FRAME("mgu()");
-    SCOPE("Valuation::mgu(Atom)");
-    if(x.pred()!=y.pred()) return 0;
-    DEBUG if(x.arg_count()!=y.arg_count()) error("arg_count() mismatch: %, %",show(x),show(y));
+  // unifies values, validates constraints afterwards.
+  template<typename T> bool mgu(T x, T y) { FRAME("mgu()");
+    if(!val.mgu(x,y)) return 0;
     auto s = snapshot();
-    for(size_t i=x.arg_count(); i--;)
-      if(!val.mgu(x.arg(i),y.arg(i))){ rewind(s); return 0; }
-
-    if(!check_constraints()) return 0;
+    if(!check_constraints()){ rewind(s); return 0; }
     return 1;
   }
   

@@ -115,7 +115,9 @@ cc_library(
     hdrs = [
         "mgu.h",
         "kbo.h",
+        "lpo.h",
         "constraint.h",
+        "rewrite_test_utils.h",
     ],
     deps = [
         ":derived",
@@ -153,7 +155,7 @@ cc_test(
     name = "mgu_test",
     srcs = ["mgu_test.cc"],
     deps = [
-        ":prover",
+        ":mgu",
         "//lazyparam_prover/util:util",
         "@gtest//:gtest_main",
     ],
@@ -162,9 +164,18 @@ cc_test(
 cc_test(
     name = "kbo_test",
     srcs = ["kbo_test.cc"],
-    copts = ["--std=c++17"],
     deps = [
-        ":prover",
+        ":mgu",
+        "//lazyparam_prover/util:util",
+        "@gtest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "lpo_test",
+    srcs = ["lpo_test.cc"],
+    deps = [
+        ":mgu",
         "//lazyparam_prover/util:util",
         "@gtest//:gtest_main",
     ],

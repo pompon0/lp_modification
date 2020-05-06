@@ -2,6 +2,7 @@
 #include "lazyparam_prover/kbo.h"
 #include "lazyparam_prover/util/log.h"
 #include "lazyparam_prover/rewrite_test_utils.h"
+#include "lazyparam_prover/constrained_valuation.h"
 #include "gtest/gtest.h"
 
 using namespace tableau;
@@ -13,7 +14,7 @@ TEST(KBO,reduction_ordering) {
 
 TEST(KBO,simple) {
   StreamLogger _(std::cerr);
-  KBO kbo;
+  ConstrainedValuation<KBO> kbo;
   Term x(kbo.allocate(Var(0)));
   Term y(kbo.allocate(Var(0)));
   auto f = [](auto ...a){ return Term(Fun(0,{a...})); };

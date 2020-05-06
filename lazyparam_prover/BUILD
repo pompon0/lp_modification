@@ -59,6 +59,19 @@ cc_library(
     ],
 )
 
+cc_test(
+    name = "derived_test",
+    srcs = [
+      "derived_test.cc",
+      "constraint_test.cc",
+    ],
+    deps = [
+        ":derived",
+        ":log",
+        "@gtest//:gtest_main",
+    ],
+)
+
 cc_library(
     name = "parse",
     hdrs = [
@@ -117,6 +130,7 @@ cc_library(
         "kbo.h",
         "lpo.h",
         "constraint.h",
+        "constrained_valuation.h",
         "rewrite_test_utils.h",
     ],
     deps = [

@@ -29,6 +29,7 @@ private:
 public:
   E operator[](size_t i) const { DEBUG validate_idx(i); return data[i]; }
   void resize(size_t n, E e){ FRAME("resize(%,_)",n);
+    DEBUG if(dirty.size()>0) error("ResetArray::resize, while dirty");
     data.resize(n,e);
   }
   size_t size() const { return data.size(); }

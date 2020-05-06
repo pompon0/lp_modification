@@ -9,7 +9,7 @@
 
 namespace tableau {
 
-str show(Term t) {
+inline str show(Term t) {
   switch(t.type()) {
     case Term::VAR: return util::fmt("V%",Var(t).id());
     case Term::FUN: {
@@ -27,7 +27,7 @@ str show(Term t) {
   error("unexpected t.type() = %",t.type());
 }
 
-str show_pred_name(u64 pred) {
+inline str show_pred_name(u64 pred) {
   switch(pred) {
   case Atom::EQ: return "eq";
   case Atom::EQ_TRANS_POS: return "[eq]";
@@ -38,7 +38,7 @@ str show_pred_name(u64 pred) {
   return util::fmt("p%",pred);
 }
 
-str show(Atom a) {
+inline str show(Atom a) {
   vec<str> args(a.arg_count());
   for(size_t i=a.arg_count(); i--;) args[i] = show(a.arg(i));
   str sign = a.sign() ? "+" : "-";
@@ -46,13 +46,13 @@ str show(Atom a) {
   return util::fmt("%%(%)",sign,pred_name,util::join(",",args));
 }
 
-str show(const OrClause cla) {
+inline str show(const OrClause cla) {
   vec<str> atoms;
   for(size_t i=0; i<cla.atom_count(); ++i) atoms.push_back(show(cla.atom(i)));
   return util::join(" \\/ ",atoms);
 }
 
-str show(const AndClause cla) {
+inline str show(const AndClause cla) {
   vec<str> atoms;
   for(size_t i=0; i<cla.atom_count(); ++i) atoms.push_back(show(cla.atom(i)));
   return util::join(" /\\ ",atoms);

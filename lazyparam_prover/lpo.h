@@ -82,20 +82,20 @@ namespace tableau {
 //  V(X) = V(Y)  =>  V(a_1) = V(b_1) and V(a_2) < V(b_2)  => V(a) < V(b)
 //  V(X) >LPO V(Y)  =>  V(a) < V(b_2)  =>  V(a) < V(b)
 struct LPO {
-  size_t size() const { return val.size(); }
-  template<typename T> T allocate(T t) { return val.allocate(t); }
-  template<typename T> bool mgu(T a, T b) { return val.mgu(a,b); }
-  template<typename T> T eval(T t) const { return val.eval(t); }
-  Term shallow_eval(Term t) const { return val.shallow_eval(t); }
-  OrderAtom::Relation cmp(Term l, Term r) { return Ctx(*this)(l,r); }
+  struct Snapshot {};
+  Snapshot snapshot(){ return {}; };
+  void rewind(Snapshot){}
+  void resize(size_t){}
 
+  OrderAtom::Relation cmp(const Valuation &val, Term l, Term r) { return Ctx(val)(l,r); }
+private:
   struct Ctx {
-    explicit Ctx(LPO &_lpo) : lpo(_lpo) {}
-    const LPO &lpo;
+    explicit Ctx(const Valuation &_val) : val(_val) {}
+    const Valuation &val;
 
     OrderAtom::Relation operator()(Term a, Term b) {
       return 
-        lpo.val.equal(a,b) ? OrderAtom::E :
+        val.equal(a,b) ? OrderAtom::E :
         less(a,b) ? OrderAtom::L :
         less(b,a) ? OrderAtom::G :
         OrderAtom::U;
@@ -107,7 +107,7 @@ struct LPO {
       if(a.fun()==b.fun()) {
         size_t n = a.arg_count();
         DEBUG if(a.arg_count()!=b.arg_count()) error("arg_count() mismatch");
-        for(;i<n; i++) if(!lpo.val.equal(a.arg(i),b.arg(i))) break;
+        for(;i<n; i++) if(!val.equal(a.arg(i),b.arg(i))) break;
         if(i==n) return false; 
         lex = less(a.arg(i),b.arg(i));
         i++;
@@ -116,19 +116,19 @@ struct LPO {
         for(size_t n = a.arg_count(); i<n; i++) if(!less(a.arg(i),Term(b))) return false;
         return true;
       } else {
-        for(size_t n = b.arg_count(); i<n; i++) if(lpo.val.equal(Term(a),b.arg(i)) || less(Term(a),b.arg(i))) return true;
+        for(size_t n = b.arg_count(); i<n; i++) if(val.equal(Term(a),b.arg(i)) || less(Term(a),b.arg(i))) return true;
         return false;
       }
     }
 
     bool less(Term a, Term b) { FRAME("less(%,%)",show(a),show(b));
-      b = lpo.val.shallow_eval(b);
+      b = val.shallow_eval(b);
       switch(b.type()) {
         case Term::VAR: return false;
         case Term::FUN:
-          a = lpo.val.shallow_eval(a);
+          a = val.shallow_eval(a);
           switch(a.type()) {
-            case Term::VAR: return lpo.val.has_var(b,Var(a).id());
+            case Term::VAR: return val.has_var(b,Var(a).id());
             case Term::FUN: return less(Fun(a),Fun(b));
             default: error("a.type() = %",b.type());
           }
@@ -136,9 +136,6 @@ struct LPO {
       }
     }
   };
-private:
-  List<OrderAtom> constraints;
-  Valuation val;
 };
 
 } // namespace tableau

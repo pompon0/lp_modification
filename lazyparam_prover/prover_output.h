@@ -29,7 +29,7 @@ Stats operator+(Stats a, Stats b) { return a += b; }
 struct ProverOutput {
   size_t cont_count;
   size_t cost;
-  KBO val;
+  Valuation val;
   ptr<OrForm> proof;
 
   Stats stats;

@@ -2,6 +2,7 @@
 #include "lazyparam_prover/lpo.h"
 #include "lazyparam_prover/util/log.h"
 #include "lazyparam_prover/rewrite_test_utils.h"
+#include "lazyparam_prover/constrained_valuation.h"
 #include "gtest/gtest.h"
 
 using namespace tableau;
@@ -13,7 +14,7 @@ TEST(LPO,reduction_ordering) {
 
 TEST(LPO,simple) {
   StreamLogger _(std::cerr);
-  LPO lpo;
+  ConstrainedValuation<LPO> lpo;
   Term x(lpo.allocate(Var(0)));
   Term y(lpo.allocate(Var(0)));
   TestCtx ctx(7895374);
@@ -37,7 +38,7 @@ TEST(LPO,incompleteness) {
   TestCtx ctx(7589354);
   auto f = ctx.new_fun<Term,Term>();
   for(size_t cases=10; cases--;) {
-    LPO lpo;
+    ConstrainedValuation<LPO> lpo;
     Term x(lpo.allocate(Var(0)));
     Term y(lpo.allocate(Var(0)));
     auto a = f(x,y);

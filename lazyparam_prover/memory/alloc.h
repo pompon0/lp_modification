@@ -12,7 +12,7 @@ struct Snapshot {
 };
 
 //TODO: zero the memory, when rewinding stack in DEBUG mode.
-Snapshot stack{0,0,0};
+extern Snapshot stack;
 
 inline u8* alloc_bytes(size_t s) {
   COUNTER("alloc_bytes");

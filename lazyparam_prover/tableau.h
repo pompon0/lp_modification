@@ -6,9 +6,10 @@
 #include "lazyparam_prover/syntax/clause.h"
 #include "lazyparam_prover/syntax/show.h"
 #include "lazyparam_prover/memory/variant.h"
-#include "lazyparam_prover/mgu.h"
 #include "lazyparam_prover/ground.h"
 #include "lazyparam_prover/kbo.h"
+#include "lazyparam_prover/lpo.h"
+#include "lazyparam_prover/constrained_valuation.h"
 #include "lazyparam_prover/log.h"
 #include "lazyparam_prover/parse.h"
 #include "lazyparam_prover/eq_axioms.h"
@@ -33,12 +34,14 @@ inline str show(Branch b) {
 
 //////////////////////////////////////////
 
+using Val = ConstrainedValuation<LPO>;
+
 struct SearchState {
   SearchState(const ClauseIndex &_cla_index) : cla_index(&_cla_index) {}
  
   ClauseIndex::State cla_index;
 
-  KBO val;
+  Val val;
   size_t nodes_used = 0;
   List<DerAndClause> clauses_used;
 
@@ -65,7 +68,7 @@ struct SearchState {
   }
 
   struct Snapshot {
-    KBO::Snapshot val;
+    Val::Snapshot val;
     tableau::Snapshot stack;
     size_t nodes_used;
     List<DerAndClause> clauses_used;
@@ -164,7 +167,7 @@ struct Cont {
       auto ca = mca.get();
       // Connect the new clause and analyze the new atoms recursively.
       auto cla = state.allocate(ca.cla);
-      if(!state.val.mgu(a,cla.atom(ca.i))) return nothing();
+      if(!state.val.unify(a,cla.atom(ca.i))) return nothing();
       for(size_t i=cla.atom_count(); i--;) if(i!=ca.i) todo += cla.atom(i);
     }
     return just(checked);
@@ -180,7 +183,7 @@ struct Cont {
   template<typename Alts> void strong(State &state, StrongFrame f, Alts alts) const { FRAME("strong(%,%)",show(f->dcla),f->strong_id);
     state.stats.strong_steps++;
     auto cla = state.allocate(f->dcla);
-    if(f->strong_id>=0) if(!state.val.mgu(f->branch.false_.head(),cla.atom(f->strong_id))) return;
+    if(f->strong_id>=0) if(!state.val.unify(f->branch.false_.head(),cla.atom(f->strong_id))) return;
 
     List<Atom> todo;
     for(ssize_t i=cla.atom_count(); i--;) if(i!=f->strong_id) todo += cla.atom(i);
@@ -338,7 +341,7 @@ struct Cont {
   struct _WeakUnifyFrame { Atom a1,a2; };
   using WeakUnifyFrame = Variant<Frame,Frame::WEAK_UNIFY,_WeakUnifyFrame>;
   template<typename Alts> void weak_unify(State &state, WeakUnifyFrame f, Alts &alts) const { FRAME("weak_unify");
-    if(state.val.mgu(f->a1,f->a2)) alts(Cont{frames.tail()}); 
+    if(state.val.unify(f->a1,f->a2)) alts(Cont{frames.tail()}); 
   }
 
   struct _MinCostFrame { size_t min_cost; };
@@ -357,7 +360,7 @@ ProverOutput prove(const Ctx &ctx, const ClauseIndex &cla_index, size_t limit) {
   return {
     res.cont_count,
     limit,
-    s.val,
+    s.val.get_valuation(),
     res.found ? s.get_proof() : 0,
     s.stats,
   };

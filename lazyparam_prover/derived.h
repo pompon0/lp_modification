@@ -22,7 +22,7 @@ struct DerAndClause {
   AndClause source(size_t i) const { return SOURCES::ref(ptr,i).shift(offset); }
   
   size_t constraint_count() const { return CONSTRAINTS::size(constraints_ptr); }
-  OrderAtom constraint(size_t i) const { return CONSTRAINTS::ref(constraints_ptr,i); }
+  OrderAtom constraint(size_t i) const { return CONSTRAINTS::ref(constraints_ptr,i).shift(offset); }
 
   DerAndClause(size_t cost, AndClause cla) {
     Builder b;

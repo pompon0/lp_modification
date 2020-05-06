@@ -35,7 +35,7 @@ public:
   }
   Maybe<Term> operator[](size_t i){ return val[i]; }
 
-  inline bool has_var(Term t, u64 v) { FRAME("has_var(%,%)",show(t),v);
+  inline bool has_var(Term t, u64 v) const { FRAME("has_var(%,%)",show(t),v);
     switch(t.type()) {
       case Term::VAR: 
         if(auto mx = val[Var(t).id()]) return has_var(mx.get(),v);
@@ -72,7 +72,7 @@ public:
     return 0;
   }
 
-  inline bool equal(Term x, Term y) {
+  inline bool equal(Term x, Term y) const {
     for(Maybe<Term> mxv; x.type()==Term::VAR && (mxv = val[Var(x).id()]);) x = mxv.get();
     for(Maybe<Term> myv; y.type()==Term::VAR && (myv = val[Var(y).id()]);) y = myv.get();
     if(x.type()!=y.type()) return 0;

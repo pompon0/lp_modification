@@ -12,6 +12,9 @@ cc_library(
         "maybe.h",
         "variant.h",
     ],
+    srcs = [
+        "alloc.cc",
+    ],
     deps = [
         "//lazyparam_prover:log",
         "//lazyparam_prover:types",

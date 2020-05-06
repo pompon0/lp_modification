@@ -75,7 +75,7 @@ private:
   friend OrClause AndClause::neg() const;
 };
 
-OrClause AndClause::neg() const { return OrClause(*this); }
+inline OrClause AndClause::neg() const { return OrClause(*this); }
 
 inline bool operator==(AndClause a, AndClause b) {
   if(a.atom_count()!=b.atom_count()) return 0;

@@ -210,7 +210,7 @@ struct ProtoCtx {
     return f;
   }
 
-  solutions::Derivation proto_derAndClause(const DerAndClause &cla, const KBO &val) const { FRAME("proto_derAndClause()");
+  solutions::Derivation proto_derAndClause(const DerAndClause &cla, const Valuation &val) const { FRAME("proto_derAndClause()");
     solutions::Derivation d;
     d.set_cost(cla.cost());
     auto derived = d.mutable_derived();
@@ -234,7 +234,7 @@ struct ProtoCtx {
     return d;
   }
 
-  solutions::Proof proto_Proof(const OrForm &f, const KBO &val) { FRAME("proto_Proof");
+  solutions::Proof proto_Proof(const OrForm &f, const Valuation &val) { FRAME("proto_Proof");
     solutions::Proof proof;
     size_t i=0;
     for(const auto &cla : f.and_clauses) {

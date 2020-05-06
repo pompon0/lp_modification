@@ -99,7 +99,7 @@ public:
   };
 };
 
-VarRange Term::var_range() const { FRAME("var_range()");
+inline VarRange Term::var_range() const { FRAME("var_range()");
   switch(type()) {
   case VAR: return Var(*this).var_range();
   case FUN: return Fun(*this).var_range();

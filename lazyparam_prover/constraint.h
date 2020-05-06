@@ -14,22 +14,28 @@ struct OrderAtom {
     friend bool operator==(const TermPair a, const TermPair b) {
       return a.a==b.a && a.b==b.b;
     }
+    TermPair shift(size_t offset) const {
+      auto t = *this;
+      t.a = t.a.shift(offset);
+      t.b = t.b.shift(offset);
+      return t;
+    }
   };
   
   Status status() const { return status_; }
   VarRange var_range() const { return VAR_RANGE::ref(ptr); }
-  OrderAtom shift(size_t _offset){ return OrderAtom(ptr,offset+_offset,status_,done); }
+  OrderAtom shift(size_t _offset) const { return OrderAtom(ptr,offset+_offset,status_,done); }
 
   Relation rel() const { return RELATION::ref(ptr); }
   size_t pair_count() const { return TERM_PAIRS::size(ptr); }
-  TermPair pair(size_t i) const { return TERM_PAIRS::ref(ptr,i); }
+  TermPair pair(size_t i) const { return TERM_PAIRS::ref(ptr,i).shift(offset); }
 
   // OrderAtom -> (Term -> Term -> OrderAtom::Relation) -> OrderAtom
   template<typename CMP> OrderAtom reduce(CMP &cmp) const {
     if(status()!=UNKNOWN) return *this;
-    for(size_t _done = done, size = TERM_PAIRS::size(ptr);; _done++) {
-      auto p = TERM_PAIRS::ref(ptr,_done);
-      auto r = cmp(p.a.shift(offset),p.b.shift(offset));
+    for(size_t _done = done, size = pair_count();; _done++) {
+      auto p = pair(_done);
+      auto r = cmp.cmp(p.a,p.b);
       bool last = _done==size-1;
       if(!last && r==E) continue;
       auto got = decide(r,last);

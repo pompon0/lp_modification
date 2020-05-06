@@ -45,7 +45,9 @@ namespace util
   {
     arr<str> vs{to_str(args)...};
     std::stringstream ss; size_t i = 0;
-    for(char c : format_str) if(c!='%') ss << c; else ss << vs.at(i++);
+    for(char c : format_str) if(c!='%') ss << c; else {
+      if(i>=vs.size()) ss << "[?]"; else ss << vs[i++];
+    }
     return ss.str();
   }
 }

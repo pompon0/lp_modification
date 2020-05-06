@@ -16,91 +16,25 @@
 namespace tableau {
 
 struct KBO {
+private:
+  ResetArray<int> var_occ;
   using Res = OrderAtom::Relation;
 public:
-  size_t size() const { return val.size(); }
+  struct Snapshot { size_t var_occ_size; };
+  Snapshot snapshot(){ return {var_occ.size()}; }
+  void rewind(Snapshot s){ var_occ.resize(s.var_occ_size,0); }
+  inline void resize(size_t n) { var_occ.resize(n,0); }
 
-  template<typename T> T allocate(T t) {
-    t = val.allocate(t);
-    var_occ.resize(val.size(),0);
-    return t;
-  }
-
-  struct Snapshot {
-    Valuation::Snapshot val;
-    List<OrderAtom> constraints;
-  };
-  Snapshot snapshot(){ return {val.snapshot(),constraints}; }
-  void rewind(Snapshot s){ val.rewind(s.val); constraints = s.constraints; }
-  
-  inline bool equal(Term x, Term y){ return val.equal(x,y); }
-  inline bool equal_mod_sign(Atom x, Atom y) { return val.equal_mod_sign(x,y); } 
-  inline AndClause eval(AndClause cla) const { return val.eval(cla); }
-  
-  // unifies atoms ignoring the sign, validates constraints afterwards 
-  // returning false invalidates the object 
-  inline bool mgu(Atom x, Atom y) { FRAME("mgu()");
-    SCOPE("Valuation::mgu(Atom)");
-    if(x.pred()!=y.pred()) return 0;
-    DEBUG if(x.arg_count()!=y.arg_count()) error("arg_count() mismatch: %, %",show(x),show(y));
-    auto s = snapshot();
-    for(size_t i=x.arg_count(); i--;)
-      if(!val.mgu(x.arg(i),y.arg(i))){ rewind(s); return 0; }
-
-    if(!check_constraints()) return 0;
-    return 1;
-  }
-  
-  inline Res cmp(Term l, Term r) { FRAME("KBO.cmp()");
-    auto res = Ctx(*this).cmp(l,r);
+  inline Res cmp(const Valuation &val, Term l, Term r) { FRAME("KBO.cmp()");
+    auto res = Ctx(val,*this).cmp(l,r);
     var_occ.reset(0);
     return res;
   }
 
-  // returning false invalidates the object 
-  bool push_constraint(OrderAtom c) {
-    if(c.status()==OrderAtom::TRUE) return 1;
-    return check_and_push_constraint_with_log(constraints,c);
-  }
 private:
-  List<OrderAtom> constraints;
-  ResetArray<int> var_occ;
-  Valuation val; 
-
-  bool check_constraints() {
-    List<OrderAtom> c2;
-    for(auto c = constraints; !c.empty(); c = c.tail()) {
-      if(!check_and_push_constraint_with_log(c2,c.head())) return false;
-    }
-    constraints = c2;
-    return true;
-  } 
-
-  bool check_and_push_constraint_with_log(List<OrderAtom> &constraints, OrderAtom c) {
-    Ctx ctx(*this);
-    c = c.reduce(ctx);
-    switch(c.status()) {
-    case OrderAtom::TRUE: return true;
-    case OrderAtom::UNKNOWN: constraints += c; return true;
-    case OrderAtom::FALSE:
-      DEBUG {
-        /*info("val = %",val.DebugString());
-        for(auto c = constraints; !c.empty(); c = c.tail()) { 
-          vec<str> ps;
-          for(auto p = c.head().or_; !p.empty(); p = p.tail()) {
-            ps.push_back(util::fmt("[% = %, % = %]",show(p.head().l),show(val.eval(p.head().l)),show(p.head().r),show(val.eval(p.head().r))));
-          }
-          str ts = c.head().type==Constraint::NEQ ? "!=" : "<";
-          info("% :: %",ts,util::join(" ",ps));
-        }*/
-      }
-      return false;
-    default: error("c.status() = %",c.status());
-    }
-  }
-
   struct Ctx {
-    explicit Ctx(KBO &_kbo) : kbo(_kbo) {}
+    explicit Ctx(const Valuation &_val, KBO &_kbo) : val(_val), kbo(_kbo) {}
+    const Valuation &val;
     KBO &kbo;
     int pos = 0;
     int neg = 0;
@@ -109,7 +43,7 @@ private:
     static inline Res cmp(u64 l, u64 r) { return l<r ? OrderAtom::L : l>r ? OrderAtom::G : OrderAtom::E; }
 
     inline void accum(Term t, int f) { FRAME("Balance.accum()");
-      t = kbo.val.shallow_eval(t);
+      t = val.shallow_eval(t);
       switch(t.type()) {
         case Term::VAR: {
           weight += f;
@@ -142,8 +76,8 @@ private:
 
     inline Res cmp(Term l, Term r) { FRAME("Ctx.cmp(%,%)",show(l),show(r));
       //TODO: replace with hash cons
-      l = kbo.val.shallow_eval(l);
-      r = kbo.val.shallow_eval(r);
+      l = val.shallow_eval(l);
+      r = val.shallow_eval(r);
       if(l.type()==Term::FUN && r.type()==Term::FUN && l!=r) {
         Fun lf(l), rf(r);
         if(lf.fun()!=rf.fun()) {

@@ -38,6 +38,15 @@ message Proof {
 message ProverStats {
   int64 strong_steps = 2;
   int64 strong_only_steps = 1;
+  int64 weak_connections_steps = 3;
+  int64 weak_set_steps = 4;
+  int64 weak_steps = 5;
+  int64 weak_unify_steps = 6;
+  int64 min_cost_steps = 7;
+  int64 val_unifications = 8;
+  int64 val_failed_unifications = 9;
+  int64 val_broken_constraints = 10;
+  int64 val_comparisons = 11;
 }
 
 message ProverOutput {

@@ -208,6 +208,7 @@ struct Cont {
   };
   using WeakConnectionsFrame = Variant<Frame,Frame::WEAK_CONNECTIONS,_WeakConnectionsFrame>;
   template<typename Alts> void weak_connections(State &state, WeakConnectionsFrame f, Alts alts) const { FRAME("weak_connections");
+    state.stats.weak_connections_steps++;
     if(!f->atoms.empty()) {
       Atom a = f->atoms.head(); 
 
@@ -278,6 +279,7 @@ struct Cont {
   using WeakSetFrame = Variant<Frame,Frame::WEAK_SET,_WeakSetFrame>;
 
   template<typename Alts> void weak_set(State &state, WeakSetFrame f, Alts alts) const { FRAME("weak_set");
+    state.stats.weak_set_steps++;
     DEBUG if(!f->branch_count) error("f->branch_count = 0");
     if(f->branch_count==1){
       WeakFrame::Builder b;
@@ -315,6 +317,7 @@ struct Cont {
   using WeakFrame = Variant<Frame,Frame::WEAK,_WeakFrame>;
 
   template<typename Alts> void weak(State &state, WeakFrame f, Alts alts) const { FRAME("weak(%)",show(f->branch.false_.head())); 
+    state.stats.weak_steps++;
     size_t budget = f->nodes_limit - state.nodes_used;
     COUNTER("expand");
     if(budget<f->min_cost) return;
@@ -341,12 +344,14 @@ struct Cont {
   struct _WeakUnifyFrame { Atom a1,a2; };
   using WeakUnifyFrame = Variant<Frame,Frame::WEAK_UNIFY,_WeakUnifyFrame>;
   template<typename Alts> void weak_unify(State &state, WeakUnifyFrame f, Alts &alts) const { FRAME("weak_unify");
+    state.stats.weak_unify_steps++;
     if(state.val.unify(f->a1,f->a2)) alts(Cont{frames.tail()}); 
   }
 
   struct _MinCostFrame { size_t min_cost; };
   using MinCostFrame = Variant<Frame,Frame::MIN_COST,_MinCostFrame>;
   template<typename Alts> void min_cost(State &state, MinCostFrame f, Alts &alts) const { FRAME("min_cost");
+    state.stats.min_cost_steps++;
     if(state.nodes_used>=f->min_cost) alts(Cont{frames.tail()});
   }
 };
@@ -357,6 +362,7 @@ ProverOutput prove(const Ctx &ctx, const ClauseIndex &cla_index, size_t limit) {
   Cont::StartFrame::Builder b;
   b->nodes_limit = limit;
   auto res = alt::search(ctx,s,Cont{List<Cont::Frame>(Cont::Frame(b.build()))});
+  s.stats.val = s.val.stats;
   return {
     res.cont_count,
     limit,

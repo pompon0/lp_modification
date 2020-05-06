@@ -15,12 +15,28 @@
 
 namespace tableau {
 
+struct ValuationStats {
+  size_t unifications = 0;
+  size_t failed_unifications = 0;
+  size_t broken_constraints = 0;
+  size_t comparisons = 0;
+  ValuationStats & operator+=(ValuationStats b) {
+    unifications += b.unifications;
+    failed_unifications += b.failed_unifications;
+    broken_constraints += b.broken_constraints;
+    comparisons += b.comparisons;
+    return *this;
+  }
+};
+
 template<typename Ordering> struct ConstrainedValuation {
 private:
   List<OrderAtom> constraints;
   Valuation val;
   Ordering ord;
 public:
+  ValuationStats stats;
+
   Valuation get_valuation() const { return val; }
   size_t size() const { return val.size(); }
 
@@ -55,13 +71,24 @@ public:
   
   // unifies values, validates constraints afterwards.
   template<typename T> bool unify(T x, T y) { FRAME("mgu()");
-    if(!val.mgu(x,y)) return 0;
+    stats.unifications++;
+    if(!val.mgu(x,y)){
+      stats.failed_unifications++;
+      return 0;
+    }
     auto s = snapshot();
-    if(!check_constraints()){ rewind(s); return 0; }
+    if(!check_constraints()){
+      stats.broken_constraints++;
+      rewind(s);
+      return 0;
+    }
     return 1;
   }
   
-  inline OrderAtom::Relation cmp(Term l, Term r) { return ord.cmp(val,l,r); }
+  inline OrderAtom::Relation cmp(Term l, Term r) {
+    stats.comparisons++;
+    return ord.cmp(val,l,r);
+  }
 
   // returning false invalidates the object 
   bool push_constraint(OrderAtom c) {

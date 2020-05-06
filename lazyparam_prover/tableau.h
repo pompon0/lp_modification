@@ -34,7 +34,7 @@ inline str show(Branch b) {
 
 //////////////////////////////////////////
 
-using Val = ConstrainedValuation<LPO>;
+using Val = ConstrainedValuation<KBO>;
 
 struct SearchState {
   SearchState(const ClauseIndex &_cla_index) : cla_index(&_cla_index) {}

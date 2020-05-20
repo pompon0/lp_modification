@@ -37,7 +37,12 @@ public:
   Atom neg() const { return Atom(ptr,offset,!sign_,id_,strong_only_); }
   Atom set_id(size_t _id) const { return Atom(ptr,offset,sign_,_id,strong_only_); }
   Atom set_strong_only() const { return Atom(ptr,offset,sign_,id_,true); }
-  
+  Atom replace_arg(size_t i, Term t) const {
+    Builder b(sign(),pred(),arg_count(),strong_only());
+    for(size_t i=arg_count(); i--;) b.set_arg(i,arg(i));
+    b.set_arg(i,t);
+    return b.build();
+  }
   inline bool sign() const { return sign_; }
   inline u64 pred() const { return PRED::ref(ptr); }
   inline u64 arg_count() const { return ARGS::size(ptr); }

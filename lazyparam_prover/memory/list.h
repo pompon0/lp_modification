@@ -3,6 +3,7 @@
 
 #include "lazyparam_prover/log.h"
 #include "lazyparam_prover/memory/alloc.h"
+#include "lazyparam_prover/memory/maybe.h"
 
 namespace tableau {
 
@@ -13,6 +14,7 @@ private:
   List(const Node *_ptr) : ptr(_ptr) {}
 public:
   List() : List(0) {}
+  List(Nothing) : List() {}
   List(E h, List<E> t) : List(alloc_init(Node{t.ptr,h})) {}
   explicit List(E h) : List(h,List()) {}
   

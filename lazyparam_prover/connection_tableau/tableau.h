@@ -1,14 +1,13 @@
-#ifndef TABLEAU_H_
-#define TABLEAU_H_
+#ifndef CONNECTION_TABLEAU_TABLEAU_H_
+#define CONNECTION_TABLEAU_TABLEAU_H_
 
+#include "lazyparam_prover/search_state.h"
 #include "lazyparam_prover/types.h"
 #include "lazyparam_prover/syntax/atom.h"
 #include "lazyparam_prover/syntax/clause.h"
 #include "lazyparam_prover/syntax/show.h"
 #include "lazyparam_prover/memory/variant.h"
 #include "lazyparam_prover/ground.h"
-#include "lazyparam_prover/kbo.h"
-#include "lazyparam_prover/lpo.h"
 #include "lazyparam_prover/constrained_valuation.h"
 #include "lazyparam_prover/log.h"
 #include "lazyparam_prover/parse.h"
@@ -19,74 +18,7 @@
 #include "lazyparam_prover/index.h"
 #include "lazyparam_prover/prover_output.h"
 
-namespace tableau {
-
-struct Branch {
-  List<Atom> false_;
-  List<Atom> true_;
-};
-
-inline str show(Branch b) {
-  vec<str> atoms;
-  for(auto bt = b.false_; !bt.empty(); bt = bt.tail()) atoms.push_back(show(bt.head()));
-  return util::fmt("[%]",util::join(", ",atoms));
-}
-
-//////////////////////////////////////////
-
-using Val = ConstrainedValuation<LPO>;
-
-struct SearchState {
-  SearchState(const ClauseIndex &_cla_index) : cla_index(&_cla_index) {}
- 
-  ClauseIndex::State cla_index;
-
-  Val val;
-  size_t nodes_used = 0;
-  List<DerAndClause> clauses_used;
-
-  Stats stats;
-
-  AndClause allocate(DerAndClause dcla) { FRAME("strong_unify()");
-    dcla = val.allocate(dcla);
-    clauses_used += dcla;
-    nodes_used += dcla.cost();
-    for(size_t i=dcla.constraint_count(); i--;){
-      val.push_constraint(dcla.constraint(i));
-    }
-    return dcla.derived();
-  }
-
-  // cannot return the proto, because parsing context is not available.
-  // This means that Valuation has to be included in the ProverOutput.
-  ptr<OrForm> get_proof() {
-    auto proof = util::make<OrForm>();
-    for(auto l=clauses_used; !l.empty(); l = l.tail()) {
-      proof->and_clauses.push_back(l.head());
-    }
-    return proof;
-  }
-
-  struct Snapshot {
-    Val::Snapshot val;
-    tableau::Snapshot stack;
-    size_t nodes_used;
-    List<DerAndClause> clauses_used;
-    ClauseIndex::State cla_index;
-  };
-
-  void rewind(Snapshot s) {
-    val.rewind(s.val);
-    stack = s.stack;
-    nodes_used = s.nodes_used;
-    clauses_used = s.clauses_used;
-    cla_index = s.cla_index;
-  }
-
-  Snapshot snapshot(){
-    return {val.snapshot(),stack,nodes_used,clauses_used,cla_index};
-  }
-};
+namespace tableau::connection_tableau {
 
 struct Cont { 
   using State = SearchState;
@@ -403,6 +335,6 @@ ProverOutput prove_loop(const Ctx &ctx, OrForm form) { FRAME("prove_loop()");
   return out; 
 }
 
-} // namespace tableau
+} // namespace connection_tableau::tableau
 
-#endif  // TABLEAU_H_
+#endif  // CONNECTION_TABLEAU_TABLEAU_H_

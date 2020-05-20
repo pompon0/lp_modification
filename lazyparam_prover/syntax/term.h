@@ -79,7 +79,12 @@ public:
   Term arg(size_t i) const { return ARGS::ref(term.ptr,i).shift(term.offset); }
   VarRange var_range() const { return VAR_RANGE::ref(term.ptr)+term.offset; }
   Fun shift(size_t offset) const { return Fun(term.shift(offset)); }
-
+  Fun replace_arg(size_t i, Term t) const {
+    Builder b(fun(),arg_count());
+    for(size_t i=arg_count(); i--;) b.set_arg(i,arg(i));
+    b.set_arg(i,t);
+    return b.build();
+  }
   struct Builder {
   private:
     u8 *ptr;

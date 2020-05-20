@@ -3,6 +3,7 @@
 
 #include <algorithm>
 
+#include "lazyparam_prover/eq_axioms.h"
 #include "lazyparam_prover/syntax/term.h"
 #include "lazyparam_prover/syntax/atom.h"
 #include "lazyparam_prover/syntax/clause.h"

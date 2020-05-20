@@ -60,6 +60,7 @@ func Tableau(ctx context.Context, cnfProblem *tpb.File, streamStdErr bool, trans
   cmd := exec.CommandContext(ctx,utils.Runfile(tableau_bin_path),
     fmt.Sprintf("--timeout=%v",timeout),
     fmt.Sprintf("--trans=%v",trans),
+    fmt.Sprintf("--method=%v",ppb.Method_CONNECTION_TABLEAU),
     fmt.Sprintf("--trans_only=%v",transOnly),
   )
   cmd.Stdin = &inBuf

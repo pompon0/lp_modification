@@ -19,6 +19,7 @@ private:
   vec<bool> is_starting_clause;
   struct AtomClauseId { size_t atom_id, clause_id; };
   vec<vec<AtomClauseId>> sets;
+  vec<AtomClauseId> all;
   vec<size_t> map;
 public:
   //TODO: eliminate clauses with unmatchable atoms
@@ -72,7 +73,22 @@ public:
         next_starting_clause_id-1,
         index);
     }
-
+    Filter get_matches(size_t pred, bool sign, size_t cost_limit) {
+      DEBUG if(next_starting_clause_id==0) error("next_starting_clause == 0");
+      return Filter(
+        cost_limit,
+        &index->sets[Index::atom_hash(pred,sign)],
+        next_starting_clause_id-1,
+        index);
+    }
+    Filter get_all(size_t cost_limit) {
+      DEBUG if(next_starting_clause_id==0) error("next_starting_clause == 0");
+      return Filter(
+        cost_limit,
+        &index->all,
+        next_starting_clause_id-1,
+        index);
+    }
   private:
     const ClauseIndex *index;
     // Allows to filter out infeasible matches.
@@ -105,6 +121,7 @@ public:
         auto h = Index::atom_hash(c.atom(j));
         if((h|1)>=preindex.size()) preindex.resize((h|1)+1);
         preindex[h].push_back({j,i});
+        all.push_back({j,i});
       }
     }
     //for(size_t i=0; i<preindex.size(); ++i) info("preindex[%].size() = %",i,preindex[i].size());

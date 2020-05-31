@@ -21,19 +21,23 @@ import (
 const tableau_bin_path = "__main__/lazyparam_prover/main"
 
 func ProveAxiomaticEq(ctx context.Context, tptpFOFProblem []byte) (*spb.ProverOutput,error) {
-  return Prove(ctx,tptpFOFProblem,ppb.Transformation_AXIOMATIC_EQ)
+  return Prove(ctx,tptpFOFProblem,ppb.Method_CONNECTION_TABLEAU,ppb.Transformation_AXIOMATIC_EQ)
 }
 
 func ProveLPModification(ctx context.Context, tptpFOFProblem []byte) (*spb.ProverOutput,error) {
-  return Prove(ctx,tptpFOFProblem,ppb.Transformation_LP_MODIFICATION)
+  return Prove(ctx,tptpFOFProblem,ppb.Method_CONNECTION_TABLEAU,ppb.Transformation_LP_MODIFICATION)
 }
 
-func Prove(ctx context.Context, tptpFOFProblem []byte, trans ppb.Transformation) (*spb.ProverOutput,error) {
+func ProveLazyParamodulation(ctx context.Context, tptpFOFProblem []byte) (*spb.ProverOutput,error) {
+  return Prove(ctx,tptpFOFProblem,ppb.Method_LAZY_PARAMODULATION,ppb.Transformation_SKIP);
+}
+
+func Prove(ctx context.Context, tptpFOFProblem []byte, method ppb.Method, trans ppb.Transformation) (*spb.ProverOutput,error) {
   tptpCNF,err := eprover.FOFToCNF(ctx,tptpFOFProblem)
   if err!=nil { return nil,fmt.Errorf("eprover.FOFToCNF(): %v",err) }
   cnf,err := tool.TptpToProto(ctx,tool.CNF,tptpCNF)
   if err!=nil { return nil,fmt.Errorf("tool.TptpToProto(): %v",err) }
-  out,err := Tableau(ctx,cnf,true,trans,false)
+  out,err := Tableau(ctx,cnf,true,method,trans,false)
   if err!=nil {
     if err==context.DeadlineExceeded {
       return &spb.ProverOutput{Solved:false},nil
@@ -44,7 +48,7 @@ func Prove(ctx context.Context, tptpFOFProblem []byte, trans ppb.Transformation)
   return out,nil
 }
 
-func Tableau(ctx context.Context, cnfProblem *tpb.File, streamStdErr bool, trans ppb.Transformation, transOnly bool) (*spb.ProverOutput,error) {
+func Tableau(ctx context.Context, cnfProblem *tpb.File, streamStdErr bool, method ppb.Method, trans ppb.Transformation, transOnly bool) (*spb.ProverOutput,error) {
   var inBuf,outBuf,errBuf bytes.Buffer
   cnfProblemBytes, err := proto.Marshal(cnfProblem)
   if err!=nil { return nil,fmt.Errorf("proto.Marshal(): %v",err) }
@@ -60,7 +64,7 @@ func Tableau(ctx context.Context, cnfProblem *tpb.File, streamStdErr bool, trans
   cmd := exec.CommandContext(ctx,utils.Runfile(tableau_bin_path),
     fmt.Sprintf("--timeout=%v",timeout),
     fmt.Sprintf("--trans=%v",trans),
-    fmt.Sprintf("--method=%v",ppb.Method_CONNECTION_TABLEAU),
+    fmt.Sprintf("--method=%v",method),
     fmt.Sprintf("--trans_only=%v",transOnly),
   )
   cmd.Stdin = &inBuf

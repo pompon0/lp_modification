@@ -8,7 +8,7 @@ var EqAxiom2 = []byte("fof(eqAxiom2, conjecture, (a1=a2) => (f(a1,b1,c1)=f(a2,b1
 var EqAxiom3 = []byte("fof(eqAxiom3, conjecture, ((a=b) & (b=c) & (c=d)) => (a=d)).")
 var EqAxiom4 = []byte("fof(eqAxiom4, conjecture, ((a=b)  => (b=a))).")
 
-var Barber = []byte("fof(simple, conjecture, ~(?[B]:(![X]:(shaves(B,X) <=> ~shaves(X,X))))).")
+var Barber = []byte("fof(barber, conjecture, ~(?[B]:(![X]:(shaves(B,X) <=> ~shaves(X,X))))).")
 
 var Pelletier20 = []byte(`
 fof(a1, axiom, (![X]: (![Y]: (?[Z]: (![W]: ((p(X) & q(Y)) => (r(Z) & u(W)))))))).
@@ -34,6 +34,7 @@ var SampleProblems = map[string][]byte {
   "eqAxiom1": EqAxiom1,
   "eqAxiom2": EqAxiom2,
   "eqAxiom3": EqAxiom3,
+  "eqAxiom4": EqAxiom4,
   "barber": Barber,
   "pelletier20": Pelletier20,
   "pelletier24": Pelletier24,

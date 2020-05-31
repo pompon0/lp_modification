@@ -8,6 +8,7 @@ cc_library(
         "alloc.h",
         "array.h",
         "layout.h",
+        "lazy.h",
         "list.h",
         "maybe.h",
         "variant.h",

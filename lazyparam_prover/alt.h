@@ -26,7 +26,8 @@ template<typename Cont> SearchResult search(const Ctx &ctx, typename Cont::State
   struct Alt { Cont cont; typename Cont::State::Snapshot snapshot; };
   size_t cont_count = 0;
   List<Alt> alts({c,state.snapshot()});
-  for(size_t steps = 0; !alts.empty(); steps++) {
+  size_t steps = 0;
+  for(; !alts.empty(); steps++) {
     if(steps%100==0 && ctx.done()) return {0,cont_count};
     DEBUG if(steps%1000==0) info("steps = %",steps);
     auto a = alts.head(); alts = alts.tail();
@@ -37,6 +38,7 @@ template<typename Cont> SearchResult search(const Ctx &ctx, typename Cont::State
       alts = Alt{cont,state.snapshot()} + alts;
     });
   }
+  DEBUG info("steps = %",steps);
   return {0,cont_count};
 }
 

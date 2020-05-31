@@ -28,7 +28,7 @@ func TestTransformations(t *testing.T) {
         if err!=nil { t.Fatalf("eprover.FOFToCNF(): %v",err) }
         cnf,err := tool.TptpToProto(ctx,tool.CNF,tptpCNF)
         if err!=nil { t.Fatalf("tool.TptpToProto(): %v",err) }
-        out,err := Tableau(ctx,cnf,false,trans,true)
+        out,err := Tableau(ctx,cnf,false,ppb.Method_UNKNOWN_METHOD,trans,true)
         if err!=nil { t.Fatalf("Tableau(%q): %v",k,err) }
 
         tptpTransformed,err := tool.ProtoToTptp(ctx,out.TransformedProblem)
@@ -46,22 +46,28 @@ func TestTransformations(t *testing.T) {
 
 func TestTableau(t *testing.T) {
   ctx := context.Background()
-  for _,trans := range []ppb.Transformation{
-    ppb.Transformation_AXIOMATIC_EQ,
-    ppb.Transformation_AXIOMATIC_EQ_FLAT,
-    ppb.Transformation_AXIOMATIC_EQ_RESTRICTED_TRANS,
-    ppb.Transformation_LP_MODIFICATION,
-  } {
+  for _,p := range []struct{
+    method ppb.Method
+    trans ppb.Transformation
+  }{
+    {ppb.Method_CONNECTION_TABLEAU, ppb.Transformation_AXIOMATIC_EQ},
+    {ppb.Method_CONNECTION_TABLEAU, ppb.Transformation_AXIOMATIC_EQ_FLAT},
+    {ppb.Method_CONNECTION_TABLEAU, ppb.Transformation_AXIOMATIC_EQ_RESTRICTED_TRANS},
+    {ppb.Method_CONNECTION_TABLEAU, ppb.Transformation_LP_MODIFICATION},
+    {ppb.Method_LAZY_PARAMODULATION, ppb.Transformation_SKIP},
+  }{
     for k,v := range problems.SampleProblems {
       k,v := k,v
-      t.Run(fmt.Sprintf("case (%v,%q)",trans,k),func(t *testing.T) {
+      t.Run(fmt.Sprintf("case (%v,%q)",p,k),func(t *testing.T) {
+        ctx,cancel := context.WithTimeout(ctx,time.Second)
+        defer cancel()
         tptpCNF,err := eprover.FOFToCNF(ctx,v)
         if err!=nil { t.Fatalf("eprover.FOFToCNF(): %v",err) }
         cnf,err := tool.TptpToProto(ctx,tool.CNF,tptpCNF)
         if err!=nil { t.Fatalf("tool.TptpToProto(): %v",err) }
         proveCtx,cancel := context.WithTimeout(ctx,10*time.Second)
         defer cancel()
-        out,err := Prove(proveCtx,v,trans)
+        out,err := Prove(proveCtx,v,p.method,p.trans)
         if err!=nil { t.Fatalf("Prove(%q): %v",k,err) }
         if out.Proof==nil {
           t.Fatalf("out = %+v",out)

@@ -365,7 +365,8 @@ OrForm append_eq_axioms_with_restricted_transitivity(OrForm f) {
 
 struct Index {
   struct AndClauseWithAtom { size_t i; DerAndClause cla; };
-  static size_t atom_hash(Atom a) { return (a.pred()-Atom::PRED_MIN)<<1|a.sign(); }
+  static size_t atom_hash(size_t pred, bool sign){ return (pred-Atom::PRED_MIN)<<1|sign; }
+  static size_t atom_hash(Atom a) { return atom_hash(a.pred(),a.sign()); }
 private:
   vec<AndClauseWithAtom> empty;
   vec<vec<vec<AndClauseWithAtom>>> map; // atom -> cost -> AndClauseWithAtom

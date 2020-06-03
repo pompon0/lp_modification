@@ -11,6 +11,15 @@
 #include "lazyparam_prover/index.h"
 #include "lazyparam_prover/prover_output.h"
 
+#ifdef DEBUG_MODE
+  #define STATE_FRAME(state,args...)\
+    auto _msg = util::fmt(args);\
+    util::Frame _(VERBOSE,args);\
+    state.trace += _msg;
+#else
+  #define STATE_FRAME(state,args...)
+#endif
+
 namespace tableau {
 
 struct Branch {
@@ -47,7 +56,8 @@ struct SearchState {
   size_t nodes_used = 0;
   List<DerAndClause> clauses_used;
   List<Lazy<DerAndClause>> lazy_clauses_used;
-
+  DEBUG_ONLY(List<str> trace;)
+  
   Stats stats;
 
   AndClause allocate(DerAndClause dcla) { FRAME("SearchState::allocate()");
@@ -80,6 +90,7 @@ struct SearchState {
     List<DerAndClause> clauses_used;
     List<Lazy<DerAndClause>> lazy_clauses_used;
     ClauseIndex::State cla_index;
+    DEBUG_ONLY(List<str> trace;)
   };
 
   void rewind(Snapshot s) {
@@ -89,6 +100,7 @@ struct SearchState {
     clauses_used = s.clauses_used;
     lazy_clauses_used = s.lazy_clauses_used;
     cla_index = s.cla_index;
+    DEBUG_ONLY(trace = s.trace;)
   }
 
   Snapshot snapshot(){
@@ -99,6 +111,7 @@ struct SearchState {
       .clauses_used = clauses_used,
       .lazy_clauses_used = lazy_clauses_used,
       .cla_index = cla_index,
+      DEBUG_ONLY(.trace = trace,)
     };
   }
 };

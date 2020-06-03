@@ -1,4 +1,4 @@
-//#define DEBUG
+#define DEBUG_MODE
 //#define VERBOSE
 //#define PROFILE
 

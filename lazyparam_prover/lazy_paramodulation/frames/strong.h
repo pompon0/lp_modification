@@ -6,7 +6,7 @@ struct _StrongFrame {
 };
 using StrongFrame = Variant<Frame,Frame::STRONG,_StrongFrame>;
 
-template<typename Alts> void strong(State &state, StrongFrame f, Alts alts) const { FRAME("strong(%,%, branch=%)",show(f->dcla),f->strong_id,show(f->branch));
+template<typename Alts> void strong(State &state, StrongFrame f, Alts alts) const { STATE_FRAME(state,"strong(%,%, branch=%)",show(f->dcla),f->strong_id,show(f->branch));
   state.stats.strong_steps++;
   auto cla = state.allocate(f->dcla);
   if(f->strong_id>=0) if(!state.val.unify(f->branch.false_.head(),cla.atom(f->strong_id))) return;

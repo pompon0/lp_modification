@@ -34,6 +34,11 @@ fof(a1, axiom, (~q)).
 fof(a2, axiom, (d=c <=> q)).
 `)
 
+var T33_zfmisc_1_reduced = []byte(`
+fof(a0, conjecture,  (p(y) => (x=c | d=y))).
+fof(a1, axiom,       (p(y) => (x=c | d=y))).
+`)
+
 var SampleProblems = map[string][]byte {
   "trivial": Trivial,
   "simple": Simple,
@@ -46,4 +51,5 @@ var SampleProblems = map[string][]byte {
   "pelletier24": Pelletier24,
   "l143_zfmics_1": L143_zfmisc_1,
   "l40_tex_2_reduced": L40_tex_2_reduced,
+  "t33_zfmisc1_reduced": T33_zfmisc_1_reduced,
 }

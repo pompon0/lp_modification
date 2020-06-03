@@ -6,7 +6,7 @@ struct _LazyPreWeakConnectionFrame {
 };
 using LazyPreWeakConnectionFrame = Variant<Frame,Frame::LAZY_PRE_WEAK_CONNECTION,_LazyPreWeakConnectionFrame>;
 
-template<typename Alts> void lazy_pre_weak_connection(State &state, LazyPreWeakConnectionFrame f, Alts alts) const { FRAME("lazy_pre_weak_connection()");
+template<typename Alts> void lazy_pre_weak_connection(State &state, LazyPreWeakConnectionFrame f, Alts alts) const { STATE_FRAME(state,"lazy_pre_weak_connection(L=%,lr=%)",show(f->L),show(f->lr));
   if(++state.nodes_used>f->nodes_limit) return;
   auto lr = f->lr;
   DEBUG if(lr.pred()!=Atom::EQ || lr.sign()) error("lr = %",show(lr));

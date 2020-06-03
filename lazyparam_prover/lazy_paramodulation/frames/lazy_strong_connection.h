@@ -12,7 +12,7 @@ struct _LazyStrongConnectionFrame {
 };
 using LazyStrongConnectionFrame = Variant<Frame,Frame::LAZY_STRONG_CONNECTION,_LazyStrongConnectionFrame>;
 
-template<typename Alts> void lazy_strong_connection(State &state, LazyStrongConnectionFrame f, Alts alts) const { FRAME("lazy_strong_connection()");
+template<typename Alts> void lazy_strong_connection(State &state, LazyStrongConnectionFrame f, Alts alts) const { STATE_FRAME(state,"lazy_strong_connection(branch_lr=%,L=%,p=%,l=%,r=%)",f->base.branch_lr,show(f->base.L.A),show(f->base.L.get()),show(f->l),show(f->r));
   state.val.push_constraint(OrderAtom(OrderAtom::G,f->l,f->r));
   // -L[f(v)], L[w], f(v)=w
   auto bs = f->base.branch_set;
@@ -83,7 +83,7 @@ template<typename Alts> void lazy_strong_connection(State &state, LazyStrongConn
     //    f(s)=f(v), l=r, f(s)/=w
     AtomPath L = f->base.L;
     Term fs = L.get();
-    Term l = f->r;
+    Term l = f->l;
     Term r = f->r;
     Term w(f->base.w);
     size_t n = Fun(fs).arg_count();

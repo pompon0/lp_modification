@@ -39,11 +39,13 @@ extern Profile profile;
   #define VERBOSE 0
 #endif
 
-#ifdef DEBUG
+#ifdef DEBUG_MODE
   #define DEBUG if(1)
+  #define DEBUG_ONLY(args...) args
   #define FRAME(args...) util::Frame _(VERBOSE,args);
 #else
   #define DEBUG if(0)
+  #define DEBUG_ONLY(args...)
   #define FRAME(args...) 
 #endif
 

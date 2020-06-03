@@ -29,6 +29,16 @@ ProverOutput prove(const Ctx &ctx, const ClauseIndex &cla_index, size_t limit) {
   b->nodes_limit = limit;
   auto res = alt::search(ctx,s,Cont{List<Cont::Frame>(Cont::Frame(b.build()))});
   s.stats.val = s.val.stats;
+  DEBUG_ONLY(
+    if(res.found) {
+      str trace;
+      size_t i = 0;
+      for(auto l=s.trace; !l.empty(); l=l.tail()) {
+        trace = util::fmt("[%] %\n",i++,l.head()) + trace;
+      }
+      info("\n%",trace);
+    }
+  )
   return {
     res.cont_count,
     limit,

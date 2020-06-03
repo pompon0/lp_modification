@@ -10,7 +10,7 @@ struct _LazyWeakConnectionFrame {
 };
 using LazyWeakConnectionFrame = Variant<Frame,Frame::LAZY_WEAK_CONNECTION,_LazyWeakConnectionFrame>;
 
-template<typename Alts> void lazy_weak_connection(State &state, LazyWeakConnectionFrame f, Alts alts) const { FRAME("lazy_weak_connection()");
+template<typename Alts> void lazy_weak_connection(State &state, LazyWeakConnectionFrame f, Alts alts) const { STATE_FRAME(state,"lazy_weak_connection()");
   if(!state.val.unify(f->l,f->base.L.get())) return;
   if(!state.val.unify(f->r,Term(f->base.w))) error("mgu(w,r) failed");
   state.lazy_clauses_used += Lazy<DerAndClause>(alloc_init(ApClause(f->base.L,Term(f->base.w))));

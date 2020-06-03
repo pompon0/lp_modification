@@ -38,14 +38,17 @@ template<typename Alts> void try_weak_match(State &state, WeakFrame f, Alts alts
   alts(Cont{Frame(ub.build())+tail});
 }
 
-template<typename Alts> void weak(State &state, WeakFrame f, Alts alts) const { FRAME("weak(%)",show(f->branch.false_.head())); 
+template<typename Alts> void weak(State &state, WeakFrame f, Alts alts) const { STATE_FRAME(state,"weak(%)",show(f->branch.false_.head())); 
   state.stats.weak_steps++;
   size_t budget = f->nodes_limit - state.nodes_used;
   COUNTER("expand");
   if(budget<f->min_cost) return;
   List<Frame> tail = frames.tail();
   // match lemma
-  if(matches_lemma(state,f->branch)){ alts(Cont{tail}); return; }
+  if(matches_lemma(state,f->branch)){ 
+    STATE_FRAME(state,"matches_lemma");
+    alts(Cont{tail}); return;
+  }
   auto a = f->branch.false_.head();
   // reduce:
   if(a.pred()==Atom::EQ && a.sign()) {

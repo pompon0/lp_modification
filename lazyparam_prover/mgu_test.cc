@@ -54,8 +54,8 @@ TEST(MGU,eval) {
 
   Atom a(false,5,{c,x});
   Atom b(false,5,{c,c});
-  AndClause ca({a,b,a});
-  AndClause cb({b,b,b});
+  auto ca = AndClause::make(a,b,a);
+  auto cb = AndClause::make(b,b,b);
   DerAndClause::Builder builder;
   builder.derived = ca;
   builder.sources = {ca,ca,cb};

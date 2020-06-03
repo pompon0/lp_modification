@@ -63,16 +63,16 @@ struct ApClause : Lazy<DerAndClause>::Impl {
     DerAndClause::Builder b;
 
     // build derived clause
-    b.derived = AndClause({A0.neg(),A1,Atom::eq(true,ap.get(),r)});
+    b.derived = AndClause::make(A0.neg(),A1,Atom::eq(true,ap.get(),r));
 
     // build atom monotonicity axiom.
     Term t0 = A0.arg(ap.i);
     Term t1 = A1.arg(ap.i);
-    b.sources.push_back(AndClause({A0.neg(),A1,Atom::eq(true,t0,t1)}));
+    b.sources.push_back(AndClause::make(A0.neg(),A1,Atom::eq(true,t0,t1)));
     for(auto l=ap.path; !l.empty(); l = l.tail()) {
       Term s0 = Fun(t0).arg(l.head());
       Term s1 = Fun(t1).arg(l.head());
-      b.sources.push_back(AndClause({Atom::eq(false,t0,t1),Atom::eq(true,s0,s1)}));
+      b.sources.push_back(AndClause::make(Atom::eq(false,t0,t1),Atom::eq(true,s0,s1)));
       t0 = s0;
       t1 = s1;
     }

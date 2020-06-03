@@ -13,7 +13,6 @@
 #include "lazyparam_prover/parse.h"
 #include "lazyparam_prover/eq_axioms.h"
 #include "lazyparam_prover/alt.h"
-#include "lazyparam_prover/lazy.h"
 #include "lazyparam_prover/ctx.h"
 #include "lazyparam_prover/index.h"
 #include "lazyparam_prover/prover_output.h"

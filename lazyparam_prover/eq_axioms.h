@@ -14,29 +14,27 @@ namespace tableau {
 
 DerAndClause neg_refl_axiom() {
   Term x(Var(0));
-  return DerAndClause(0,AndClause({
-    Atom::eq(false,x,x),
-  }));
+  return DerAndClause(0,AndClause::make(Atom::eq(false,x,x)));
 }
 
 DerAndClause neg_symm_axiom() {
   Term x(Var(0));
   Term y(Var(1));
-  return DerAndClause(1,AndClause({
+  return DerAndClause(1,AndClause::make(
     Atom::eq(true,x,y),
-    Atom::eq(false,y,x),
-  }));
+    Atom::eq(false,y,x)
+  ));
 }
 
 DerAndClause neg_trans_axiom() {
   Term x(Var(0));
   Term y(Var(1));
   Term z(Var(2));
-  return DerAndClause(3,AndClause({
+  return DerAndClause(3,AndClause::make(
     Atom::eq(true,x,y),
     Atom::eq(true,y,z),
-    Atom::eq(false,x,z),
-  }));
+    Atom::eq(false,x,z)
+  ));
 }
 
 
@@ -172,7 +170,7 @@ struct FlatClauseBuilder {
   Var introduce_var(Term t) {
     switch(t.type()) {
       case Term::VAR: {
-        source_clauses.push_back(AndClause({Atom::eq(false,t,t)}));
+        source_clauses.push_back(AndClause::make(Atom::eq(false,t,t)));
         return Var(t);
       }
       case Term::FUN: {
@@ -184,7 +182,7 @@ struct FlatClauseBuilder {
         auto fa_fv = Atom::eq(true,Term(fa),Term(fv));
         auto fv_x = Atom::eq(true,Term(fv),Term(x));
         auto fa_x = Atom::eq(true,Term(fa),Term(x));
-        source_clauses.push_back(AndClause({fa_fv,fv_x,fa_x.neg()}));
+        source_clauses.push_back(AndClause::make(fa_fv,fv_x,fa_x.neg()));
         atoms.push_back(fv_x);
         return x;
       }
@@ -196,16 +194,17 @@ struct FlatClauseBuilder {
     // (a1!=v1)..(an!=vn)
     // (a1=v1 /\../\ an=vn /\ f(a1..an)!=f(v1..vn))
     // -> (f(a1..an)!=f(v1..vn))
-    vec<Atom> cla;
+    size_t n = fa.arg_count();
+    AndClause::Builder b(n+1);
     Fun::Builder fb(fa.fun(),fa.arg_count());
-    for(size_t i=0; i<fa.arg_count(); ++i){
+    for(size_t i=0; i<n; ++i){
       Var vi = introduce_var(fa.arg(i));
-      cla.push_back(Atom::eq(true,fa.arg(i),Term(vi)));
+      b.set_atom(i,Atom::eq(true,fa.arg(i),Term(vi)));
       fb.set_arg(i,Term(vi));
     }
     auto fv = fb.build();
-    cla.push_back(Atom::eq(false,Term(fa),Term(fv)));
-    source_clauses.push_back(AndClause(cla));
+    b.set_atom(n,Atom::eq(false,Term(fa),Term(fv)));
+    source_clauses.push_back(b.build());
     return fv;
   }
 
@@ -217,30 +216,31 @@ struct FlatClauseBuilder {
         // (..l=r) (l=l2 /\ l2=r /\ l!=r)
         Term l2(flatten_Term(Fun(l)));
         source_clauses.push_back(
-          AndClause({Atom::eq(true,l,l2),Atom::eq(a.sign(),l2,r),Atom::eq(!a.sign(),l,r)}));
+          AndClause::make(Atom::eq(true,l,l2),Atom::eq(a.sign(),l2,r),Atom::eq(!a.sign(),l,r)));
         l = l2;
       }
       if(r.type()==Term::FUN) {
         // (..l=r) (r=r2 /\ l=r2 /\ l!=r)
         Term r2(flatten_Term(Fun(r)));
         source_clauses.push_back(
-          AndClause({Atom::eq(true,r,r2),Atom::eq(a.sign(),l,r2),Atom::eq(!a.sign(),l,r)}));
+          AndClause::make(Atom::eq(true,r,r2),Atom::eq(a.sign(),l,r2),Atom::eq(!a.sign(),l,r)));
         r = r2;
       }
       atoms.push_back(Atom::eq(a.sign(),l,r));
     } else {
       Atom::Builder b(a.sign(),a.pred(),a.arg_count(),a.strong_only());
       // (... p(a1..an)) (a1=v1 /\../\ an=vn /\ !p(a1..an) /\ p(v1..vn)) -> (... p(v1..vn))
-      vec<Atom> cla;
+      size_t n = a.arg_count();
+      AndClause::Builder cb(n+2);
       for(size_t i=0; i<a.arg_count(); ++i) {
         Var v = introduce_var(a.arg(i));
-        cla.push_back(Atom::eq(true,a.arg(i),Term(v)));
+        cb.set_atom(i,Atom::eq(true,a.arg(i),Term(v)));
         b.set_arg(i,Term(v));
       }
       auto pv = b.build();
-      cla.push_back(a.neg());
-      cla.push_back(pv);
-      source_clauses.push_back(AndClause(cla));
+      cb.set_atom(n,a.neg());
+      cb.set_atom(n+1,pv);
+      source_clauses.push_back(cb.build());
       atoms.push_back(pv);
     }
   }
@@ -248,7 +248,9 @@ struct FlatClauseBuilder {
   DerAndClause build() const {
     DerAndClause::Builder b;
     b.cost = cost;
-    b.derived = AndClause(atoms);
+    AndClause::Builder cb(atoms.size());
+    for(size_t i=atoms.size(); i--;) cb.set_atom(i,atoms[i]);
+    b.derived = cb.build();
     b.sources = source_clauses;
     return b.build();
   }
@@ -279,56 +281,56 @@ OrForm append_restricted_transitivity_axioms(OrForm f) {
   {
     DerAndClause::Builder symm1;
     symm1.cost = 0;
-    symm1.derived = AndClause({
+    symm1.derived = AndClause::make(
       Atom(true,Atom::EQ_TRANS_POS,{a,b}),
-      Atom(false,Atom::EQ_SYMM,{a,b}),
-    });
+      Atom(false,Atom::EQ_SYMM,{a,b})
+    );
     f.and_clauses.push_back(symm1.build());
   }
   // -[b=a] symm(a,b)
   {
     DerAndClause::Builder symm2;
     symm2.cost = 0;
-    symm2.derived = AndClause({
+    symm2.derived = AndClause::make(
       Atom(true,Atom::EQ_TRANS_POS,{b,a}),
-      Atom(false,Atom::EQ_SYMM,{a,b}),
-    });
-    symm2.sources.push_back(AndClause({
+      Atom(false,Atom::EQ_SYMM,{a,b})
+    );
+    symm2.sources.push_back(AndClause::make(
       Atom(true,Atom::EQ,{b,a}),
-      Atom(false,Atom::EQ,{a,b}),
-    }));
+      Atom(false,Atom::EQ,{a,b})
+    ));
     f.and_clauses.push_back(symm2.build());
   }
   // -symm(a,b) b/=c a=c
   {
     DerAndClause::Builder trans_pos;
     trans_pos.cost = 1;
-    trans_pos.derived = AndClause({
+    trans_pos.derived = AndClause::make(
       Atom(true,Atom::EQ_SYMM,{a,b}),
       Atom(true,Atom::EQ,{b,c}),
-      Atom(false,Atom::EQ,{a,c}),
-    });
-    trans_pos.sources.push_back(AndClause({
+      Atom(false,Atom::EQ,{a,c})
+    );
+    trans_pos.sources.push_back(AndClause::make(
       Atom(true,Atom::EQ,{a,b}),
       Atom(true,Atom::EQ,{b,c}),
-      Atom(false,Atom::EQ,{a,c}),
-    }));
+      Atom(false,Atom::EQ,{a,c})
+    ));
     f.and_clauses.push_back(trans_pos.build());
   }
   // {a=b} a/=c b/=c
   {
     DerAndClause::Builder trans_neg;
     trans_neg.cost = 0;
-    trans_neg.derived = AndClause({
+    trans_neg.derived = AndClause::make(
       Atom(false,Atom::EQ_TRANS_NEG,{a,b}),
       Atom(true,Atom::EQ,{b,c}),
-      Atom(true,Atom::EQ,{a,c}),
-    });
-    trans_neg.sources.push_back(AndClause({
+      Atom(true,Atom::EQ,{a,c})
+    );
+    trans_neg.sources.push_back(AndClause::make(
       Atom(false,Atom::EQ,{a,b}),
       Atom(true,Atom::EQ,{b,c}),
-      Atom(true,Atom::EQ,{a,c}),
-    }));
+      Atom(true,Atom::EQ,{a,c})
+    ));
     f.and_clauses.push_back(trans_neg.build());
   }
   return f;

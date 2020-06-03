@@ -11,8 +11,8 @@ TEST(DerAndClause,shift) {
   Term x(Var(0));
   Term y(Var(1));
   DerAndClause::Builder b;
-  b.derived = AndClause({Atom::eq(false,x,y)});
-  b.sources.push_back(AndClause({Atom(true,4,{x,x,y})}));
+  b.derived = AndClause::make(Atom::eq(false,x,y));
+  b.sources.push_back(AndClause::make(Atom(true,4,{x,x,y})));
   b.constraints.push_back(OrderAtom(OrderAtom::L,x,y));
   auto cla = b.build();
   EXPECT_EQ(cla.shift(4).derived(),cla.derived().shift(4));

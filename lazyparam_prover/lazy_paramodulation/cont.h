@@ -3,9 +3,21 @@
 #include "lazyparam_prover/lazy_paramodulation/split.h"
 #include "lazyparam_prover/search_state.h"
 #include "lazyparam_prover/memory/variant.h"
+#include "lazyparam_prover/memory/lazy.h"
 #include "lazyparam_prover/alt.h"
 
 namespace tableau::lazy_paramodulation {
+
+struct AxiomClause : Lazy<DerAndClause>::Impl {
+  AndClause cla;
+  AxiomClause(AndClause _cla) : cla(_cla) {}
+  DerAndClause get() const {
+    DerAndClause::Builder b;
+    b.derived = cla;
+    b.sources.push_back(cla);
+    return b.build();
+  }
+};
 
 struct Cont { 
   using State = SearchState;

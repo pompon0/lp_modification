@@ -36,7 +36,7 @@ struct DerAndClause {
     size_t offset = 0;
     size_t id_offset = 0;
     size_t cost = 0;
-    AndClause derived = emptyAndClause();
+    AndClause derived = AndClause::make();
     vec<AndClause> sources;
     vec<OrderAtom> constraints;
 

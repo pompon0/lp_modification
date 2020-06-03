@@ -18,10 +18,14 @@ private:
   size_t id_offset;
   AndClause(u8 *_ptr, size_t _offset, size_t _id_offset) : ptr(_ptr), offset(_offset), id_offset(_id_offset) {}
 public:
-  AndClause(const vec<Atom> &_atoms) {
-    Builder b(_atoms.size());
-    for(size_t i = _atoms.size(); i--;) b.set_atom(i,_atoms[i]);
-    *this = b.build();
+  template<typename ...Atoms> static AndClause make(Atoms... atoms) {
+    if(sizeof...(Atoms)==0) {
+      static Builder b(0);
+      return b.build();
+    }
+    Builder b(sizeof...(Atoms));
+    size_t i=0; (b.set_atom(i++,atoms),...);
+    return b.build();
   }
 
   VarRange var_range() const { return VAR_RANGE::ref(ptr)+offset; }
@@ -46,11 +50,6 @@ public:
   }; 
 };
 
-static inline AndClause emptyAndClause() {
-  static AndClause empty({});
-  return empty;
-}
-
 struct OrClause {
   struct Iso {
     using From = AndClause;
@@ -65,10 +64,9 @@ struct OrClause {
   OrClause set_id_offset(size_t _id_offset) const { return neg().set_id_offset(_id_offset).neg(); }
   AndClause neg() const { return neg_and_clause; }
 
-  OrClause(vec<Atom> _atoms) : OrClause(AndClause([&_atoms]{
-    for(auto &a : _atoms) a = a.neg();
-    return _atoms;
-  }())) {}
+  template<typename ...Atoms> static OrClause make(Atoms ...atoms) {
+    return OrClause(AndClause::make(atoms.neg()...));
+  }
 private:
   explicit OrClause(AndClause _neg_and_clause) : neg_and_clause(_neg_and_clause) {}
   AndClause neg_and_clause;

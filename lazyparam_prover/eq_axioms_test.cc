@@ -15,11 +15,11 @@ TEST(congruence_axioms,all) {
   Term v1(Var(1));
   // TODO: this is a change detector,
   // ideally test should check equivalence of got and want
-  AndClause want({
+  auto want = AndClause::make(
     Atom::eq(true,v0,v1),
     Atom(true,pred,{v0}),
-    Atom(false,pred,{v1}),
-  });
-  AndClause got = neg_cong_pred_axiom(pred,1).derived();
+    Atom(false,pred,{v1})
+  );
+  auto got = neg_cong_pred_axiom(pred,1).derived();
   if(got!=want) FAIL() << fmt("cong_pred_axiom() = %, want %",show(got),show(want));
 }

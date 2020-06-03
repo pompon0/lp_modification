@@ -11,7 +11,7 @@
 #include "lazyparam_prover/log.h"
 #include "lazyparam_prover/enum_flag.h"
 #include "lazyparam_prover/prover.pb.h"
-#include "lazyparam_prover/lazy.h"
+#include "lazyparam_prover/lpmod.h"
 #include "solutions.pb.h"
 
 #include "absl/flags/flag.h"
@@ -42,7 +42,7 @@ OrForm apply_trans(OrForm f) {
   case prover::AXIOMATIC_EQ_RESTRICTED_TRANS:
     return append_eq_axioms_with_restricted_transitivity(f);
   case prover::LP_MODIFICATION:
-    return lazy::conv(f);
+    return lpmod::conv(f);
   default:
     error("trans = %",show(trans));
   }

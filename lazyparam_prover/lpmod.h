@@ -1,5 +1,5 @@
-#ifndef LAZY_H_
-#define LAZY_H_
+#ifndef LPMOD_H_
+#define LPMOD_H_
 
 #include "lazyparam_prover/syntax/term.h"
 #include "lazyparam_prover/syntax/atom.h"
@@ -10,28 +10,28 @@
 #include "lazyparam_prover/mgu.h"
 
 namespace tableau {
-namespace lazy {
+namespace lpmod {
 
 // a = b /\ b = c /\ a != c
 inline AndClause neg_trans_axiom(Term a, Term b, Term c) {
-  return AndClause({
+  return AndClause::make(
     Atom::eq(true,a,b),
     Atom::eq(true,b,c),
-    Atom::eq(false,a,c),
-  });
+    Atom::eq(false,a,c)
+  );
 }
 
 // a = b /\ b != a
 inline AndClause neg_symm_axiom(Term a, Term b) {
-  return AndClause({
+  return AndClause::make(
     Atom::eq(true,a,b),
-    Atom::eq(false,b,a),
-  });
+    Atom::eq(false,b,a)
+  );
 }
 
 // a != a
 inline AndClause neg_refl_axiom(Term a) {
-  return AndClause({Atom::eq(false,a,a)});
+  return AndClause::make(Atom::eq(false,a,a));
 }
 
 inline Atom red(bool sign, Term f, Term w) {
@@ -67,10 +67,10 @@ struct VarMap {
   }
 
   AndClause map(AndClause cla) {
-    vec<Atom> x;
-    for(size_t i=0; i<cla.atom_count(); ++i)
-      x.push_back(map(cla.atom(i)));
-    return AndClause(x);
+    size_t n = cla.atom_count();
+    AndClause::Builder b(n);
+    for(size_t i=n; i--;) b.set_atom(i,map(cla.atom(i)));
+    return b.build();
   }
   Atom map(Atom a) {
     Atom::Builder b(a.sign(),a.pred(),a.arg_count(),a.strong_only());
@@ -118,7 +118,9 @@ struct SplitBuilder {
   DerAndClause out() { FRAME("out");
     DerAndClause::Builder b;
     b.cost = cost;
-    b.derived = AndClause(atoms);
+    AndClause::Builder db(atoms.size());
+    for(size_t i = atoms.size(); i--;) db.set_atom(i,atoms[i]);
+    b.derived = db.build();
     b.sources = source;
     b.constraints = constraints;
     return reduce_vars(val.eval(b.build()));
@@ -181,13 +183,13 @@ struct SplitBuilder {
           {
             DerAndClause::Builder c1;
             c1.cost = 1;
-            c1.derived = AndClause({a.neg(),red(false,l,r)});
+            c1.derived = AndClause::make(a.neg(),red(false,l,r));
             c1.constraints.push_back(OrderAtom(OrderAtom::NE,l,r));
             extra.push_back(reduce_vars(c1.build()));
           } {
             DerAndClause::Builder c2;
             c2.cost = 1;
-            c2.derived = AndClause({a.neg(),red(false,r,l)});
+            c2.derived = AndClause::make(a.neg(),red(false,r,l));
             c2.constraints = {OrderAtom(OrderAtom::NE,r,l)};
             c2.sources.push_back(neg_symm_axiom(l,r));
             extra.push_back(reduce_vars(c2.build()));
@@ -208,7 +210,7 @@ struct SplitBuilder {
           {
             DerAndClause::Builder c1;
             c1.cost = 1;
-            c1.derived = AndClause({a.neg(),red(false,l,r)});
+            c1.derived = AndClause::make(a.neg(),red(false,l,r));
             c1.constraints = {OrderAtom(OrderAtom::NE,l,r)};
             extra.push_back(reduce_vars(c1.build()));
           }
@@ -216,7 +218,7 @@ struct SplitBuilder {
             DerAndClause::Builder c2;
             c2.cost = 1;
             Term w(val.allocate(Var(0)));
-            c2.derived = AndClause({a.neg(),red(false,r,w),red(true,l,w)});
+            c2.derived = AndClause::make(a.neg(),red(false,r,w),red(true,l,w));
             c2.constraints = {
               OrderAtom(OrderAtom::NE,r,w),
               OrderAtom(OrderAtom::LE,w,l),
@@ -244,7 +246,7 @@ struct SplitBuilder {
             DerAndClause::Builder c1;
             c1.cost = 1;
             Term w(val.allocate(Var(0)));
-            c1.derived = AndClause({a.neg(),red(false,l,w),red(true,r,w)});
+            c1.derived = AndClause::make(a.neg(),red(false,l,w),red(true,r,w));
             c1.constraints = {
               OrderAtom(OrderAtom::NE,l,w),
               OrderAtom(OrderAtom::LE,w,r),
@@ -255,7 +257,7 @@ struct SplitBuilder {
             DerAndClause::Builder c2;
             c2.cost = 1;
             Term w(val.allocate(Var(0)));
-            c2.derived = AndClause({a.neg(),red(true,l,w),red(false,r,w)});
+            c2.derived = AndClause::make(a.neg(),red(true,l,w),red(false,r,w));
             c2.constraints = {
               OrderAtom(OrderAtom::NE,r,w),
               OrderAtom(OrderAtom::LE,w,l),
@@ -290,7 +292,7 @@ OrForm conv(OrForm f) { FRAME("lazy::conv");
   DerAndClause::Builder refl;
   refl.cost = 0;
   Term x(Var(0));
-  refl.derived = AndClause({red(false,x,x)});
+  refl.derived = AndClause::make(red(false,x,x));
   refl.sources = {neg_refl_axiom(x)};
   f2.and_clauses.push_back(refl.build());
   //info("after =\n%\n",show(f2));

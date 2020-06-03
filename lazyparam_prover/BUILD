@@ -148,7 +148,7 @@ cc_library(
         "alt.h",
         "eq_axioms.h",
         "ground.h",
-        "lazy.h",
+        "lpmod.h",
         "index.h",
         "prover_output.h",
     ],

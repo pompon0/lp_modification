@@ -71,7 +71,7 @@ DerAndClause remove_eq(DerAndClause cla, u64 pred) {
 OrForm remove_eq(OrForm f) {
   ArityCtx actx; actx.traverse(f);
   u64 pred = 0;
-  for(auto p : actx.pred_arity) util::maxi(pred,p.first);
+  while(actx.pred_arity.count(pred)) pred++;
   for(auto &cla : f.and_clauses) cla = remove_eq(cla,pred+1);
   return f;
 }

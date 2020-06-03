@@ -28,6 +28,12 @@ fof(l143_zfmisc_1, conjecture,  (! [A] :  (! [B] :  (! [C] :  ~ ( ( ~ (r2_hidden
 fof(t51_zfmisc_1, axiom,  (! [A] :  (! [B] :  (! [C] :  ~ ( ( ~ (r2_hidden(A, B))  &  ( ~ (r2_hidden(C, B))  &  ~ (r1_xboole_0(k2_tarski(A, C), B)) ) ) ) ) ) ) ).
 `)
 
+var L40_tex_2_reduced = []byte(`
+fof(a0, axiom, (d=c)).
+fof(a1, axiom, (~q)).
+fof(a2, axiom, (d=c <=> q)).
+`)
+
 var SampleProblems = map[string][]byte {
   "trivial": Trivial,
   "simple": Simple,
@@ -39,4 +45,5 @@ var SampleProblems = map[string][]byte {
   "pelletier20": Pelletier20,
   "pelletier24": Pelletier24,
   "l143_zfmics_1": L143_zfmisc_1,
+  "l40_tex_2_reduced": L40_tex_2_reduced,
 }

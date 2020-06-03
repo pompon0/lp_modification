@@ -31,7 +31,7 @@ template<typename Alts> void try_weak_param(State &state, WeakFrame f, Alts alts
 template<typename Alts> void try_weak_match(State &state, WeakFrame f, Alts alts,
     Atom x, Atom y, List<Frame> tail) const {
   if(x.pred()==Atom::EQ) return;
-  if(Index::atom_hash(x)!=Index::atom_hash(y)) return;
+  if(Index::atom_hash(x)!=(Index::atom_hash(y)^1)) return;
   WeakUnifyFrame::Builder ub;
   ub->a1 = x;
   ub->a2 = y;

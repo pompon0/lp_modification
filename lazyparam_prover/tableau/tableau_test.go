@@ -28,11 +28,11 @@ func TestTransformations(t *testing.T) {
         if err!=nil { t.Fatalf("eprover.FOFToCNF(): %v",err) }
         cnf,err := tool.TptpToProto(ctx,tool.CNF,tptpCNF)
         if err!=nil { t.Fatalf("tool.TptpToProto(): %v",err) }
-        out,err := Tableau(ctx,cnf,false,ppb.Method_UNKNOWN_METHOD,trans,true)
+        out,err := Tableau(ctx,cnf,true,ppb.Method_UNKNOWN_METHOD,trans,true)
         if err!=nil { t.Fatalf("Tableau(%q): %v",k,err) }
-
         tptpTransformed,err := tool.ProtoToTptp(ctx,out.TransformedProblem)
         if err!=nil { t.Fatalf("tool.ProtoToTptp(%q): %v",k,err) }
+        t.Logf("out =\n%v",string(tptpTransformed))
 
         proveCtx,cancel := context.WithTimeout(ctx,10*time.Second)
         defer cancel()

@@ -13,6 +13,7 @@ enum Prover{
   reserved 5;
   GPRUSAK_AXIOMATIC_EQ = 6;
   GPRUSAK_LP_MODIFICATION = 7;
+  GPRUSAK_LAZY_PARAMODULATION = 8;
 }
 
 message Req {

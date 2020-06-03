@@ -18,9 +18,13 @@ template<typename Alts> void lazy_pre_strong_connection(State &state, LazyPreStr
   auto L = f->branch.false_.head();
   auto lr = cla.atom(f->strong_id);
   if(f->branch_lr) std::swap(L,lr);
-  DEBUG if(lr.pred()!=Atom::EQ) error("lr = %",show(lr));
+  DEBUG if(lr.pred()!=Atom::EQ || lr.sign()) error("lr = %",show(lr));
   auto l = lr.arg(0);
   auto r = lr.arg(1);
+  state.lazy_clauses_used += lazy(AxiomClause{AndClause::make(
+    lr.neg(),
+    Atom::eq(lr.sign(),r,l)
+  )});
 
   Var w = state.val.allocate(Var(0));
   for(auto apl = paths(L); !apl.empty(); apl = apl.tail()) {

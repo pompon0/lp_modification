@@ -68,6 +68,8 @@ func (s *server) Prove(ctx context.Context, req *pb.Req) (*pb.Resp,error) {
       c.Output,err = tableau.ProveAxiomaticEq(proverCtx,req.TptpProblem)
     case pb.Prover_GPRUSAK_LP_MODIFICATION:
       c.Output,err = tableau.ProveLPModification(proverCtx,req.TptpProblem)
+    case pb.Prover_GPRUSAK_LAZY_PARAMODULATION:
+      c.Output,err = tableau.ProveLazyParamodulation(proverCtx,req.TptpProblem)
     default:
       return nil,status.New(codes.InvalidArgument,"unknown prover").Err()
   }

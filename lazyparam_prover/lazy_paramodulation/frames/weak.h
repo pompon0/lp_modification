@@ -15,22 +15,16 @@ static bool matches_lemma(State &state, Branch branch) {
   return false;
 }
 
-static Frame weak_param(WeakFrame f, Atom L, Term l, Term r) {
+// l/=r,...,a = L[p]
+template<typename Alts> void try_weak_param(State &state, WeakFrame f, Alts alts,
+    Atom lr, Atom L, List<Frame> tail) const {
+  if(lr.pred()!=Atom::EQ || lr.sign()) return;
   LazyPreWeakConnectionFrame::Builder pb;
   pb->branch = f->branch;
   pb->nodes_limit = f->nodes_limit;
   pb->L = L;
-  pb->l = l;
-  pb->r = r;
-  return Frame(pb.build());
-}
-
-// l/=r,...,a = L[p]
-template<typename Alts> void try_weak_param(State &state, WeakFrame f, Alts alts,
-    Atom x, Atom y, List<Frame> tail) const {
-  if(x.pred()!=Atom::EQ || x.sign()) return;
-  alts(Cont{weak_param(f,y,x.arg(0),x.arg(1))+tail});
-  alts(Cont{weak_param(f,y,x.arg(1),x.arg(0))+tail});
+  pb->lr = lr;
+  alts(Cont{Frame(pb.build())+tail});
 }
 
 // weak connection: -P(r), ..., a = P(s)

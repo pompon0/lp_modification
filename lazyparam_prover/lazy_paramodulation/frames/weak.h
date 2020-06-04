@@ -71,7 +71,10 @@ template<typename Alts> void weak(State &state, WeakFrame f, Alts alts) const { 
   // strong connections
   // P(r),-P(s)
   if(a.pred()!=Atom::EQ) {
-    auto matches = state.cla_index.get_matches(a,budget);
+    STATE_FRAME(state,"[%] %",a.id(),show(a));
+    // since a may have been paramodulated, we cannot use the most optimized
+    // version of get_matches.
+    auto matches = state.cla_index.get_matches(a.pred(),!a.sign(),budget);
     while(auto mca = matches.next()) {
       auto ca = mca.get();
       DEBUG if(ca.cla.cost()>budget) error("ca.cla.cost()>budget");

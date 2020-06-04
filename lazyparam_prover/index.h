@@ -65,6 +65,9 @@ public:
       }
       return nothing();
     }
+    // gets all atoms which are matchable with atom.neg().
+    // WARNING: Use only if atom comes from the fixed initial set.
+    // TODO: mark the atoms, so that upon change, this function raises an exception.
     Filter get_matches(Atom atom, size_t cost_limit) {
       DEBUG if(next_starting_clause_id==0) error("next_starting_clause == 0");
       return Filter(
@@ -73,6 +76,7 @@ public:
         next_starting_clause_id-1,
         index);
     }
+    // gets all atoms with a given pred and sign.
     Filter get_matches(size_t pred, bool sign, size_t cost_limit) {
       DEBUG if(next_starting_clause_id==0) error("next_starting_clause == 0");
       return Filter(
@@ -81,6 +85,7 @@ public:
         next_starting_clause_id-1,
         index);
     }
+    // get all atoms.
     Filter get_all(size_t cost_limit) {
       DEBUG if(next_starting_clause_id==0) error("next_starting_clause == 0");
       return Filter(
@@ -134,6 +139,7 @@ public:
       auto c1 = val.allocate(_c1).derived();
       auto s2 = val.snapshot(); 
       for(size_t i1=0; i1<c1.atom_count(); ++i1) {
+        DEBUG info("[%] % ::>",c1.atom(i1).id(),show(c1.atom(i1)));
         auto h = Index::atom_hash(c1.atom(i1));
         if(preindex[h^1].size()>100) {
           map[c1.atom(i1).id()] = h^1;
@@ -150,6 +156,8 @@ public:
             sets.back().push_back(x);
           }
         }
+
+        DEBUG for(auto x : sets[map[c1.atom(i1).id()]]) info("\t[%] %",x.atom_id,show(and_clauses[x.clause_id]));
       }
     }
 

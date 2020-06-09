@@ -31,7 +31,7 @@ var reportPath = flag.String("report_path","","")
 var reportPath2 = flag.String("report_path_2","","")
 var cmd = flag.String("cmd",cmdSummary,strings.Join(cmds,"|"))
 var caseName = flag.String("case_name","","")
-
+var ignoreEqualityIrrelevant = flag.Bool("ignore_equality_irrelevant",false,"")
 
 type Rec struct {
   caseCount int
@@ -163,7 +163,7 @@ func (r *Result) String() string { return fmt.Sprintf("%3d/%3d",r.solved,r.total
 func accumByPrefix(r *spb.Report) (map[string]*Result,error) {
   res := map[string]*Result{}
   for _,c := range r.Cases {
-    if problems.TptpProvableWithoutEquality[c.Name] { continue }
+    if *ignoreEqualityIrrelevant && problems.TptpProvableWithoutEquality[c.Name] { continue }
     labels := strings.Split(c.Name,"/")
     for i:=0; i<=len(labels); i++ {
       p := strings.Join(labels[:i],"/")

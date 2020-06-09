@@ -10,10 +10,17 @@ import (
 func TestPrologProve(t *testing.T) {
   ctx := context.Background()
   for name,tptp := range problems.SampleProblems {
-    // leancop doesn't understand the trivial example 
-    if name == "trivial" { continue }
     if out,err := PrologProve(ctx,tptp); err!=nil || !out.Solved {
-      t.Fatalf("Prover(%q): %v",name,err)
+      t.Fatalf("PrologProve(%q): %v",name,err)
+    }
+  }
+}
+
+func TestPrologProveCutComp7(t *testing.T) {
+  ctx := context.Background()
+  for name,tptp := range problems.SampleProblems {
+    if out,err := PrologProveCutComp7(ctx,tptp); err!=nil || !out.Solved {
+      t.Fatalf("PrologProveCutComp7(%q): %v",name,err)
     }
   }
 }

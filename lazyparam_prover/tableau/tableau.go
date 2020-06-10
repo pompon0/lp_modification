@@ -21,23 +21,23 @@ import (
 const tableau_bin_path = "__main__/lazyparam_prover/main"
 
 func ProveAxiomaticEq(ctx context.Context, tptpFOFProblem []byte) (*spb.ProverOutput,error) {
-  return Prove(ctx,tptpFOFProblem,ppb.Method_CONNECTION_TABLEAU,ppb.Transformation_AXIOMATIC_EQ)
+  return Prove(ctx,tptpFOFProblem,ppb.Method_CONNECTION_TABLEAU,ppb.Transformation_AXIOMATIC_EQ,false)
 }
 
 func ProveLPModification(ctx context.Context, tptpFOFProblem []byte) (*spb.ProverOutput,error) {
-  return Prove(ctx,tptpFOFProblem,ppb.Method_CONNECTION_TABLEAU,ppb.Transformation_LP_MODIFICATION)
+  return Prove(ctx,tptpFOFProblem,ppb.Method_CONNECTION_TABLEAU,ppb.Transformation_LP_MODIFICATION,false)
 }
 
 func ProveLazyParamodulation(ctx context.Context, tptpFOFProblem []byte) (*spb.ProverOutput,error) {
-  return Prove(ctx,tptpFOFProblem,ppb.Method_LAZY_PARAMODULATION,ppb.Transformation_SKIP);
+  return Prove(ctx,tptpFOFProblem,ppb.Method_LAZY_PARAMODULATION,ppb.Transformation_SKIP,false);
 }
 
-func Prove(ctx context.Context, tptpFOFProblem []byte, method ppb.Method, trans ppb.Transformation) (*spb.ProverOutput,error) {
+func Prove(ctx context.Context, tptpFOFProblem []byte, method ppb.Method, trans ppb.Transformation, transOnly bool) (*spb.ProverOutput,error) {
   tptpCNF,err := eprover.FOFToCNF(ctx,tptpFOFProblem)
   if err!=nil { return nil,fmt.Errorf("eprover.FOFToCNF(): %v",err) }
   cnf,err := tool.TptpToProto(ctx,tool.CNF,tptpCNF)
   if err!=nil { return nil,fmt.Errorf("tool.TptpToProto(): %v",err) }
-  out,err := Tableau(ctx,cnf,true,method,trans,false)
+  out,err := Tableau(ctx,cnf,true,method,trans,transOnly)
   if err!=nil {
     if err==context.DeadlineExceeded {
       return &spb.ProverOutput{Solved:false},nil

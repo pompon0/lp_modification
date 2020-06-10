@@ -62,8 +62,8 @@ cc_library(
 cc_test(
     name = "derived_test",
     srcs = [
-      "derived_test.cc",
-      "constraint_test.cc",
+        "derived_test.cc",
+        "constraint_test.cc",
     ],
     deps = [
         ":derived",

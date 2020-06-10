@@ -4,11 +4,13 @@ go_library(
     name = "go_default_library",
     srcs = [
         "bazel.go",
+        "enum.go",
         "limit.go",
     ],
     data = [":limit"],
     importpath = "github.com/pompon0/tptp_benchmark_go/utils",
     visibility = ["//visibility:public"],
+    deps = ["@org_golang_google_protobuf//reflect/protoreflect:go_default_library"],
 )
 
 cc_binary(

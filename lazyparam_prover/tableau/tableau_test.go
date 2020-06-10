@@ -24,11 +24,7 @@ func TestTransformations(t *testing.T) {
     for k,v := range problems.SampleProblems {
       k,v := k,v
       t.Run(fmt.Sprintf("case (%v,%q)",trans,k),func(t *testing.T) {
-        tptpCNF,err := eprover.FOFToCNF(ctx,v)
-        if err!=nil { t.Fatalf("eprover.FOFToCNF(): %v",err) }
-        cnf,err := tool.TptpToProto(ctx,tool.CNF,tptpCNF)
-        if err!=nil { t.Fatalf("tool.TptpToProto(): %v",err) }
-        out,err := Tableau(ctx,cnf,true,ppb.Method_UNKNOWN_METHOD,trans,true)
+        out,err := Prove(ctx,v,ppb.Method_UNKNOWN_METHOD,trans,true)
         if err!=nil { t.Fatalf("Tableau(%q): %v",k,err) }
         tptpTransformed,err := tool.ProtoToTptp(ctx,out.TransformedProblem)
         if err!=nil { t.Fatalf("tool.ProtoToTptp(%q): %v",k,err) }
@@ -59,15 +55,9 @@ func TestTableau(t *testing.T) {
     for k,v := range problems.SampleProblems {
       k,v := k,v
       t.Run(fmt.Sprintf("case (%v,%q)",p,k),func(t *testing.T) {
-        ctx,cancel := context.WithTimeout(ctx,time.Second)
-        defer cancel()
-        tptpCNF,err := eprover.FOFToCNF(ctx,v)
-        if err!=nil { t.Fatalf("eprover.FOFToCNF(): %v",err) }
-        cnf,err := tool.TptpToProto(ctx,tool.CNF,tptpCNF)
-        if err!=nil { t.Fatalf("tool.TptpToProto(): %v",err) }
         proveCtx,cancel := context.WithTimeout(ctx,10*time.Second)
         defer cancel()
-        out,err := Prove(proveCtx,v,p.method,p.trans)
+        out,err := Prove(proveCtx,v,p.method,p.trans,false)
         if err!=nil { t.Fatalf("Prove(%q): %v",k,err) }
         if out.Proof==nil {
           t.Fatalf("out = %+v",out)
@@ -78,7 +68,7 @@ func TestTableau(t *testing.T) {
         t.Logf("proof = %s",proofTptp)
 
         if err!=nil { t.Fatalf("Tableau(%q): %v",k,err) }
-        _,err = tool.ValidateProof(ctx,&spb.CNF{Problem:cnf,Proof:out.Proof})
+        _,err = tool.ValidateProof(ctx,&spb.CNF{Problem:out.CnfProblem,Proof:out.Proof})
         if err!=nil { t.Fatalf("tool.Validate(%q): %v",k,err) }
       })
     }

@@ -1,5 +1,8 @@
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive", "http_file")
 
+################################
+# BAZEL
+
 # "com_google_protobuf" declares some terribly old version of skylib,
 # forcing the newest version beforehead
 http_archive(
@@ -9,85 +12,48 @@ http_archive(
     urls = ["https://github.com/bazelbuild/bazel-skylib/archive/1.0.2.tar.gz"],
 )
 
+################################
+# GOLANG
+
 http_archive(
-    name = "eprover",
+    name = "io_bazel_rules_go",
+    urls = ["https://github.com/bazelbuild/rules_go/releases/download/v0.23.3/rules_go-v0.23.3.tar.gz"],
+)
+
+load("@io_bazel_rules_go//go:deps.bzl", "go_rules_dependencies", "go_register_toolchains")
+go_rules_dependencies()
+go_register_toolchains()
+
+http_archive(
+    name = "bazel_gazelle",
+    urls = ["https://github.com/bazelbuild/bazel-gazelle/releases/download/v0.19.1/bazel-gazelle-v0.19.1.tar.gz"],
+    sha256 = "86c6d481b3f7aedc1d60c1c211c6f76da282ae197c3b3160f54bd3a8f847896f",
+)
+load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies", "go_repository")
+gazelle_dependencies()
+# gazelle:repository_macro gazelle_generated_rules.bzl%gazelle_generated
+load("//:gazelle_generated_rules.bzl","gazelle_generated")
+gazelle_generated()
+
+################################
+# PROTO
+
+http_archive(
+    name = "rules_proto",
+    sha256 = "602e7161d9195e50246177e7c55b2f39950a9cf7366f74ed5f22fd45750cd208",
+    strip_prefix = "rules_proto-97d8af4dc474595af3900dd85cb3a29ad28cc313",
     urls = [
-        "http://wwwlehre.dhbw-stuttgart.de/~sschulz/WORK/E_DOWNLOAD/V_2.3/E.tgz",
-        "https://storage.googleapis.com/tptp/eprover_2_3.tgz",
+        "https://mirror.bazel.build/github.com/bazelbuild/rules_proto/archive/97d8af4dc474595af3900dd85cb3a29ad28cc313.tar.gz",
+        "https://github.com/bazelbuild/rules_proto/archive/97d8af4dc474595af3900dd85cb3a29ad28cc313.tar.gz",
     ],
-    sha256 = "5366d2de77e6856250e26a967642389e81a6f823caedccaf5022a09242aceb96",
-    build_file = "//:third_party/eprover.BUILD",
 )
 
-http_archive(
-    name = "vampire",
-    strip_prefix = "vampire-3267e536135d0a9ac0691ee43153353cb130ca8e",
-    urls = ["https://github.com/vprover/vampire/archive/3267e536135d0a9ac0691ee43153353cb130ca8e.tar.gz"],
-    sha256 = "5459de1b1db951c8522b3b2e4af607c376da7e9cf41f2841b40e8271bd2abd14",
-    build_file = "//:third_party/vampire.BUILD",
-)
-
-http_archive(
-    name = "leancop",
-    urls = ["https://storage.googleapis.com/tptp/leancop_bin.tgz"],
-    sha256 = "c8c154c7f694ffd5eee7453bb50bd07f5eac0b4c564a5b9a0cb548e802ed7bbf",
-    build_file = "//:third_party/leancop.BUILD",
-)
-
-http_archive(
-    name = "leancop_prolog",
-    urls = [
-        "http://www.leancop.de/programs/leancop21.tar.gz",
-        "https://storage.googleapis.com/tptp/leancop21.tar.gz",
-    ],
-    sha256 = "ce432c5f9368c093f08df3120218463d8bdb8412e71ec980ab9c852c13cef300",
-    build_file = "//:third_party/leancop_prolog.BUILD",
-)
-
-http_file(
-    name = "tptp4X",
-    executable = 1,
-    urls = ["https://storage.googleapis.com/tptp/tptp4X"],
-    sha256 = "2418cb42c0f9013289ef7653c4ad9cd4d9b7d7ac67bbf5687dbb1ef1639e590e",
-)
-
-http_file(
-    name = "mizar_problems",
-    urls = ["https://storage.googleapis.com/tptp/mizar_problems.zip"],
-    sha256 = "70a6e8467753395125f281ea371adc390585b667b84db79451fd0cc8780bd749",
-)
-
-http_file(
-    name = "tptp_problems",
-    urls = ["https://storage.googleapis.com/tptp/tptp_problems.zip"],
-    sha256 = "f56cd27648898713e83e2e0dc69e295b316ba4b7acad0e41d7667610b666c5f0",
-)
-load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
-
-http_archive(
-  name = "rules_proto",
-  sha256 = "602e7161d9195e50246177e7c55b2f39950a9cf7366f74ed5f22fd45750cd208",
-  strip_prefix = "rules_proto-97d8af4dc474595af3900dd85cb3a29ad28cc313",
-  urls = [
-    "https://mirror.bazel.build/github.com/bazelbuild/rules_proto/archive/97d8af4dc474595af3900dd85cb3a29ad28cc313.tar.gz",
-    "https://github.com/bazelbuild/rules_proto/archive/97d8af4dc474595af3900dd85cb3a29ad28cc313.tar.gz",
-  ],
-)
 load("@rules_proto//proto:repositories.bzl", "rules_proto_dependencies", "rules_proto_toolchains")
 rules_proto_dependencies()
 rules_proto_toolchains()
 
-
-"""http_archive(
-    name = "com_google_protobuf",
-    strip_prefix = "protobuf-3.11.4",
-    urls = ["https://github.com/google/protobuf/archive/v3.11.4.zip"],
-    sha256 = "9748c0d90e54ea09e5e75fb7fac16edce15d2028d4356f32211cfa3c0e956564"
-)
-
-load("@com_google_protobuf//:protobuf_deps.bzl", "protobuf_deps")
-
-protobuf_deps()"""
+################################
+# C++
 
 http_archive(
     name = "gtest",
@@ -103,29 +69,8 @@ http_archive(
     sha256 = "743f879030960c80a0445310567ca99d8eae87468dd0e78fd0c8bfd46f429e37",
 )
 
-http_archive(
-    name = "io_bazel_rules_go",
-    urls = ["https://github.com/bazelbuild/rules_go/releases/download/v0.20.0/rules_go-v0.20.0.tar.gz"],
-    sha256 = "078f2a9569fa9ed846e60805fb5fb167d6f6c4ece48e6d409bf5fb2154eaf0d8",
-)
-
-load("@io_bazel_rules_go//go:deps.bzl", "go_rules_dependencies", "go_register_toolchains")
-
-go_rules_dependencies()
-
-go_register_toolchains()
-
-http_archive(
-    name = "bazel_gazelle",
-    urls = ["https://github.com/bazelbuild/bazel-gazelle/releases/download/v0.19.1/bazel-gazelle-v0.19.1.tar.gz"],
-    sha256 = "86c6d481b3f7aedc1d60c1c211c6f76da282ae197c3b3160f54bd3a8f847896f",
-)
-
-load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies", "go_repository")
-
-gazelle_dependencies()
-
-######################################################
+################################
+# DOCKER
 
 http_archive(
     name = "io_bazel_rules_docker",
@@ -141,17 +86,10 @@ load(
 
 container_repositories()
 
-load(
-    "@io_bazel_rules_docker//go:image.bzl",
-    _go_image_repos = "repositories",
-)
-
+load("@io_bazel_rules_docker//go:image.bzl", _go_image_repos = "repositories")
 _go_image_repos()
 
-load(
-    "@io_bazel_rules_docker//container:container.bzl",
-    "container_pull",
-)
+load("@io_bazel_rules_docker//container:container.bzl", "container_pull")
 
 container_pull(
     name = "swipl",
@@ -160,8 +98,8 @@ container_pull(
     digest = "sha256:b6f51e9cbccc55386bfa3381336c70bda145405cc258055fc8cc2afaddb9a35b",
 )
 
-######################################################
-# haskell
+################################
+# HASKELL
 
 http_archive(
     name = "rules_haskell",
@@ -261,74 +199,78 @@ http_archive(
 
 register_toolchains(":protobuf-toolchain")
 
-######################################################
-# generated by gazelle
 
-go_repository(
-    name = "org_golang_x_sync",
-    commit = "e225da77a7e68af35c70ccbf71af2b83e6acac3c",
-    importpath = "golang.org/x/sync",
+################################
+# OTHER
+
+http_archive(
+    name = "eprover",
+    urls = [
+        "http://wwwlehre.dhbw-stuttgart.de/~sschulz/WORK/E_DOWNLOAD/V_2.3/E.tgz",
+        "https://storage.googleapis.com/tptp/eprover_2_3.tgz",
+    ],
+    sha256 = "5366d2de77e6856250e26a967642389e81a6f823caedccaf5022a09242aceb96",
+    build_file = "//:third_party/eprover.BUILD",
 )
 
-go_repository(
-    name = "org_golang_google_grpc",
-    importpath = "google.golang.org/grpc",
-    sum = "h1:2dTRdpdFEEhJYQD8EMLB61nnrzSCTbG38PhqdhvOltg=",
-    version = "v1.26.0",
+http_archive(
+    name = "vampire",
+    strip_prefix = "vampire-3267e536135d0a9ac0691ee43153353cb130ca8e",
+    urls = ["https://github.com/vprover/vampire/archive/3267e536135d0a9ac0691ee43153353cb130ca8e.tar.gz"],
+    sha256 = "5459de1b1db951c8522b3b2e4af607c376da7e9cf41f2841b40e8271bd2abd14",
+    build_file = "//:third_party/vampire.BUILD",
 )
 
-go_repository(
-    name = "org_golang_x_net",
-    importpath = "golang.org/x/net",
-    sum = "h1:efeOvDhwQ29Dj3SdAV/MJf8oukgn+8D8WgaCaRMchF8=",
-    version = "v0.0.0-20191209160850-c0dbc17a3553",
+http_archive(
+    name = "leancop",
+    urls = ["https://storage.googleapis.com/tptp/leancop_bin.tgz"],
+    sha256 = "c8c154c7f694ffd5eee7453bb50bd07f5eac0b4c564a5b9a0cb548e802ed7bbf",
+    build_file = "//:third_party/leancop.BUILD",
 )
 
-go_repository(
-    name = "org_golang_x_text",
-    importpath = "golang.org/x/text",
-    sum = "h1:tW2bmiBqwgJj/UpqtC8EpXEZVYOwU0yG4iWbprSVAcs=",
-    version = "v0.3.2",
+http_archive(
+    name = "leancop_prolog",
+    urls = [
+        "http://www.leancop.de/programs/leancop21.tar.gz",
+        "https://storage.googleapis.com/tptp/leancop21.tar.gz",
+    ],
+    sha256 = "ce432c5f9368c093f08df3120218463d8bdb8412e71ec980ab9c852c13cef300",
+    build_file = "//:third_party/leancop_prolog.BUILD",
 )
 
-go_repository(
-    name = "org_golang_x_oauth2",
-    importpath = "golang.org/x/oauth2",
-    sum = "h1:pE8b58s1HRDMi8RDc79m0HISf9D4TzseP40cEA6IGfs=",
-    version = "v0.0.0-20191202225959-858c2ad4c8b6",
+http_file(
+    name = "tptp4X",
+    executable = 1,
+    urls = ["https://storage.googleapis.com/tptp/tptp4X"],
+    sha256 = "2418cb42c0f9013289ef7653c4ad9cd4d9b7d7ac67bbf5687dbb1ef1639e590e",
 )
 
-go_repository(
-    name = "com_google_cloud_go",
-    importpath = "cloud.google.com/go",
-    sum = "h1:CH+lkubJzcPYB1Ggupcq0+k8Ni2ILdG2lYjDIgavDBQ=",
-    version = "v0.49.0",
+http_file(
+    name = "mizar_problems",
+    urls = ["https://storage.googleapis.com/tptp/mizar_problems.zip"],
+    sha256 = "70a6e8467753395125f281ea371adc390585b667b84db79451fd0cc8780bd749",
 )
 
-go_repository(
-    name = "org_golang_google_api",
-    importpath = "google.golang.org/api",
-    sum = "h1:yzlyyDW/J0w8yNFJIhiAJy4kq74S+1DOLdawELNxFMA=",
-    version = "v0.15.0",
+http_file(
+    name = "tptp_problems",
+    urls = ["https://storage.googleapis.com/tptp/tptp_problems.zip"],
+    sha256 = "f56cd27648898713e83e2e0dc69e295b316ba4b7acad0e41d7667610b666c5f0",
 )
 
-go_repository(
-    name = "io_opencensus_go",
-    importpath = "go.opencensus.io",
-    sum = "h1:75k/FF0Q2YM8QYo07VPddOLBslDt1MZOdEslOHvmzAs=",
-    version = "v0.22.2",
+
+"""http_archive(
+    name = "com_google_protobuf",
+    strip_prefix = "protobuf-3.11.4",
+    urls = ["https://github.com/google/protobuf/archive/v3.11.4.zip"],
+    sha256 = "9748c0d90e54ea09e5e75fb7fac16edce15d2028d4356f32211cfa3c0e956564"
 )
 
-go_repository(
-    name = "com_github_googleapis_gax_go_v2",
-    importpath = "github.com/googleapis/gax-go/v2",
-    sum = "h1:sjZBwGj9Jlw33ImPtvFviGYvseOtDM7hkSKB7+Tv3SM=",
-    version = "v2.0.5",
-)
+load("@com_google_protobuf//:protobuf_deps.bzl", "protobuf_deps")
 
-go_repository(
-    name = "com_github_golang_groupcache",
-    importpath = "github.com/golang/groupcache",
-    sum = "h1:5ZkaAPbicIKTF2I64qf5Fh8Aa83Q/dnOafMYV0OMwjA=",
-    version = "v0.0.0-20191227052852-215e87163ea7",
-)
+protobuf_deps()"""
+
+################################
+# GENERATE SUMMARY
+
+load("//:list.bzl", "list_existing")
+# list_existing()

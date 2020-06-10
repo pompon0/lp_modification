@@ -22,6 +22,7 @@ import (
 
   "github.com/pompon0/tptp_benchmark_go/tool"
   "github.com/pompon0/tptp_benchmark_go/problems"
+  "github.com/pompon0/tptp_benchmark_go/utils"
   "github.com/pompon0/tptp_benchmark_go/cloud/worker/push"
   pb "github.com/pompon0/tptp_benchmark_go/cloud/worker/worker_go_proto"
   spb "github.com/pompon0/tptp_benchmark_go/tptp_parser/proto/solutions_go_proto"
@@ -41,36 +42,6 @@ var timeout = flag.Duration("timeout",16*time.Second,"timeout per problem")
 
 var equalityOnly = flag.Bool("equality_only",false,"")
 
-type EnumFlag struct {
-  fromString map[string]int32
-  Value int32
-}
-
-func NewEnumFlag(fromString map[string]int32) *EnumFlag {
-  return &EnumFlag{fromString: fromString}
-}
-
-func (f *EnumFlag) Desc() string {
-  var names []string
-  for k,_ := range f.fromString { names = append(names,k) }
-  sort.Slice(names,func(i,j int) bool { return f.fromString[names[i]] < f.fromString[names[j]] })
-  return strings.Join(names,"|")
-}
-
-func (f *EnumFlag) Set(name string) error {
-  v,ok := f.fromString[name]
-  if !ok { return fmt.Errorf("unknown %q",name) }
-  f.Value = v
-  return nil
-}
-
-func (f *EnumFlag) String() string {
-  for k,v := range f.fromString { if v==f.Value { return k } }
-  // For some reason we need to support execution on nil
-  // (https://golang.org/pkg/flag/#Value)
-  return ""
-}
-
 const (
   problemSetMizar = "mizar"
   problemSetTptp = "tptp"
@@ -81,7 +52,7 @@ var problemSets = []string{problemSetMizar,problemSetTptp}
 
 var commit = flag.String("commit","","current version")
 var problemSet = flag.String("problem_set",problemSetMizar,strings.Join(problemSets,"|"))
-var prover = NewEnumFlag(pb.Prover_value)
+var prover = (*pb.Prover)(utils.NewEnumFlag("prover",pb.Prover_UNKNOWN))
 
 type ConnPool struct {
   conn []*grpc.ClientConn
@@ -217,7 +188,7 @@ func run(ctx context.Context) error {
         //t := time.Now()
         resp,err = c.Prove(gCtx,&pb.Req{
           Commit: *commit,
-          Prover: pb.Prover(prover.Value),
+          Prover: *prover,
           TptpProblem: tptp,
           Timeout: timeoutProto,
         })
@@ -283,7 +254,6 @@ func run(ctx context.Context) error {
 }
 
 func main() {
-  flag.Var(prover,"prover",prover.Desc())
   flag.Parse()
   if err:=run(context.Background()); err!=nil {
     log.Fatalf("%v",err)

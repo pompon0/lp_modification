@@ -12,24 +12,35 @@ import (
 
   "github.com/pompon0/tptp_benchmark_go/tool"
   "github.com/pompon0/tptp_benchmark_go/problems"
+  "github.com/pompon0/tptp_benchmark_go/utils"
   "github.com/pompon0/tptp_benchmark_go/lazyparam_prover/tableau"
   spb "github.com/pompon0/tptp_benchmark_go/tptp_parser/proto/solutions_go_proto"
+  ppb "github.com/pompon0/tptp_benchmark_go/lazyparam_prover/prover_go_proto"
 )
 
 var all = flag.Bool("all",false,"")
 var caseName = flag.String("case_name","","")
 var timeout = flag.Duration("timeout",time.Hour,"")
 
+var trans = (*ppb.Transformation)(utils.NewEnumFlag("trans", ppb.Transformation_LP_MODIFICATION))
+var transOnly = flag.Bool("trans_only",false,"")
+var method = (*ppb.Method)(utils.NewEnumFlag("method", ppb.Method_CONNECTION_TABLEAU))
+
 func prove(ctx context.Context, tptp []byte) error {
-  //fmt.Printf("%s",string(tptp))
   ctxProve,cancel := context.WithTimeout(ctx,*timeout)
   defer cancel()
-  out,err := tableau.ProveLazyParamodulation(ctxProve,tptp)
+  out,err := tableau.Prove(ctxProve,tptp,*method,*trans,*transOnly)
   if err!=nil { return fmt.Errorf("Tableau(%q): %v",*caseName,err) }
   if !out.Solved {
     log.Printf("not solved")
     out.CnfProblem = nil
-    log.Printf("out = %+v",out)
+    if *transOnly {
+      tptpProblem,err := tool.ProtoToTptp(ctx,out.TransformedProblem)
+      if err!=nil { return fmt.Errorf("tool.ProtoToTptp(out.TransformedProblem): %v",err) }
+      fmt.Printf("-- PROBLEM BEGIN --\n%s-- PROBLEM END--\n",tptpProblem)
+    } else {
+      log.Printf("out = %+v",out)
+    }
     return nil
   }
   tptpProblem,err := tool.ProtoToTptp(ctx,out.CnfProblem)

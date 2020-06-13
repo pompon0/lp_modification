@@ -17,9 +17,7 @@ haskell_library(
     name = "Tptp",
     srcs = [
         "Tptp.hs",
-        "TptpLens.hs",
         "Parser.hs",
-        "Parser2.hs",
     ],
     deps = [
         ":Ctx",

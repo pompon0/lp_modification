@@ -16,7 +16,8 @@ int main(int argc, char **argv) {
   //absl::ParseCommandLine(argc, argv);
 
   tptp::ToolOutput out;
-  parse_file(out.mutable_file(),std::cin);
+  ParseCtx ctx;
+  ctx.parse_file(out.mutable_file(),std::cin);
   out.set_has_equality(has_equality(out.file()));
   out.SerializeToOstream(&std::cout);
   //inline_imports(std::cout,std::cin);

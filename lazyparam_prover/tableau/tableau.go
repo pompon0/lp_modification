@@ -8,6 +8,7 @@ import (
   "context"
   "time"
   "syscall"
+  "log"
 
   "github.com/pompon0/tptp_benchmark_go/eprover"
   "github.com/pompon0/tptp_benchmark_go/tool"
@@ -35,8 +36,10 @@ func ProveLazyParamodulation(ctx context.Context, tptpFOFProblem []byte) (*spb.P
 func Prove(ctx context.Context, tptpFOFProblem []byte, method ppb.Method, trans ppb.Transformation, transOnly bool) (*spb.ProverOutput,error) {
   tptpCNF,err := eprover.FOFToCNF(ctx,tptpFOFProblem)
   if err!=nil { return nil,fmt.Errorf("eprover.FOFToCNF(): %v",err) }
+  log.Printf("tptpCNF = %v",string(tptpCNF))
   cnf,err := tool.TptpToProto(ctx,tool.CNF,tptpCNF)
   if err!=nil { return nil,fmt.Errorf("tool.TptpToProto(): %v",err) }
+  log.Printf("cnf = %v",cnf)
   out,err := Tableau(ctx,cnf,true,method,trans,transOnly)
   if err!=nil {
     if err==context.DeadlineExceeded {

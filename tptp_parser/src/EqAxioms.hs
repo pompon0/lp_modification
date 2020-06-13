@@ -74,29 +74,6 @@ isFunCongAxiom c = do
   (fn',a') <- case unwrap t' of { TFun fn' a' -> return (fn',a'); _ -> Nothing }
   if fn==fn' && isSubRelation (zip a a') (c^..posPred.pred'peq) then Just fn else Nothing
 
-{-appendEqAxioms :: OrForm -> OrForm
-appendEqAxioms f = let {
-    [x,y,z] = labels'ids ["X","Y","Z"];
-    reflAxiom = OrClause [eq x x];
-    symmAxiom = OrClause [neq x y, eq y x];
-    transAxiom = OrClause [neq x y, neq y z, eq x z];
-    congPred :: (PredName,Int) -> NotAndForm; -- A 0..c  $0=$i and p($1..$c) => p($1..$0..$c)
-    congPred (n,c) = let {
-      pred :: [Int] -> Pred;
-      pred l = wrap $ PCustom n (map (wrap . TVar . fromIntegral) l);
-      (x,y) = ([0..c-1],[c..2*c-1]);
-    } in NotAndForm $ [OrClause $ map (\(a,b) -> neq a b) (zip x y) <> [Atom False (pred x), Atom True (pred y)]];
-    congFun :: (FunName,Int) -> NotAndForm; -- A 0..c  $0=$i => f($1..$c)=f($1..$0..$c)
-    congFun (n,c) = let {
-      term :: [Int] -> Term;
-      term l = wrap $ TFun n (map (wrap . TVar . fromIntegral) l);
-      (x,y) = ([0..c-1],[c..2*c-1]);
-    } in NotAndForm $ [OrClause $ map (\(a,b) -> neq a b) (zip x y) <> [Atom True (wrap $ PEq (term x) (term y))]];
-    congPredClauses :: NotAndForm = mconcat $ map congPred $ unique $ f^..orForm'pred.pred'arity;
-    congFunClauses :: NotAndForm = mconcat $ map congFun $ unique $ f^..orForm'term.term'subterm.term'arity;
-  } in f <> notAndForm'orForm (NotAndForm [reflAxiom,symmAxiom,transAxiom] <> congPredClauses <> congFunClauses)
--}
-
 isEqAxiom :: AndClause -> Bool
 isEqAxiom c = isReflAxiom c || isSymmAxiom c || isTransAxiom c || isPredCongAxiom c /= Nothing || isFunCongAxiom c /= Nothing
 

@@ -8,7 +8,7 @@ import Ctx
 import HashSeq
 import Pred hiding (pred'args,pred'name,term'varName'rec)
 import qualified Proto.Tptp as T
-import TptpLens
+import Tptp
 
 import qualified Data.List as List
 import qualified Data.Map as Map
@@ -40,29 +40,36 @@ instance Show FOF where
 
 ---------------------------------------
 
-freeVars :: T.Formula'Formula -> Set.Set String
-freeVars f = case f of
-  T.Formula'Pred' pred -> Set.fromList $ pred^..pred'args.traverse.term'varName'rec
-  T.Formula'Quant' quant -> Set.difference (Set.unions $ quant^..quant'sub.to freeVars) (Set.fromList $ quant^..quant'varName)
-  T.Formula'Op op -> Set.unions (op^.. #args.traverse. #maybe'formula.traverse.to freeVars)
+freeVars :: NodeTree -> Set.Set Node
+freeVars (NodeTree n args) = runIdentity $ do
+  fv <- Set.empty $ for args (\a cont s -> cont (Set.union s (freeVars a)))
+  r$ case n^.type_ of
+    NS T.FORALL -> let [v,_] = args in Set.difference fv (freeVars v)
+    NS T.EXISTS -> let [v,_] = args in Set.difference fv (freeVars v)
+    _ -> fv
 
-global'make :: [T.File] -> Global
-global'make fs = Global {
-    _funs = stack'make (Set.fromList $ fs^..traverse.file'formula.formula'pred.pred'args.traverse.term'funName'rec.to FunName),
-    _preds = stack'make (Set.fromList $ fs^..traverse.file'formula.formula'pred.pred'name.to PredName)
+global'make :: [T.File] -> Err Global
+global'make fs = do
+  idx <- emptyNI & for fs (\f cont idx ->
+    cont =<< (merge idx =<< newNodeIndex f))
+  funs <- [] & for idx (\n cont funs ->
+    cont (if n^.type_==NC T.Node'FUN then n:funs else funs))
+  preds <- [] & for idx (\n cont preds ->
+    cont (if n^.type_==NC T.Node'PRED then n:preds else preds))
+  r$ Global {
+    _funs = stack'make (Set.fromList funs),
+    _preds = stack'make (Set.fromList preds)
   }
 
-globalVar'make :: [T.File] -> GlobalVar 
-globalVar'make fs = GlobalVar {
-    _global' = global'make fs,
-    _existsVars = stack'make (Set.map VarName $ Set.unions $ fs^..traverse.file'formula.to freeVars)
-  }
-
-
-getFormula :: T.Formula -> Err T.Formula'Formula
-getFormula f = case f^. #maybe'formula of
-  Nothing -> fail "formula missing"
-  Just x -> return x
+globalVar'make :: [T.File] -> Err GlobalVar 
+globalVar'make fs = do
+  g <- global'make fs
+  ev <- Set.empty $ for fs (\f cont ev -> do
+    ev <- ev & for (f^. #input) (\i cont ev -> do
+      t <- stream'tree (i^. #formula)
+      cont (Set.union ev (freeVars t)))
+    cont ev)
+  r$ GlobalVar { _global' = g, _existsVars = stack'make ev }
 
 -----------------------------------
 
@@ -144,7 +151,7 @@ toProto'Pred pred = case unwrap pred of
   PEq l r -> defMessage & #type' .~ T.Formula'Pred'EQ & #args .~ map toProto'Term [l,r]
   PCustom pn args -> defMessage & #type' .~ T.Formula'Pred'CUSTOM & pred'name .~ show pn & #args .~ map toProto'Term args
 
-toProto'Term :: Term -> T.Term
+toProto'Term :: Term -> [Int32]
 toProto'Term term = case unwrap term of
   TVar vn -> defMessage & #type' .~ T.Term'VAR & term'name .~ show vn
   TFun fn args -> defMessage & #type' .~ T.Term'EXP & term'name .~ show fn & #args .~ map toProto'Term args

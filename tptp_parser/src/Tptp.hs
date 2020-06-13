@@ -1,20 +1,40 @@
 {-# LANGUAGE OverloadedLabels #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE ViewPatterns #-}
+
+{-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE FlexibleInstances #-}
 module Tptp where
 
-import TptpLens
-import Parser
+import Ctx(Err)
 
+import Prelude hiding(fail,id)
 import qualified Text.Parsec as P
 import qualified Proto.Tptp as T
 import Control.Lens
 import Control.Exception
+import Control.Monad.Fail
 import Data.Text.Lens
 import Data.ProtoLens(defMessage)
 import Data.ProtoLens.Labels()
-import qualified Data.Map as Map
+import qualified Data.Map.Strict as Map
 import Data.Maybe
 import Text.Printf
 import Data.List(intercalate)
+import Data.Int(Int32)
+
+r :: Monad m => a -> m a
+r = return
+
+-- s <- s & for [...] $ \a cont s -> do ...
+for :: Monad m => [a] -> (a -> (s -> m s) -> (s -> m s)) -> (s -> m s)
+for [] f s = r$ s
+for (a:at) f s = f a (for at f) s
+
+-------------------------------------
 
 role'string'list :: [(T.Input'Role,String)]
 role'string'list = [
@@ -39,51 +59,130 @@ language'string'list = [
   (T.Input'FOF,"fof"),
   (T.Input'CNF,"cnf")]
 
-file'string :: T.File -> String
-file'string f = mconcat (((++"\n").input'string) <$> f^. #input)
+data NodeType = NS T.StandardNode | NC T.Node'Type
+data Node = Node {
+  _type_ :: NodeType,
+  _id :: Int32,
+  _arity :: Int32,
+  _name :: Maybe String
+}
+makeFieldsNoPrefix ''Node
 
-input'string :: T.Input -> String
-input'string i = printf "%s(%s,%s,%s)." lang (i^. #name) role (i^. #formula.formula'assert.to formula'string) where
-  role = (Map.fromList role'string'list)^.at (i^. #role).non (error "invalid role")
-  lang = (Map.fromList language'string'list)^.at (i^. #language).non (error "invalid language")
+standardArities :: [(T.StandardNode,Int32)] = [
+  (T.FORALL,2), 
+  (T.EXISTS,2),
+  (T.FORM_NEG,1),
+  (T.FORM_OR,-1),
+  (T.FORM_AND,-1),
+  (T.FORM_TRUE,0),
+  (T.FORM_FALSE,0),
+  (T.FORM_IFF,-1),
+  (T.FORM_IMPL,-1), 
+  (T.FORM_XOR,-1),
+  (T.FORM_NOR,-1),
+  (T.FORM_NAND,-1),
+  (T.PRED_EQ,-1)]
 
-formula'assert :: Iso' T.Formula T.Formula'Formula
-formula'assert = iso
-  (^. #maybe'formula.non (error "empty formula"))
-  (\f -> defMessage & #maybe'formula ?~ f)
+standardNodes :: Map.Map Int32 Node
+standardNodes = runIdentity $ Map.empty & for standardArities (\(t,a) cont m -> do
+  id <- fromIntegral $ fromEnum t
+  cont (m & at id %~ \Nothing -> Just $ Node {
+    _type_ = NS t,
+    _id = id,
+    _arity = a,
+    _name = Nothing
+  }))
 
-varName'assert :: String -> String
-varName'assert vn = vn
---varName'assert vn = case P.runP Parser.variable () "" vn of { Left err -> error (show err); Right _ -> vn }
+type NodeIndex = Map.Map Int32 Node
+data NodeTree = NodeTree {
+  _root :: Node,
+  _args :: [NodeTree]
+}
+makeFieldsNoPrefix ''NodeTree
 
-funName'assert :: String -> String
-funName'assert fn = fn
---funName'assert fn = case P.runP Parser.lower_word () "" fn of { Left err -> error (show err); Right _ -> fn }
+orFail :: MonadFail m => String -> (a -> m a) -> (Maybe a -> m (Maybe a))
+orFail msg f ma = case ma of
+  Nothing -> fail msg
+  Just a -> Just <$> f a
 
-formula'string :: T.Formula'Formula -> String
-formula'string f = case f of
-  T.Formula'Pred' pred -> let args = term'string <$> pred^.pred'args in
-    case pred^. #type' of
-      T.Formula'Pred'CUSTOM -> printf "%s(%s)" (pred^.pred'name) (intercalate "," args)
-      T.Formula'Pred'EQ -> printf "%s = %s" l r where [l,r] = args 
-  T.Formula'Quant' quant -> printf "%s[%s]: (%s)"
-    (case quant^. #type' of { T.Formula'Quant'FORALL -> "!"; T.Formula'Quant'EXISTS -> "?" })
-    (intercalate "," $ quant^..quant'varName.to varName'assert)
-    (quant^. #sub.formula'assert.to formula'string)
-  T.Formula'Op op -> let args = printf "(%s)" <$> op^.. #args.traverse.formula'assert.to formula'string in
-    case op^. #type' of
-      T.Formula'Operator'TRUE -> "$true" where [] = args
-      T.Formula'Operator'FALSE -> "$false" where [] = args
-      T.Formula'Operator'NEG -> printf "~%s" arg where [arg] = args
-      T.Formula'Operator'OR -> intercalate " | " args
-      T.Formula'Operator'AND -> intercalate " & " args
-      T.Formula'Operator'IFF -> intercalate " <=> " args
-      T.Formula'Operator'IMPL -> intercalate " => " args
-      T.Formula'Operator'XOR -> intercalate " <~> " args
-      T.Formula'Operator'NOR -> intercalate " ~| " args
-      T.Formula'Operator'NAND -> intercalate " ~& " args
+stream'tree :: NodeIndex -> [Int32] -> Err (NodeTree,[Int32])
+stream'tree idx (h:t) = do
+  Just node <-r$ idx^.at h
+  (arity:t) <-r$ case (node^.arity) of { -1->t; a->a:t }
+  (args,t) <- ([],t) & for [1..arity] (\_ cont (_,t) -> do
+    (a,t) <- stream'tree idx t
+    (at,t) <- cont ([],t)
+    r$ (a:at,t))
+  r$ (NodeTree node args,t)
 
-term'string :: T.Term -> String
-term'string term = case term^. #type' of
-  T.Term'VAR -> varName'assert $ term^.term'name
-  T.Term'EXP -> printf "%s(%s)" (funName'assert $ term^.term'name) (intercalate "," $ term'string <$> term^. #args)
+mergeNI :: NodeIndex -> NodeIndex -> Err NodeIndex
+mergeNI a b = fail "unimplemented"
+
+emptyNI = Map.empty
+
+newNodeIndex :: T.File -> Err NodeIndex
+newNodeIndex f = do
+  s <-r$ Map.empty
+  s <- s & for (f^. #nodes) (\n cont s -> do
+    id <-r$ n^. #id
+    cont (s & at id %~ \Nothing -> Just $ Node {
+      _type_ = NC (n^. #type'),
+      _id = id,
+      _arity = n^. #arity,
+      _name = Nothing
+    })) 
+  s <- s & for (f^. #names) (\n cont s -> do
+    id <-r$ n^. #id 
+    x <-r$ n^. #name.unpacked
+    s <- s & (at id.orFail "".name) (\Nothing -> r$ Just x)
+    cont s)
+  r$ standardNodes <> s
+
+file'string :: T.File -> Err String
+file'string f = do
+  idx <- newNodeIndex f
+  out <- "" & for (f^. #input) (\i cont s -> do
+    is <- input'string idx i
+    cont (s ++ is ++ "\n"))
+  r$ out
+
+input'string :: NodeIndex -> T.Input -> Err String
+input'string idx i = do
+  Just role <-r$ (Map.fromList role'string'list)^.at (i^. #role)
+  Just lang <-r$ (Map.fromList language'string'list)^.at (i^. #language)
+  (tree,[]) <- stream'tree idx (i^. #formula)
+  r$ printf "%s(%s,%s,%s)." lang (i^. #name) role (formula'string tree)
+
+defName :: Node -> String
+defName n = case n^.name of
+  Just x -> x
+  Nothing -> case n^.type_ of
+    NC T.Node'VAR -> printf "V%d" (n^.id)
+    NC T.Node'FUN -> printf "f%d" (n^.id)
+    NC T.Node'PRED -> printf "p%d" (n^.id)
+
+formula'string :: NodeTree -> String
+formula'string (NodeTree n args) = let
+  join = intercalate
+  in case n^.type_ of
+    NS T.FORALL -> let { [NodeTree v [],f] = args; }
+      in printf "![%s]: (%s)" (defName v) (formula'string f)
+    NS T.EXISTS -> let { [NodeTree v [],f] = args; }
+      in printf "?[%s]: (%s)" (defName v) (formula'string f)
+    NS T.FORM_NEG -> let [f] = args in printf "~%s" (formula'string f)
+    NS T.FORM_OR -> join " | " (formula'string <$> args)
+    NS T.FORM_AND -> join " & " (formula'string <$> args)
+    NS T.FORM_TRUE -> let [] = args in "$true"
+    NS T.FORM_FALSE -> let [] = args in "$false"
+    NS T.FORM_IFF -> join " <=> " (formula'string <$> args)
+    NS T.FORM_IMPL -> join " => " (formula'string <$> args)
+    NS T.FORM_XOR -> join " <~> " (formula'string <$> args)
+    NS T.FORM_NOR -> join " ~| " (formula'string <$> args)
+    NS T.FORM_NAND -> join " ~& " (formula'string <$> args)
+    NS T.PRED_EQ -> let [a,b] = args in printf "%s = %s" (term'string a) (term'string b)
+    NC T.Node'PRED -> printf "%s(%s)" (defName n) (join "," (term'string <$> args))
+  
+term'string :: NodeTree -> String
+term'string (NodeTree n args) = case n^.type_ of
+  NC T.Node'VAR -> defName n
+  NC T.Node'FUN -> printf "%s(%s)" (defName n) (intercalate "," (term'string <$> args))

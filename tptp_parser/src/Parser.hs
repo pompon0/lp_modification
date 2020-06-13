@@ -1,263 +1,152 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+
+{-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE FlexibleInstances #-}
 module Parser where
 
+import Data.TPTP
+import Data.TPTP.Parse.Text
+import Data.TPTP.Parse.Combinators hiding(type_)
+import Data.TPTP.Pretty
 import qualified Data.Text as Text
-import qualified Text.Parsec.Char as C
-import qualified Text.Parsec as P
+import Data.List.NonEmpty(NonEmpty((:|)))
 import Control.Lens
 import Data.ProtoLens(defMessage)
 import Data.ProtoLens.Labels()
 import Data.Char(ord)
+import Data.Text.Lens
+import Data.Attoparsec.Text(parseOnly)
 
+import Tptp
 import Ctx
 import qualified Proto.Tptp as T
 
-type Parser a = P.Parsec [Char] () a
+prettyPrint :: T.File -> Err String
+prettyPrint x = show.pretty <$> tptp'file x
 
-parse :: String -> Err T.File
-parse input = do
-  case P.runP tptp_file () "input" input of
-    Left err -> fail (show err)
-    Right f -> return f
+tptp'file :: T.File -> Err TPTP 
+tptp'file f = do
+  idx <- newNodeIndex f
+  us <- [] & for (f^. #input) (\i cont _ -> do
+    u <- unit'input idx i
+    ut <- cont []
+    r$ u:ut)
+  r$ TPTP us
 
-char :: Char -> Parser Char
-char c = do { C.spaces; C.char c }
-string :: String -> Parser String
-string s = do { C.spaces; C.string s }
+unit'input :: NodeIndex -> T.Input -> Err Unit 
+unit'input idx i = do
+  (f,_) <- stream'tree idx (i^. #formula)
+  f <- case i^. #language of {
+    T.Input'CNF -> CNF <$> cnf'formula f;
+    T.Input'FOF -> FOF <$> fof'formula f;
+  }
+  r$ Unit
+    (text'unitName (i^. #name))
+    (Formula (Standard $ role'role (i^. #role)) f) Nothing
 
-tptp_file :: Parser T.File
-tptp_file = do
-  i <- tptp_input_list
-  return $ defMessage & #input .~ i
-tptp_input_list :: Parser [T.Input]
-tptp_input_list = P.choice [
-  P.try $ do { C.spaces; P.eof; return [] },
-  do {
-    C.spaces;
-    f <- fof_annotated;
-    l <- tptp_input_list; return (f:l);
-  }] 
+role'role :: T.Input'Role -> Role
+role'role r = case r of {
+    T.Input'AXIOM -> Axiom;
+    T.Input'HYPOTHESIS -> Hypothesis;
+    T.Input'DEFINITION -> Definition;
+    T.Input'ASSUMPTION -> Assumption;
+    T.Input'LEMMA -> Lemma;
+    T.Input'THEOREM -> Theorem;
+    T.Input'COROLLARY -> Corollary;
+    T.Input'CONJECTURE -> Conjecture;
+    T.Input'NEGATED_CONJECTURE -> NegatedConjecture;
+    T.Input'PLAIN -> Plain;
+    T.Input'FI_DOMAIN -> FiDomain;
+    T.Input'FI_PREDICATES -> FiPredicates;
+    T.Input'UNKNOWN -> Unknown }
 
-formula_role :: Parser T.Input'Role
-formula_role = do { C.spaces; P.choice [
-  P.try $ do { C.string "axiom"; return T.Input'AXIOM },
-  P.try $ do { C.string "hypothesis"; return T.Input'HYPOTHESIS },
-  P.try $ do { C.string "definition"; return T.Input'DEFINITION },
-  P.try $ do { C.string "assumption"; return T.Input'ASSUMPTION },
-  P.try $ do { C.string "lemma"; return T.Input'LEMMA },
-  P.try $ do { C.string "theorem"; return T.Input'THEOREM },
-  P.try $ do { C.string "corollary"; return T.Input'COROLLARY },
-  P.try $ do { C.string "conjecture"; return T.Input'CONJECTURE },
-  P.try $ do { C.string "negated_conjecture"; return T.Input'NEGATED_CONJECTURE },
-  P.try $ do { C.string "plain"; return T.Input'PLAIN },
-  P.try $ do { C.string "type"; return T.Input'TYPE },
-  P.try $ do { C.string "fi_domain"; return T.Input'FI_DOMAIN },
-  P.try $ do { C.string "fi_functors"; return T.Input'FI_FUNCTORS },
-  P.try $ do { C.string "fi_predicates"; return T.Input'FI_PREDICATES },
-  P.try $ do { C.string "unknown"; return T.Input'UNKNOWN }]}
+decl'role :: Lens' Declaration Role
+decl'role g (Formula (Standard r) f) = (\r -> Formula (Standard r) f) <$> g r
 
-language :: Parser T.Input'Language
-language = do { l <- name; case l of {
-  "fof" -> return T.Input'FOF;
-  "cnf" -> return T.Input'CNF;
-  _ -> fail ("unexpected language: " ++ l);
-}}
+decl'formula :: Lens' Declaration Formula
+decl'formula g (Formula r f) = Formula r <$> g f
 
-fof_annotated :: Parser T.Input
-fof_annotated = do
-  l <- language; char '('
-  n <- name; char ','
-  r <- formula_role; char ','
-  f <- fof_logic_formula; char ')'; char '.'
-  return $ defMessage
-    & #language.~l
-    & #name.~(Text.pack n)
-    & #role.~r
-    & #formula.~f
+node'var :: Node -> Var
+node'var n = Var (defName n^.packed)
 
-fof_logic_formula :: Parser T.Formula
-fof_logic_formula = do
-  f :: T.Formula <- fof_unit_formula
-  c :: [(T.Formula'Operator'Type,T.Formula)] <- P.many $ P.try $ do
-    o <- connective
-    f <- fof_unit_formula
-    return (o,f)
-  case c of
-    [] -> return f
-    (o,x):t -> case all (\(o',_)->o'==o) t of
-        False -> fail "operator mismatch"
-        True -> return $ defMessage & #op.~(defMessage & #type'.~o & #args.~f:x:(map snd t))
+atom'text :: Text.Text -> Atom
+atom'text = Atom 
 
-fof_neg_formula :: Parser T.Formula
-fof_neg_formula = do -- ~...
-    char '~'
-    f :: T.Formula <- fof_unit_formula
-    return $ defMessage & #op.~(defMessage & #type'.~T.Formula'Operator'NEG & #args.~[f])
+node'name :: Named s => Node -> Name s
+node'name n = Defined (atom'text (defName n^.packed))
 
-fof_quant_formula :: Parser T.Formula
-fof_quant_formula = do 
-    C.spaces
-    quantType <- P.choice [
-      do { C.char '!'; return T.Formula'Quant'FORALL },
-      do { C.char '?'; return T.Formula'Quant'EXISTS }]
-    char '['
-    vars :: [T.Term] <- fof_variable_list
-    char ']'; char ':'
-    f <- fof_unit_formula
-    return $ defMessage
-      & #quant .~ (defMessage & #type'.~quantType & #var.~ (vars^..traverse. #name) & #sub.~f)
+text'unitName :: Text.Text -> UnitName
+text'unitName t = Left (atom'text t)
 
-fof_pred_formula :: Parser T.Formula
-fof_pred_formula = do
-    l <- P.choice [P.try fof_plain_term, P.try variable]
-    c :: Maybe (Bool,T.Term) <- P.optionMaybe $ P.try $ do
-      neg :: Bool <- P.choice[
-        P.try $ do { string "!="; return True },
-        P.try $ do { string "="; return False }]
-      r :: T.Term <- P.choice [P.try fof_plain_term, P.try variable]
-      return (neg,r) 
-    return $ case c of
-      Nothing -> defMessage & #pred.~(defMessage
-        & #type'.~T.Formula'Pred'CUSTOM & #name.~(l^. #name)& #args.~(l^. #args))
-      Just (neg,r) ->
-        let eq = defMessage & #pred.~(defMessage & #type'.~T.Formula'Pred'EQ & #args.~[l,r]) in
-        case neg of
-          False -> eq
-          True -> defMessage & #op.~(defMessage & #type'.~T.Formula'Operator'NEG & #args.~[eq])
+-------------------------------------------
 
-fof_unit_formula :: Parser T.Formula
-fof_unit_formula = P.choice [
-  P.try $ do { string "$true"; return $ defMessage & #op.~(defMessage & #type'.~T.Formula'Operator'TRUE) },
-  P.try $ do { string "$false"; return $ defMessage & #op.~(defMessage & #type'.~T.Formula'Operator'FALSE) },
-  P.try $ fof_neg_formula,
-  P.try $ fof_quant_formula, 
-  P.try $ fof_pred_formula,
-  P.try $ do {
-    char '(';
-    f <- fof_logic_formula;
-    char ')';
-    return f;
-  }] -- (...
+connective :: T.StandardNode -> Connective
+connective n = case n of { 
+  T.FORM_AND -> Conjunction;
+  T.FORM_OR -> Disjunction;
+  T.FORM_IMPL -> Implication;
+  T.FORM_IFF -> Equivalence;
+  T.FORM_XOR -> ExclusiveOr;
+  T.FORM_NAND -> NegatedConjunction;
+  T.FORM_NOR -> NegatedDisjunction;
+  T.FORM_RIMPL -> ReversedImplication;
+}
 
-fof_variable_list :: Parser [T.Term]
-fof_variable_list = P.sepBy variable (char ',')
+sign'not :: Sign -> Sign
+sign'not Positive = Negative
+sign'not Negative = Positive
 
--- a...
-fof_plain_term :: Parser T.Term
-fof_plain_term = do
-  name <- P.choice [P.try atomic_word, P.try distinct_object]
-  maybeArgs <- P.optionMaybe $ P.try $ do
-    char '('
-    args <- fof_arguments
-    char ')'
-    return args
-  let term = defMessage & #type' .~ T.Term'EXP & #name .~ Text.pack name
-  return $ case maybeArgs of
-    Just args -> term & #args .~ args
-    Nothing -> term
--- a/A...
-fof_arguments :: Parser [T.Term]
-fof_arguments = P.sepBy (P.choice [P.try fof_plain_term, P.try variable]) (char ',')
+formula'literal :: NodeTree -> Err (Sign,Literal)
+formula'literal nt@(NodeTree n args) = case n^.type_ of
+  NS T.FORM_NEG -> do
+    [a] <-r$ args
+    (s,l) <- formula'literal a
+    r$ (sign'not s,l)
+  _ -> do
+    l <- pred'literal nt
+    r$ (Positive,l)
 
-name :: Parser String
-name = P.choice [P.try atomic_word, P.try integer]
+cnf'formula :: NodeTree -> Err Clause
+cnf'formula nt@(NodeTree n args) = case formula'literal nt of
+  Err (Right l) -> r$ Clause (l :| [])
+  Err (Left _) -> case n^.type_ of
+    NS T.FORM_OR -> do
+      args <- [] & for args (\a cont _ -> do
+        a <- formula'literal a
+        at <- cont []
+        r$ (a:at))
+      r$ Clause $ case args of
+        [] -> ((Positive, Predicate (Reserved (Standard Falsum)) []) :| [])
+        (h:t) -> (h :| t)
 
-atomic_word :: Parser String
-atomic_word = P.choice [P.try lower_word, P.try single_quoted]
+fof'formula :: NodeTree -> Err UnsortedFirstOrder
+fof'formula nt@(NodeTree n args) = case n^.type_ of
+  NC _ -> Atomic <$> pred'literal nt
+  NS T.FORALL -> let [NodeTree v [],f] = args in Quantified Forall ((node'var v, Unsorted ()) :| []) <$> (fof'formula f)
+  NS T.EXISTS -> let [NodeTree v [],f] = args in Quantified Exists ((node'var v, Unsorted ()) :| []) <$> (fof'formula f)
+  NS T.FORM_TRUE -> let [] = args in r$ Atomic (Predicate (Reserved (Standard Tautology)) [])
+  NS T.FORM_FALSE -> let [] = args in r$ Atomic (Predicate (Reserved (Standard Falsum)) [])
+  NS T.FORM_NEG -> let [a] = args in Negated <$> (fof'formula a)
+  NS x -> let (a:at) = args in do
+      a <- fof'formula a
+      a & for at (\a cont at -> do
+        a <- fof'formula a
+        cont (Connected a (connective x) at))
 
-connective :: Parser T.Formula'Operator'Type
-connective = do { C.spaces; P.choice [
-  P.try $ do { C.string "|"; return T.Formula'Operator'OR },
-  P.try $ do { C.string "&"; return T.Formula'Operator'AND },
-  P.try $ do { C.string "<=>"; return T.Formula'Operator'IFF },
-  P.try $ do { C.string "=>"; return T.Formula'Operator'IMPL },
-  --P.try $ do { C.string "<="; return T.Formula'Operator'IMPL }, -- TODO: fix it
-  P.try $ do { C.string "<~>"; return T.Formula'Operator'XOR },
-  P.try $ do { C.string "~|"; return T.Formula'Operator'NOR },
-  P.try $ do { C.string "~&"; return T.Formula'Operator'NAND }] }
+pred'literal :: NodeTree -> Err Literal
+pred'literal (NodeTree n args) = do
+  args :: [Term] <- r$ term'term <$> args
+  r$ case n^.type_ of
+    NC T.Node'PRED -> Predicate (node'name n) args 
+    NS T.PRED_EQ -> let [l,r] = args in Equality l Positive r 
 
--- A...
-variable :: Parser T.Term
-variable = do
-  sname <- upper_word
-  return $ defMessage
-    & #type' .~ T.Term'VAR
-    & #name .~ Text.pack sname
-----------------------------------------------------
-
--- A...
-upper_word :: Parser String
-upper_word = do 
-  C.spaces
-  h <- C.oneOf upper_alpha
-  t <- P.many $ C.oneOf alpha_numeric
-  return (h:t)
--- a...
-lower_word :: Parser String
-lower_word = do
-  C.spaces
-  h <- C.oneOf lower_alpha
-  t <- P.many $ C.oneOf alpha_numeric
-  return (h:t)
-
--- '...'
-single_quoted :: Parser String
-single_quoted = do
-  C.spaces
-  l <- C.char '\''
-  s <- P.many1 sq_char
-  r <- C.char '\''
-  return ([l]++mconcat s++[r])
-
-sq_char :: Parser String
-sq_char = P.choice [
-  do {
-    c <- P.satisfy $ \c -> (0o40 <= ord c && ord c <= 0o176 && c/='\'' && c/= '\\');
-    return [c];
-  },
-  P.string "\\\\",
-  P.string "\\'"]
-
--- "..."
-distinct_object :: Parser String
-distinct_object = do
-  C.spaces
-  l <- C.char '"'
-  s <- P.many do_char
-  r <- C.char '"'
-  return ([l]++mconcat s++[r])
-
-do_char :: Parser String
-do_char = P.choice [
-  do {
-    c <- P.satisfy $ \c -> (0o40 <= ord c && ord c <= 0x176 && c/='"' && c/='\\');
-    return [c];
-  },
-  P.string "\\\\",
-  P.string "\\\""]
-
--- +/-/0...
-integer :: Parser String
-integer = P.choice [P.try signed_integer, P.try unsigned_integer]
-
--- +/-...
-signed_integer :: Parser String
-signed_integer = do
-  C.spaces
-  s <- C.oneOf sign
-  i <- unsigned_integer
-  return (s:i)
-
--- 0...
-unsigned_integer :: Parser String
-unsigned_integer = do { C.spaces; P.many1 $ C.oneOf numeric }
-
-sign = "+-"
-non_zero_numeric = "123456789"
-numeric = "0123456789"
-lower_alpha = "abcdefghijklmnopqrstuvwxyz"
-upper_alpha = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-alpha_numeric = lower_alpha ++ upper_alpha ++ numeric ++ "_"
-
+term'term :: NodeTree -> Term
+term'term (NodeTree n args) = runIdentity $ do
+  args <- r$ term'term <$> args
+  r$ case n^.type_ of
+    NC T.Node'VAR -> Variable (node'var n)
+    NC T.Node'FUN -> Function (node'name n) args

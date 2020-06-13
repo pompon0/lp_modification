@@ -4,14 +4,15 @@ package tptp;
 message File {
   repeated Input input = 1;
   repeated Node nodes = 2;
-  repeated Name names = 3;
 }
 
-// These items have default interpretation.
-// They lose the default semantics if are overriden in the "nodes" section.
-enum StandardNode {
+enum Type {
   UNKNOWN = 0;
+
   PRED_EQ = 1; // 2
+  PRED = 15; // custom
+  TERM_FUN = 16; // custom
+  TERM_VAR = 17; // 0
 
   FORM_NEG = 2; // 1
   FORM_OR = 3; // ?
@@ -30,20 +31,10 @@ enum StandardNode {
 }
 
 message Node {
-  enum Type {
-    UNKNOWN = 0;
-    FUN = 1;
-    VAR = 2;
-    PRED = 3;
-  }
   int32 id = 1;
   Type type = 2;
-  int32 arity = 3; // -1 if variadic
-}
-
-message Name {
-  int32 id = 1;
-  string name = 2;
+  int32 arity = 3; // present <=> type has custom arity
+  string name = 4; // optional
 }
 
 // currently only FOF and CNF formulas are supported

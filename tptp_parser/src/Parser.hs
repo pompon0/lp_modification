@@ -73,28 +73,16 @@ decl'formula g (Formula r f) = Formula r <$> g f
 node'var :: Node -> Var
 node'var n = Var (defName n^.packed)
 
-atom'text :: Text.Text -> Atom
-atom'text = Atom 
+text'atom :: Text.Text -> Atom
+test'atom = Atom 
 
 node'name :: Named s => Node -> Name s
-node'name n = Defined (atom'text (defName n^.packed))
+node'name n = Defined (text'atom (defName n^.packed))
 
 text'unitName :: Text.Text -> UnitName
-text'unitName t = Left (atom'text t)
+text'unitName t = Left (text'atom t)
 
 -------------------------------------------
-
-connective :: T.StandardNode -> Connective
-connective n = case n of { 
-  T.FORM_AND -> Conjunction;
-  T.FORM_OR -> Disjunction;
-  T.FORM_IMPL -> Implication;
-  T.FORM_IFF -> Equivalence;
-  T.FORM_XOR -> ExclusiveOr;
-  T.FORM_NAND -> NegatedConjunction;
-  T.FORM_NOR -> NegatedDisjunction;
-  T.FORM_RIMPL -> ReversedImplication;
-}
 
 sign'not :: Sign -> Sign
 sign'not Positive = Negative
@@ -102,7 +90,7 @@ sign'not Negative = Positive
 
 formula'literal :: NodeTree -> Err (Sign,Literal)
 formula'literal nt@(NodeTree n args) = case n^.type_ of
-  NS T.FORM_NEG -> do
+  T.FORM_NEG -> do
     [a] <-r$ args
     (s,l) <- formula'literal a
     r$ (sign'not s,l)
@@ -124,29 +112,39 @@ cnf'formula nt@(NodeTree n args) = case formula'literal nt of
         (h:t) -> (h :| t)
 
 fof'formula :: NodeTree -> Err UnsortedFirstOrder
-fof'formula nt@(NodeTree n args) = case n^.type_ of
-  NC _ -> Atomic <$> pred'literal nt
-  NS T.FORALL -> let [NodeTree v [],f] = args in Quantified Forall ((node'var v, Unsorted ()) :| []) <$> (fof'formula f)
-  NS T.EXISTS -> let [NodeTree v [],f] = args in Quantified Exists ((node'var v, Unsorted ()) :| []) <$> (fof'formula f)
-  NS T.FORM_TRUE -> let [] = args in r$ Atomic (Predicate (Reserved (Standard Tautology)) [])
-  NS T.FORM_FALSE -> let [] = args in r$ Atomic (Predicate (Reserved (Standard Falsum)) [])
-  NS T.FORM_NEG -> let [a] = args in Negated <$> (fof'formula a)
-  NS x -> let (a:at) = args in do
+fof'formula nt@(NodeTree n args) = do
+  let conn c = let (a:at) = args in do
+    a <- fof'formula a
+    a & for at (\a cont at -> do
       a <- fof'formula a
-      a & for at (\a cont at -> do
-        a <- fof'formula a
-        cont (Connected a (connective x) at))
+      cont (Connected a c at))  
+  case n^.type_ of
+    T.PRED -> Atomic <$> pred'literal nt
+    T.PRED_EQ -> Atomic <$> pred'literal nt
+    T.FORALL -> let [NodeTree v [],f] = args in Quantified Forall ((node'var v, Unsorted ()) :| []) <$> (fof'formula f)
+    T.EXISTS -> let [NodeTree v [],f] = args in Quantified Exists ((node'var v, Unsorted ()) :| []) <$> (fof'formula f)
+    T.FORM_TRUE -> let [] = args in r$ Atomic (Predicate (Reserved (Standard Tautology)) [])
+    T.FORM_FALSE -> let [] = args in r$ Atomic (Predicate (Reserved (Standard Falsum)) [])
+    T.FORM_NEG -> let [a] = args in Negated <$> (fof'formula a)
+    T.FORM_AND -> conn Conjunction;
+    T.FORM_OR -> conn Disjunction;
+    T.FORM_IMPL -> conn Implication;
+    T.FORM_IFF -> conn Equivalence;
+    T.FORM_XOR -> conn ExclusiveOr;
+    T.FORM_NAND -> conn NegatedConjunction;
+    T.FORM_NOR -> conn NegatedDisjunction;
+    T.FORM_RIMPL -> conn ReversedImplication;
 
 pred'literal :: NodeTree -> Err Literal
 pred'literal (NodeTree n args) = do
   args :: [Term] <- r$ term'term <$> args
   r$ case n^.type_ of
-    NC T.Node'PRED -> Predicate (node'name n) args 
-    NS T.PRED_EQ -> let [l,r] = args in Equality l Positive r 
+    T.PRED -> Predicate (node'name n) args 
+    T.PRED_EQ -> let [l,r] = args in Equality l Positive r 
 
 term'term :: NodeTree -> Term
 term'term (NodeTree n args) = runIdentity $ do
   args <- r$ term'term <$> args
   r$ case n^.type_ of
-    NC T.Node'VAR -> Variable (node'var n)
-    NC T.Node'FUN -> Function (node'name n) args
+    T.TERM_VAR -> Variable (node'var n)
+    T.TERM_FUN -> Function (node'name n) args

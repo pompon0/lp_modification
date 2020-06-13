@@ -76,12 +76,9 @@ class (Show a, Eq a, Ord a) => Stackable a where
 instance (Show a, Eq a, Ord a) => Stackable a
 ---------------------------------------------
 
-newtype VarName = VarName String deriving(Eq,Ord,HashSeq)
-newtype FunName = FunName String deriving(Eq,Ord,HashSeq)
-newtype PredName = PredName String deriving(Eq,Ord,HashSeq)
-instance Show VarName where show (VarName x) = x
-instance Show FunName where show (FunName x) = x
-instance Show PredName where show (PredName x) = x
+newtype VarName = VarName Node deriving(Eq,Ord,HashSeq,Show)
+newtype FunName = FunName Node deriving(Eq,Ord,HashSeq,Show)
+newtype PredName = PredName Node deriving(Eq,Ord,HashSeq,Show)
 
 eqPredName = PredName "eq"
 extraConstName = FunName "c"

@@ -33,4 +33,3 @@ unwrap = val
 wh :: HashSeq a => Iso' (WithHash a) a
 wh = dimap unwrap (fmap wrap)
 
-

@@ -6,6 +6,8 @@
 {-# LANGUAGE UndecidableInstances #-}
 module Ctx where
 
+import Tptp
+import Err
 import HashSeq
 import Control.Lens
 import Data.Maybe
@@ -20,9 +22,6 @@ import Control.Exception
 import Debug.Trace
 
 -------------------------------------
-
-newtype Err a = Err (Either String a) deriving(Functor,Applicative,Monad)
-instance MonadFail Err where { fail = Err . Left }
 
 -------------------------------------
 
@@ -80,8 +79,8 @@ newtype VarName = VarName Node deriving(Eq,Ord,HashSeq,Show)
 newtype FunName = FunName Node deriving(Eq,Ord,HashSeq,Show)
 newtype PredName = PredName Node deriving(Eq,Ord,HashSeq,Show)
 
-eqPredName = PredName "eq"
-extraConstName = FunName "c"
+--eqPredName = PredName "eq"
+--extraConstName = FunName "c"
 
 data Global = Global {
   _funs :: Stack FunName,

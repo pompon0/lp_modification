@@ -1,15 +1,24 @@
 load("@rules_haskell//haskell:defs.bzl", "haskell_library", "haskell_test", "haskell_binary")
 
 haskell_library(
-    name = "Ctx",
-    srcs = [
-        "Ctx.hs",
-        "HashSeq.hs",
-    ],
+  name = "Err",
+  srcs = ["Err.hs"],
+  deps = [
+    "@stackage//:base",
+    "@stackage//:containers",
+    "@stackage//:transformers",
+  ],
+)
+
+haskell_test(
+    name = "Err_test",
+    srcs = ["ErrTest.hs"],
     deps = [
+        ":Err",
         "@stackage//:base",
         "@stackage//:lens",
-        "@stackage//:containers",
+        "@stackage//:tasty",
+        "@stackage//:tasty-hunit",
     ],
 )
 
@@ -18,9 +27,12 @@ haskell_library(
     srcs = [
         "Tptp.hs",
         "Parser.hs",
+        "Ctx.hs",
+        "HashSeq.hs",
+        "Err.hs",
     ],
     deps = [
-        ":Ctx",
+        ":Err",
         "@stackage//:base",
         "@stackage//:containers",
         "@stackage//:lens",
@@ -28,6 +40,7 @@ haskell_library(
         "@stackage//:parsec",
         "@stackage//:text",
         "@stackage//:attoparsec",
+        "@stackage//:transformers",
         "@tptp//:tptp",
         "//tptp_parser/proto:tptp_haskell_proto",
     ],
@@ -40,7 +53,7 @@ haskell_library(
         "Coq.hs",
     ],
     deps = [
-        ":Ctx",
+        ":Tptp",
         "@stackage//:base",
         "@stackage//:lens",
         "@stackage//:containers",
@@ -51,7 +64,7 @@ haskell_library(
     name = "MGU",
     srcs = ["MGU.hs"],
     deps = [
-        ":Ctx",
+        ":Tptp",
         ":Pred",
         "@stackage//:base",
         "@stackage//:containers",
@@ -65,7 +78,7 @@ haskell_test(
     name = "MGU_test",
     srcs = ["MGUTest.hs"],
     deps = [
-        ":Ctx",
+        ":Tptp",
         ":MGU",
         ":Pred",
         ":IO",
@@ -81,10 +94,8 @@ haskell_library(
     name = "FOF",
     srcs = [
         "FOF.hs",
-        "NNF.hs",
     ],
     deps = [
-        ":Ctx",
         ":Tptp",
         ":Pred",
         "@stackage//:base",
@@ -101,10 +112,8 @@ haskell_library(
     name = "DNF",
     srcs = [
         "DNF.hs",
-        "DefDNF.hs",
     ],
     deps = [
-        ":Ctx",
         ":Tptp",
         ":Pred",
         ":FOF",
@@ -122,7 +131,6 @@ haskell_test(
     name = "DefDNF_test",
     srcs = ["DefDNFTest.hs"],
     deps = [
-        ":Ctx",
         ":Pred",
         ":FOF",
         ":DNF",
@@ -142,7 +150,7 @@ haskell_library(
         "EqAxioms.hs",
     ],
     deps = [
-        ":Ctx",
+        ":Tptp",
         ":DNF",
         ":Pred",
         "@stackage//:base",
@@ -167,7 +175,6 @@ haskell_binary(
     name = "tool",
     srcs = ["ToolBin.hs"],
     deps = [
-        ":Ctx",
         ":DNF",
         ":FOF",
         ":Tptp",

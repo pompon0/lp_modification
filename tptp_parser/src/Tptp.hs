@@ -9,12 +9,13 @@
 {-# LANGUAGE FlexibleInstances #-}
 module Tptp where
 
-import Ctx(Err)
+import Err
+import HashSeq
 
 import Prelude hiding(fail,id)
 import qualified Text.Parsec as P
 import qualified Proto.Tptp as T
-import Control.Lens
+import Control.Lens hiding(has)
 import Control.Exception
 import Control.Monad.Fail
 import Data.Text.Lens
@@ -26,37 +27,37 @@ import Text.Printf
 import Data.List(intercalate)
 import Data.Int(Int32)
 
-r :: Monad m => a -> m a
-r = return
-
--- s <- s & for [...] $ \a cont s -> do ...
-for :: Monad m => [a] -> (a -> (s -> m s) -> (s -> m s)) -> (s -> m s)
-for [] f s = r$ s
-for (a:at) f s = f a (for at f) s
-
--------------------------------------
-
 data Node = Node {
   _type_ :: T.Type,
   _id :: Int32,
   _arity :: Int32,
   _name :: Maybe String
-}
+-- TODO: fail == if any field is insonsistent
+} deriving(Eq)
 makeFieldsNoPrefix ''Node
 
-instance Eq Node where
-  a==b = (a^.id) == (b^.id)
+defName :: Node -> String
+defName n = case n^.name of
+  Just x -> x
+  Nothing -> case n^.type_ of
+    T.TERM_VAR -> printf "V%d" (n^.id)
+    T.TERM_FUN -> printf "f%d" (n^.id)
+    T.PRED -> printf "p%d" (n^.id)
+    T.PRED_EQ -> "eq"
+
 instance Ord Node where
-  compare a b == compare (a^.id) (b^.id)
+  compare a b = compare (a^.id) (b^.id)
+
 instance Show Node where
   show = defName
-instance HashSeq where
-  hashSeq a = [unit (a^.id)]
 
-variadicArity = -1
-customArity = -2
+instance HashSeq Node where
+  hashSeq a = [unit (fromIntegral (a^.id))]
 
-typeArities :: [(T.Type,Int32)] = [
+variadicArity = -1 :: Int32
+customArity = -2 :: Int32
+
+standardNodes :: [(T.Type,Int32)] = [
   (T.FORALL,2), 
   (T.EXISTS,2),
   (T.FORM_NEG,1),
@@ -69,7 +70,9 @@ typeArities :: [(T.Type,Int32)] = [
   (T.FORM_XOR,variadicArity),
   (T.FORM_NOR,variadicArity),
   (T.FORM_NAND,variadicArity),
-  (T.PRED_EQ,2),
+  (T.PRED_EQ,2)]
+
+typeArities :: [(T.Type,Int32)] = standardNodes ++ [
   (T.PRED,customArity),
   (T.TERM_FUN,customArity),
   (T.TERM_VAR,0)]
@@ -81,11 +84,6 @@ data NodeTree = NodeTree {
 }
 makeFieldsNoPrefix ''NodeTree
 
-orFail :: MonadFail m => String -> (a -> m a) -> (Maybe a -> m (Maybe a))
-orFail msg f ma = case ma of
-  Nothing -> fail msg
-  Just a -> Just <$> f a
-
 stream'tree :: NodeIndex -> [Int32] -> Err (NodeTree,[Int32])
 stream'tree idx (h:t) = do
   Just node <-r$ idx^.at h
@@ -96,6 +94,40 @@ stream'tree idx (h:t) = do
     r$ (a:at,t))
   r$ (NodeTree node args,t)
 
+tree'stream :: NodeTree -> [Int32] -> [Int32]
+tree'stream (NodeTree n args) s = runIdentity $ do
+  s <- s & for args (\t cont s -> r.tree'stream t =<< cont s)
+  r$ (n^.id):s
+
+index'add :: Node -> NodeIndex -> Err NodeIndex
+index'add n idx = idx & at (n^.id) (\mn' -> case mn' of
+  Nothing -> r$ Just n
+  Just n' -> if n'==n then r$ mn'
+    else fail "inconsistent node")
+
+tree'index :: NodeTree -> NodeIndex -> Err NodeIndex
+tree'index (NodeTree n args) idx  = do
+  idx <- idx & for args (\a cont idx -> cont =<< tree'index a idx)
+  index'add n idx
+
+has :: Ord k => k -> Map.Map k v -> Bool
+has k m = case m^.at k of { Nothing -> False; Just _ -> True }
+
+index'withStandard :: NodeIndex -> (NodeIndex,T.Type -> Node)
+index'withStandard idx = runIdentity $ do
+  m <- Map.empty & for idx (\n cont m ->
+    cont (m & at (n^.type_) .~ Just n))
+  (_,m,idx) <- (0::Int32,m,idx) & for standardNodes (\(t,a) cont (i,m,idx) -> do
+    cont =<< if has t m then r (i,m,idx) else do
+      i <- i & while (\i -> has i idx) (\i -> r$ i+1)
+      n <-r$ Just Node {
+        _type_ = t,
+        _id = i,
+        _arity = a,
+        _name = Nothing}
+      r$ (i, m&at t.~n, idx&at i.~n))
+  r$ (idx, \t -> fromJust (m^.at t))
+
 mergeNI :: NodeIndex -> NodeIndex -> Err NodeIndex
 mergeNI a b = fail "unimplemented"
 
@@ -105,16 +137,9 @@ newNodeIndex :: T.File -> Err NodeIndex
 newNodeIndex f = Map.empty & for (f^. #nodes) (\n cont s -> do
   i <-r$ n^. #id
   t <-r$ n^. #type'
-  a <-r$ case Map.fromList typeArities t of { customArity -> n^. #arity; a -> a }
-  x <-r$ case n^. #name of { "" -> Nothing; x -> Just x }
+  a <-r$ let a = (Map.fromList typeArities)^.at t.non (error "") in
+    if a==customArity then n^. #arity else a :: Int32
+  x <-r$ case n^. #name.unpacked of { "" -> Nothing; x -> Just x }
   q <-r$ Node { _type_ = t, _id = i, _arity = n^. #arity, _name = x }
-  cont (s & at i %~ (\Nothing -> Just q))
+  cont (s & at i %~ (\Nothing -> Just q)))
 
-defName :: Node -> String
-defName n = case n^.name of
-  Just x -> x
-  Nothing -> case n^.type_ of
-    T.TERM_VAR -> printf "V%d" (n^.id)
-    T.TERM_FUN -> printf "f%d" (n^.id)
-    T.PRED -> printf "p%d" (n^.id)
-    T.PRED_EQ -> "eq"

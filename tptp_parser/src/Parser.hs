@@ -21,6 +21,7 @@ import Data.Char(ord)
 import Data.Text.Lens
 import Data.Attoparsec.Text(parseOnly)
 
+import Err
 import Tptp
 import Ctx
 import qualified Proto.Tptp as T
@@ -74,7 +75,7 @@ node'var :: Node -> Var
 node'var n = Var (defName n^.packed)
 
 text'atom :: Text.Text -> Atom
-test'atom = Atom 
+text'atom = Atom 
 
 node'name :: Named s => Node -> Name s
 node'name n = Defined (text'atom (defName n^.packed))
@@ -101,19 +102,19 @@ formula'literal nt@(NodeTree n args) = case n^.type_ of
 cnf'formula :: NodeTree -> Err Clause
 cnf'formula nt@(NodeTree n args) = case formula'literal nt of
   Err (Right l) -> r$ Clause (l :| [])
-  Err (Left _) -> case n^.type_ of
-    NS T.FORM_OR -> do
-      args <- [] & for args (\a cont _ -> do
-        a <- formula'literal a
-        at <- cont []
-        r$ (a:at))
-      r$ Clause $ case args of
-        [] -> ((Positive, Predicate (Reserved (Standard Falsum)) []) :| [])
-        (h:t) -> (h :| t)
+  Err (Left _) -> do
+    when (n^.type_ /= T.FORM_OR) (fail "")
+    args <- [] & for args (\a cont _ -> do
+      a <- formula'literal a
+      at <- cont []
+      r$ (a:at))
+    r$ Clause $ case args of
+      [] -> ((Positive, Predicate (Reserved (Standard Falsum)) []) :| [])
+      (h:t) -> (h :| t)
 
 fof'formula :: NodeTree -> Err UnsortedFirstOrder
 fof'formula nt@(NodeTree n args) = do
-  let conn c = let (a:at) = args in do
+  conn <-r$ \c -> let (a:at) = args in do
     a <- fof'formula a
     a & for at (\a cont at -> do
       a <- fof'formula a

@@ -4,6 +4,7 @@ module Err where
 import Prelude hiding(fail)
 import Control.Monad hiding(fail)
 import Control.Monad.Fail
+import Data.Functor.Identity
 import qualified Data.Monoid as M
 
 newtype Err a = Err (Either String a) deriving(Functor,Applicative,Monad)
@@ -20,11 +21,21 @@ r = return
 for :: (Monad m, Foldable f) => f a -> (a -> (s -> m s) -> (s -> m s)) -> (s -> m s)
 for c f = (M.appEndo $ foldMap (M.Endo . f) c) return
 
+while :: Monad m => (s -> Bool) -> (s -> m s) -> (s -> m s)
+while p f s = if not (p s) then r s else while p f =<< f s
+
 orFail :: MonadFail m => String -> (a -> m a) -> (Maybe a -> m (Maybe a))
 orFail msg f ma = case ma of
   Nothing -> fail msg
   Just a -> Just <$> f a
 
-while :: Monad m => (s -> Bool) -> (s -> m s) -> (s -> m s)
-while p f s = if p s then r s else while p f =<< f s
-
+class Monad m => MonadAssert m where
+  assert :: MonadFail m' => m a -> m' a
+instance MonadAssert Err where
+  assert (Err (Left msg)) = fail msg
+  assert (Err (Right x)) = return x
+instance MonadAssert Maybe where
+  assert (Nothing) = fail "Nothing"
+  assert (Just x) = return x
+instance MonadAssert Identity where
+  assert (Identity x) = return x

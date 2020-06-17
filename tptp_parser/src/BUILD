@@ -87,6 +87,9 @@ haskell_test(
         "@stackage//:lens",
         "@stackage//:tasty",
         "@stackage//:tasty-hunit",
+        "//tptp_parser/proto:tptp_haskell_proto",
+        "@stackage//:proto-lens",
+        "@stackage//:text",
     ],
 )
 
@@ -124,21 +127,6 @@ haskell_library(
         "@stackage//:lens",
         "@stackage//:proto-lens",
         "//tptp_parser/proto:tptp_haskell_proto",
-    ],
-)
-
-haskell_test(
-    name = "DefDNF_test",
-    srcs = ["DefDNFTest.hs"],
-    deps = [
-        ":Pred",
-        ":FOF",
-        ":DNF",
-        ":Tptp",
-        "@stackage//:lens",
-        "@stackage//:base",
-        "@stackage//:tasty",
-        "@stackage//:tasty-hunit",
     ],
 )
 

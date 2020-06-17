@@ -54,7 +54,7 @@ freeVars (NodeTree n args) = runIdentity $ do
 
 fromProto'File :: T.File -> Err FOF
 fromProto'File f = do
-  idx <- newNodeIndex f
+  idx <- nodes'index (f^. #nodes)
   fs <- [] & for (f^. #input) (\i cont [] -> do
     f <- input'fof idx i
     ft <- cont []
@@ -107,9 +107,6 @@ formula'fof nt@(NodeTree n args) = do
     T.FORM_NAND -> Neg <$> And <$> args'fof args
     T.FORM_TRUE -> r$ And []
     T.FORM_FALSE -> r$ Or []
-
-isEq :: PredName -> Bool
-isEq (PredName n) = n^.type_==T.PRED_EQ
 
 isPred :: Node -> Bool
 isPred n = case n^.type_ of

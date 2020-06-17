@@ -100,7 +100,7 @@ isInstance a b = andClause'mgu (a,b) MGU.empty /= Nothing
 
 fromProto'File :: T.File -> Err OrForm
 fromProto'File f = do
-  idx <- newNodeIndex f
+  idx <- nodes'index (f^. #nodes)
   cs <- [] & for (f^. #input) (\i cont [] -> do
     ct <- cont []
     mc <- fromProto'Input idx i
@@ -151,12 +151,14 @@ fromProto'Atom nt@(NodeTree n args) = case n^.type_ of
 toProto'File :: OrForm -> Err T.File
 toProto'File f = do
   preds <-r$ f^..orForm'andClauses.traverse.andClause'atoms.traverse.atom'pred
-  idx <- emptyNI & for preds (\p cont idx -> cont =<< tree'index (FOF.toProto'Pred p) idx)
+  idx <- empty'index & for preds (\p cont idx -> cont =<< tree'index (FOF.toProto'Pred p) idx)
   (idx,standardNodes) <-r$ index'withStandard idx
   is <- [] & for (f^.orForm'andClauses) (\c cont [] -> do
     is <- cont []
     r$ toProto'Input standardNodes (notAndClause c) : is)
-  r$ defMessage & #input .~ is 
+  r$ defMessage
+    & #input .~ is 
+    & #nodes .~ index'nodes idx 
 
 toProto'Input :: (T.Type -> Node) -> OrClause -> T.Input
 toProto'Input standardNodes cla = defMessage

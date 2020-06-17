@@ -105,6 +105,11 @@ index'add n idx = idx & at (n^.id) (\mn' -> case mn' of
   Just n' -> if n'==n then r$ mn'
     else fail "inconsistent node")
 
+index'merge :: NodeIndex -> NodeIndex -> Err NodeIndex
+index'merge a b = a & for b (\n cont a -> index'add n =<< cont a)
+
+empty'index = Map.empty
+
 tree'index :: NodeTree -> NodeIndex -> Err NodeIndex
 tree'index (NodeTree n args) idx  = do
   idx <- idx & for args (\a cont idx -> cont =<< tree'index a idx)
@@ -113,28 +118,28 @@ tree'index (NodeTree n args) idx  = do
 has :: Ord k => k -> Map.Map k v -> Bool
 has k m = case m^.at k of { Nothing -> False; Just _ -> True }
 
+index'nextID :: NodeIndex -> Int32
+index'nextID idx = runIdentity $ 0 & while (\i -> has i idx)  (\i -> r$ i+1)
+
 index'withStandard :: NodeIndex -> (NodeIndex,T.Type -> Node)
 index'withStandard idx = runIdentity $ do
   m <- Map.empty & for idx (\n cont m ->
     cont (m & at (n^.type_) .~ Just n))
-  (_,m,idx) <- (0::Int32,m,idx) & for standardNodes (\(t,a) cont (i,m,idx) -> do
-    cont =<< if has t m then r (i,m,idx) else do
-      i <- i & while (\i -> has i idx) (\i -> r$ i+1)
+  (m,idx) <- (m,idx) & for standardNodes (\(t,a) cont (m,idx) -> do
+    cont =<< if has t m then r (m,idx) else do
+      i <-r$ index'nextID idx
       n <-r$ Just Node {
         _type_ = t,
         _id = i,
         _arity = a,
         _name = Nothing}
-      r$ (i, m&at t.~n, idx&at i.~n))
+      r$ (m&at t.~n, idx&at i.~n))
   r$ (idx, \t -> fromJust (m^.at t))
 
-mergeNI :: NodeIndex -> NodeIndex -> Err NodeIndex
-mergeNI a b = fail "unimplemented"
 
-emptyNI = Map.empty
 
-newNodeIndex :: T.File -> Err NodeIndex
-newNodeIndex f = Map.empty & for (f^. #nodes) (\n cont s -> do
+nodes'index :: [T.Node] -> Err NodeIndex
+nodes'index nodes = Map.empty & for nodes (\n cont s -> do
   i <-r$ n^. #id
   t <-r$ n^. #type'
   a <-r$ let a = (Map.fromList typeArities)^.at t.non (error "") in
@@ -142,4 +147,15 @@ newNodeIndex f = Map.empty & for (f^. #nodes) (\n cont s -> do
   x <-r$ case n^. #name.unpacked of { "" -> Nothing; x -> Just x }
   q <-r$ Node { _type_ = t, _id = i, _arity = n^. #arity, _name = x }
   cont (s & at i %~ (\Nothing -> Just q)))
+
+index'nodes :: NodeIndex -> [T.Node]
+index'nodes idx = runIdentity $ [] & for idx (\n cont [] -> do
+  nt <- cont []
+  n <-r$ (defMessage :: T.Node)
+    & #type' .~ n^.type_
+    & #id .~ n^.id
+    & #arity .~ case (Map.fromList typeArities)^.at (n^.type_).non (error "") of
+      a | a==customArity -> n^.arity
+    & #name .~ n^.name.non "".packed
+  r$ n:nt)
 

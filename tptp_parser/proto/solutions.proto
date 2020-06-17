@@ -76,6 +76,7 @@ message Stats {
 
   message OrClause { tptp.Input cla = 1; int64 count = 2; };
   repeated OrClause or_clauses = 6;
+  repeated tptp.Node nodes = 7;
 }
 
 // deprecated

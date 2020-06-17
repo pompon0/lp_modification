@@ -31,12 +31,8 @@ type Term = WithHash Term'
 type Pred = WithHash Pred'
 makeFieldsNoPrefix ''Pred'
 
-instance HasPred'name Pred PredName where
-  pred'name = wh.pred'name
-
-instance HasPred'args Pred [Term] where
-  pred'args = wh.pred'args
-
+instance HasPred'name Pred PredName where { pred'name = wh.pred'name }
+instance HasPred'args Pred [Term] where { pred'args = wh.pred'args }
 
 instance HashSeq Term' where
   hashSeq (TVar vn) = [unit 0, hash (wrap vn)]

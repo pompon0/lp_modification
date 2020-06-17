@@ -1,4 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE ViewPatterns #-}
 module EqAxioms(
   isEqAxiom,
   isReflAxiom, isSymmAxiom, isTransAxiom,
@@ -11,7 +12,6 @@ import Pred
 import DNF
 import Control.Lens
 import qualified Data.Set as Set
-
 unique :: Ord a => [a] -> [a]
 unique = Set.toList . Set.fromList
 
@@ -23,15 +23,10 @@ select (h:t) = ([],h,t) : map (\(l,x,r) -> (h:l,x,r)) (select t)
 --eq l r = Atom True (wrap $ PEq (wrap $ TVar $ fromIntegral l) (wrap $ TVar $ fromIntegral r));
 --neq l r = Atom False (wrap $ PEq (wrap $ TVar $ fromIntegral l) (wrap $ TVar $ fromIntegral r));
 
-pred'arity :: Fold Pred (PredName,Int)
-pred'arity g p = case unwrap p of
-  PCustom pn args -> g (pn,length args) *> pure p
-  _ -> pure p
-
 orForm'pred :: Traversal' OrForm Pred
 orForm'pred = orForm'andClauses.traverse.andClause'atoms.traverse.atom'pred
 orForm'term :: Traversal' OrForm Term
-orForm'term = orForm'pred.pred'spred.spred'args.traverse
+orForm'term = orForm'pred.pred'args.traverse
 
 term'arity :: Fold Term (FunName,Int)
 term'arity g t = case unwrap t of
@@ -39,14 +34,14 @@ term'arity g t = case unwrap t of
   _ -> pure t
 
 pred'peq :: Traversal' Pred (Term,Term)
-pred'peq f p = case unwrap p of
-  PEq x y -> pure (\(x',y') -> wrap $ PEq x' y') <*> f (x,y)
-  _ -> pure p
+pred'peq f p = if isEq (p^.pred'name)
+  then p & pred'args (\[x,y] -> (\(x,y) -> [x,y]) <$> f (x,y))
+  else pure p
 
 pred'pcustom :: Traversal' Pred (PredName,[Term])
-pred'pcustom f p = case unwrap p of
-  PCustom pn args -> pure (\(pn',args') -> wrap $ PCustom pn' args') <*> f (pn,args)
-  _ -> pure p
+pred'pcustom f p = if not (isEq (p^.pred'name))
+  then (\(n,a)-> p & pred'args.~a & pred'name.~n) <$> f (p^.pred'name,p^.pred'args)
+  else pure p
 
 posPred :: Fold AndClause Pred
 posPred = andClause'atoms.traverse.filtered (^.atom'sign).atom'pred
@@ -61,15 +56,14 @@ isSubRelation a b =
 
 isPredCongAxiom :: AndClause -> Maybe PredName
 isPredCongAxiom c = case (c^..negPred, c^..posPred.pred'pcustom) of
-  ([p], [(pn',a')]) -> case unwrap p of
-    PCustom pn a -> if pn==pn' && isSubRelation (zip a a') (c^..posPred.pred'peq) then Just pn else Nothing
-    _ -> Nothing
+  ([unwrap -> Pred pn a], [(pn',a')]) ->
+    if pn==pn' && isSubRelation (zip a a') (c^..posPred.pred'peq) then Just pn else Nothing
   _ -> Nothing
 
 isFunCongAxiom :: AndClause -> Maybe FunName
 isFunCongAxiom c = do
   p <- case (c^..negPred, c^..posPred.pred'pcustom) of { ([p],[]) -> return p; _ -> Nothing }
-  (t,t') <- case unwrap p of { PEq t t' -> return (t,t'); _ -> Nothing }
+  (t,t') <- case unwrap p of { Pred pn [t,t'] | isEq pn -> return (t,t'); _ -> Nothing }
   (fn,a) <- case unwrap t of { TFun fn a -> return (fn,a); _ -> Nothing }
   (fn',a') <- case unwrap t' of { TFun fn' a' -> return (fn',a'); _ -> Nothing }
   if fn==fn' && isSubRelation (zip a a') (c^..posPred.pred'peq) then Just fn else Nothing
@@ -79,19 +73,19 @@ isEqAxiom c = isReflAxiom c || isSymmAxiom c || isTransAxiom c || isPredCongAxio
 
 isReflAxiom c = case c of
   AndClause [Atom False p] -> case unwrap p of
-    PEq a b -> a==b
+    Pred pn [a,b] | isEq pn -> a==b
     _ -> False
   _ -> False
 
 isSymmAxiom c = case c of
   AndClause [Atom s p, Atom s' p'] -> case (unwrap p, unwrap p') of
-    (PEq a b, PEq b' a') -> s/=s' && a==a' && b==b'
+    (Pred pn [a,b], Pred pn' [b',a']) | isEq pn && isEq pn' -> s/=s' && a==a' && b==b'
     _ -> False
   _ -> False
 
 isTransAxiom c = case (c^..negPred,c^..posPred.pred'pcustom) of
   ([p],[]) -> case unwrap p of 
-    PEq a1 a2 -> any (\(l,(b1,b2),r) -> isSubRelation [(a1,b1),(a2,b2)] (l<>r)) $ select $ c^..posPred.pred'peq
+    Pred pn [a1,a2] | isEq pn -> any (\(l,(b1,b2),r) -> isSubRelation [(a1,b1),(a2,b2)] (l<>r)) $ select $ c^..posPred.pred'peq
     _ -> False
   _ -> False
 

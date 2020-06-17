@@ -31,7 +31,7 @@ prettyPrint x = show.pretty <$> tptp'file x
 
 tptp'file :: T.File -> Err TPTP 
 tptp'file f = do
-  idx <- newNodeIndex f
+  idx <- nodes'index (f^. #nodes)
   us <- [] & for (f^. #input) (\i cont _ -> do
     u <- unit'input idx i
     ut <- cont []

@@ -18,12 +18,9 @@ import Text.Printf
 import Prelude hiding(fail)
 import Control.Monad hiding(fail)
 import Control.Monad.Fail
-import Control.Exception
+import qualified Control.Exception as E
 import Debug.Trace
-
--------------------------------------
-
--------------------------------------
+import qualified Proto.Tptp as T
 
 instance HashSeq String where hashSeq = map (unit.fromIntegral.fromEnum)
 data Stack a = Stack'Empty | Stack { stack'top :: a, stack'values_ :: Set.Set a, stack'pop :: Stack a }
@@ -70,7 +67,7 @@ class (Show a, Eq a, Ord a) => Stackable a where
   pop s = (stack'top s, stack'pop s)
 
   stack'find :: Stack a -> a -> a
-  stack'find s l = assert (stack'has l s) l
+  stack'find s l = E.assert (stack'has l s) l
 
 instance (Show a, Eq a, Ord a) => Stackable a
 ---------------------------------------------
@@ -78,6 +75,9 @@ instance (Show a, Eq a, Ord a) => Stackable a
 newtype VarName = VarName Node deriving(Eq,Ord,HashSeq,Show)
 newtype FunName = FunName Node deriving(Eq,Ord,HashSeq,Show)
 newtype PredName = PredName Node deriving(Eq,Ord,HashSeq,Show)
+
+isEq :: PredName -> Bool
+isEq (PredName n) = n^.type_==T.PRED_EQ
 
 --eqPredName = PredName "eq"
 --extraConstName = FunName "c"

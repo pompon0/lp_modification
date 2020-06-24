@@ -4,8 +4,9 @@ import (
   "context"
   "testing"
   "log"
+  "bytes"
 
-  "github.com/golang/protobuf/proto"
+  //"github.com/golang/protobuf/proto"
   "github.com/pompon0/tptp_benchmark_go/eprover"
   "github.com/pompon0/tptp_benchmark_go/problems"
   tpb "github.com/pompon0/tptp_benchmark_go/tptp_parser/proto/tptp_go_proto"
@@ -51,30 +52,13 @@ func TestProtoToTptp(t *testing.T) {
     fof,err := TptpToProto(ctx,FOF,v)
     if err!=nil { t.Fatalf("TptpToProto(%q[1]): %v",k,err) }
     tptp,err := ProtoToTptp(ctx,fof)
-    if err!=nil { t.Fatalf("ProtoToTptp(%q): %v",k,err) }
+    if err!=nil { t.Fatalf("ProtoToTptp(%q[1]): %v",k,err) }
     fof2,err := TptpToProto(ctx,FOF,tptp)
     if err!=nil { t.Fatalf("TptpToProto(%q[2]): %v",k,err) }
-    if !proto.Equal(fof,fof2) {
-      t.Errorf("TptpToProto;ProtoToTptp;TptpToProto(%q) = %v, want %v",k,fof2,fof)
-    }
-  }
-}
-
-func TestProtoFOFToCNF(t *testing.T) {
-  ctx := context.Background()
-  for k,v := range problems.SampleProblems {
-    log.Printf("%s",k)
-    log.Printf("tptp -> fof")
-    fof,err := TptpToProto(ctx,FOF,v)
-    if err!=nil { t.Fatalf("TptpToProto(%q): %v",k,err) }
-    log.Printf("fof -> cnf")
-    cnf,err := FOFToCNF(ctx,fof)
-    if err!=nil { t.Fatalf("FOFToCNF(%q): %v",k,err) }
-    log.Printf("iterating over inputs")
-    for _,i := range cnf.Input {
-      if got,want := i.Language,tpb.Input_CNF; got!=want {
-        t.Errorf("i.Language = %v, want %v",got,want)
-      }
+    tptp2,err := ProtoToTptp(ctx,fof2)
+    if err!=nil { t.Fatalf("ProtoToTptp(%q[2]): %v",k,err) }
+    if !bytes.Equal(tptp,tptp2) {
+      t.Errorf("(TptpToProto;ProtoToTptp)^2(%q) = %v, want %v, initial %v",k,string(tptp2),string(tptp),string(v))
     }
   }
 }
@@ -93,6 +77,7 @@ func TestTPTPFOFToCNF(t *testing.T) {
         t.Errorf("i.Language = %v, want %v",got,want)
       }
     }
+    log.Printf("cnfProto = %v",cnfProto)
     // Test if we can convert cnf back to TPTP and to proto again
     cnf2,err := ProtoToTptp(ctx,cnfProto)
     if err!=nil { t.Fatalf("ProtoToTPTP(%q): %v",k,err) }
@@ -122,79 +107,108 @@ func TestTptpHasEquality(t *testing.T) {
   }
 }
 
-func pred(name string) *tpb.Formula {
-  return &tpb.Formula{
-    Formula: &tpb.Formula_Pred_{
-      Pred: &tpb.Formula_Pred {
-        Type: tpb.Formula_Pred_CUSTOM,
-        Name: name,
-      },
-    },
+type NodeIndex struct {
+  funs map[string]int32
+  preds map[string]int32
+  standard_ map[tpb.Type]int32
+  nodes []*tpb.Node
+}
+
+func newNodeIndex() *NodeIndex {
+  return &NodeIndex{
+    funs: map[string]int32{},
+    preds: map[string]int32{},
+    standard_: map[tpb.Type]int32{},
   }
 }
 
-func op(t tpb.Formula_Operator_Type, args []*tpb.Formula) *tpb.Formula {
-  return &tpb.Formula {
-    Formula: &tpb.Formula_Op {
-      Op: &tpb.Formula_Operator { Type: t, Args: args },
-    },
-  }
+func (idx *NodeIndex) fun(name string, arity int) int32 {
+  if f,ok := idx.funs[name]; ok { return f }
+  id := int32(len(idx.nodes))
+  idx.funs[name] = id
+  idx.nodes = append(idx.nodes, &tpb.Node{
+    Type: tpb.Type_TERM_FUN,
+    Id: id,
+    Arity: int32(arity),
+    Name: name,
+  })
+  return id
 }
 
-func neg(f *tpb.Formula) *tpb.Formula {
-  return op(tpb.Formula_Operator_NEG, []*tpb.Formula { f })
+func (idx *NodeIndex) pred(name string, arity int) int32 {
+  if p,ok := idx.preds[name]; ok { return p }
+  id := int32(len(idx.nodes))
+  idx.preds[name] = id
+  idx.nodes = append(idx.nodes, &tpb.Node{
+    Type: tpb.Type_PRED,
+    Id: id,
+    Arity: int32(arity),
+    Name: name,
+  })
+  return id
 }
 
-func or(disjuncts... *tpb.Formula) *tpb.Formula {
-  return op(tpb.Formula_Operator_OR, disjuncts)
+func (idx *NodeIndex) standard(t tpb.Type) int32 {
+  if s,ok := idx.standard_[t]; ok { return s }
+  id := int32(len(idx.nodes))
+  idx.standard_[t] = id
+  idx.nodes = append(idx.nodes, &tpb.Node{
+    Type: t,
+    Id: id,
+  })
+  return id
 }
 
 func TestValidateProofOK(t *testing.T) {
-  p := pred("p")
+  idx := newNodeIndex()
+  p := idx.pred("p",0)
+  neg := idx.standard(tpb.Type_FORM_NEG)
   clauses := []*tpb.Input{
     {
       Language: tpb.Input_CNF,
       Role: tpb.Input_PLAIN,
-      Formula: p,
+      Formula: []int32{p},
     },
     {
       Language: tpb.Input_CNF,
       Role: tpb.Input_PLAIN,
-      Formula: neg(p),
+      Formula: []int32{neg,p},
     },
   }
   cnfProblem := &tpb.File {
     Input: clauses,
+    Nodes: idx.nodes,
   }
 
   var sources []*spb.Source
   for _,c := range clauses {
     sources = append(sources,&spb.Source{Ground:c,Source:c})
   }
-  cnfProof := &spb.Proof { Clauses: []*spb.Derivation{{Sources:sources}} }
+  cnfProof := &spb.Proof {
+    Clauses: []*spb.Derivation{{Sources:sources}},
+    Nodes: idx.nodes,
+  }
   if _,err := ValidateProof(context.Background(),&spb.CNF{Problem:cnfProblem,Proof:cnfProof}); err!=nil {
     t.Errorf("ValidateProof(): %v",err)
   }
 }
 
 func TestValidateProofFail(t *testing.T) {
+  idx := newNodeIndex()
+  p := idx.pred("p",0)
   cnfProblem := &tpb.File {
     Input: []*tpb.Input{
       {
         Language: tpb.Input_CNF,
         Role: tpb.Input_PLAIN,
-        Formula: &tpb.Formula{
-          Formula: &tpb.Formula_Pred_{
-            Pred: &tpb.Formula_Pred {
-              Type: tpb.Formula_Pred_CUSTOM,
-              Name: "p",
-            },
-          },
-        },
+        Formula: []int32{p},
       },
     },
+    Nodes: idx.nodes,
   }
-  cnfProof := &spb.Proof {}
+  cnfProof := &spb.Proof {
+    Nodes: idx.nodes,
+  }
   if stats,err := ValidateProof(context.Background(),&spb.CNF{Problem:cnfProblem,Proof:cnfProof}); err==nil {
     t.Errorf("ValidateProof() = %v, want error",stats)
   }

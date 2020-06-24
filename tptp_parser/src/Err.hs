@@ -7,12 +7,19 @@ import Control.Monad.Fail
 import Data.Functor.Identity
 import qualified Data.Monoid as M
 
-newtype Err a = Err (Either String a) deriving(Functor,Applicative,Monad)
+newtype Err a = Err (Either String a) deriving(Functor,Applicative,Monad,Show)
 instance MonadFail Err where { fail = Err . Left }
 
 when :: Monad m => Bool -> m () -> m ()
 when True x = x
 when False _ = return ()
+
+err :: String -> Err a
+err = Err . Left
+
+(???) :: Err a -> String -> Err a
+(???) (Err (Left msg)) ctx = Err (Left (ctx ++ "\n" ++ msg))
+(???) x _ = x
 
 r :: Monad m => a -> m a
 r = return

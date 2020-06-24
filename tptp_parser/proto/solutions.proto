@@ -33,6 +33,7 @@ message Derivation {
 
 message Proof {
   repeated Derivation clauses = 1;
+  repeated tptp.Node nodes = 2;
 }
 
 message ProverStats {

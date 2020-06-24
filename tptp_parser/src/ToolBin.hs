@@ -43,7 +43,9 @@ tptp [proto_path] = do
   putStrLn =<< assert (Parser.prettyPrint file)
 
 flattenProof :: SPB.Proof -> T.File
-flattenProof p = defMessage & #input .~ (p^.. #clauses.traverse. #sources.traverse. #ground)
+flattenProof p = defMessage
+  & #input .~ (p^.. #clauses.traverse. #sources.traverse. #ground)
+  & #nodes .~ (p^. #nodes)
 
 validate [solution_proto_file] = do
   solutionProto :: SPB.CNF <- readProtoFile solution_proto_file

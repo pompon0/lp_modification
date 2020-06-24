@@ -27,6 +27,8 @@ import Text.Printf
 import Data.List(intercalate)
 import Data.Int(Int32)
 
+import Debug.Trace
+
 data Node = Node {
   _type_ :: T.Type,
   _id :: Int32,
@@ -44,6 +46,7 @@ defName n = case n^.name of
     T.TERM_FUN -> printf "f%d" (n^.id)
     T.PRED -> printf "p%d" (n^.id)
     T.PRED_EQ -> "eq"
+    _ -> show (n^.type_)
 
 instance Ord Node where
   compare a b = compare (a^.id) (b^.id)
@@ -65,11 +68,11 @@ standardNodes :: [(T.Type,Int32)] = [
   (T.FORM_AND,variadicArity),
   (T.FORM_TRUE,0),
   (T.FORM_FALSE,0),
-  (T.FORM_IFF,variadicArity),
-  (T.FORM_IMPL,variadicArity), 
-  (T.FORM_XOR,variadicArity),
-  (T.FORM_NOR,variadicArity),
-  (T.FORM_NAND,variadicArity),
+  (T.FORM_IFF,2),
+  (T.FORM_IMPL,2), 
+  (T.FORM_XOR,2),
+  (T.FORM_NOR,2),
+  (T.FORM_NAND,2),
   (T.PRED_EQ,2)]
 
 typeArities :: [(T.Type,Int32)] = standardNodes ++ [
@@ -84,10 +87,13 @@ data NodeTree = NodeTree {
 }
 makeFieldsNoPrefix ''NodeTree
 
+instance Show NodeTree where
+  show (NodeTree n args) = printf "%s(%s)" (show n) (intercalate "," (show <$> args))
+
 stream'tree :: NodeIndex -> [Int32] -> Err (NodeTree,[Int32])
 stream'tree idx (h:t) = do
   Just node <-r$ idx^.at h
-  (arity:t) <-r$ case (node^.arity) of { -1->t; a->a:t }
+  (arity:t) <-r$ case (node^.arity) of { a|a==variadicArity->t; a->a:t }
   (args,t) <- ([],t) & for [1..arity] (\_ cont (_,t) -> do
     (a,t) <- stream'tree idx t
     (at,t) <- cont ([],t)
@@ -145,7 +151,7 @@ nodes'index nodes = Map.empty & for nodes (\n cont s -> do
   a <-r$ let a = (Map.fromList typeArities)^.at t.non (error "") in
     if a==customArity then n^. #arity else a :: Int32
   x <-r$ case n^. #name.unpacked of { "" -> Nothing; x -> Just x }
-  q <-r$ Node { _type_ = t, _id = i, _arity = n^. #arity, _name = x }
+  q <-r$ Node { _type_ = t, _id = i, _arity = a, _name = x }
   cont (s & at i %~ (\Nothing -> Just q)))
 
 index'nodes :: NodeIndex -> [T.Node]
@@ -156,6 +162,7 @@ index'nodes idx = runIdentity $ [] & for idx (\n cont [] -> do
     & #id .~ n^.id
     & #arity .~ case (Map.fromList typeArities)^.at (n^.type_).non (error "") of
       a | a==customArity -> n^.arity
+      _ -> 0
     & #name .~ n^.name.non "".packed
   r$ n:nt)
 

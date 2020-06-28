@@ -63,6 +63,28 @@ func TestProtoToTptp(t *testing.T) {
   }
 }
 
+func TestProofToTptp(t *testing.T) {
+  clause := &tpb.Input {
+    Name: "a0",
+    Language: tpb.Input_CNF,
+    Role: tpb.Input_PLAIN,
+    Formula: []int32{0,0},
+  }
+  proof := &spb.Proof {
+    Clauses: []*spb.Derivation{{
+      Derived: clause,
+      Sources: []*spb.Source{{
+        Ground: clause,
+        Source: clause,
+      }},
+    }},
+    Nodes: []*tpb.Node{{Id: 0, Type: tpb.Type_FORM_OR}},
+  }
+  if _,err := ProofToTptp(context.Background(),proof); err!=nil {
+    t.Errorf("ProofToTptp(): %v",err)
+  }
+}
+
 func TestTPTPFOFToCNF(t *testing.T) {
   ctx := context.Background()
   for k,v := range problems.SampleProblems {

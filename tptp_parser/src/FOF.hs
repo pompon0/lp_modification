@@ -54,9 +54,9 @@ freeVars (NodeTree n args) = runIdentity $ do
 
 fromProto'File :: T.File -> Err FOF
 fromProto'File f = do
-  idx <- nodes'index (f^. #nodes)
+  idx <- nodes'index (f^. #nodes) ??? "nodes'index"
   fs <- [] & for (f^. #input) (\i cont [] -> do
-    f <- input'fof idx i
+    f <- input'fof idx i ??? "input'fof"
     ft <- cont []
     r$ f:ft)
   r$ Or fs

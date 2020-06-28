@@ -2,6 +2,7 @@ package tableau
 
 import (
   "fmt"
+  "log"
   "time"
   "testing"
   "context"
@@ -23,7 +24,9 @@ func TestTransformations(t *testing.T) {
   } {
     for k,v := range problems.SampleProblems {
       k,v := k,v
-      t.Run(fmt.Sprintf("case (%v,%q)",trans,k),func(t *testing.T) {
+      testName := fmt.Sprintf("case (%v,%q)",trans,k)
+      t.Run(testName,func(t *testing.T) {
+        log.Printf("[%s]",testName)
         out,err := Prove(ctx,v,ppb.Method_UNKNOWN_METHOD,trans,true)
         if err!=nil { t.Fatalf("Tableau(%q): %v",k,err) }
         tptpTransformed,err := tool.ProtoToTptp(ctx,out.TransformedProblem)
@@ -43,8 +46,8 @@ func TestTransformations(t *testing.T) {
 func TestTableau(t *testing.T) {
   ctx := context.Background()
   for _,p := range []struct{
-    method ppb.Method
-    trans ppb.Transformation
+    Method ppb.Method
+    Trans ppb.Transformation
   }{
     {ppb.Method_CONNECTION_TABLEAU, ppb.Transformation_AXIOMATIC_EQ},
     {ppb.Method_CONNECTION_TABLEAU, ppb.Transformation_AXIOMATIC_EQ_FLAT},
@@ -54,15 +57,17 @@ func TestTableau(t *testing.T) {
   }{
     for k,v := range problems.SampleProblems {
       k,v := k,v
-      t.Run(fmt.Sprintf("case (%v,%q)",p,k),func(t *testing.T) {
+      testName := fmt.Sprintf("case (%v,%q)",p,k)
+      t.Run(testName,func(t *testing.T) {
+        log.Printf("[%s]",testName)
         proveCtx,cancel := context.WithTimeout(ctx,10*time.Second)
         defer cancel()
-        out,err := Prove(proveCtx,v,p.method,p.trans,false)
+        out,err := Prove(proveCtx,v,p.Method,p.Trans,false)
         if err!=nil { t.Fatalf("Prove(%q): %v",k,err) }
         if out.Proof==nil {
           t.Fatalf("out = %+v",out)
         }
-
+        log.Printf("out.Proof = %v",out.Proof)
         proofTptp,err := tool.ProofToTptp(ctx,out.Proof)
         if err!=nil { t.Fatalf("tool.ProofTPTP(%q): %v",k,err) }
         t.Logf("proof = %s",proofTptp)

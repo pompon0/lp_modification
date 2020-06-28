@@ -45,7 +45,7 @@ func ProtoToTptp(ctx context.Context, f *tpb.File) ([]byte,error) {
 }
 
 func ProofToTptp(ctx context.Context, proof *spb.Proof) ([]byte,error) {
-  f := &tpb.File{}
+  f := &tpb.File{Nodes:proof.Nodes}
   for _,d := range proof.Clauses {
     f.Input = append(f.Input,d.Derived)
     for _,s := range d.Sources {

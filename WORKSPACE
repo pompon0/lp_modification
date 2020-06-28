@@ -100,12 +100,17 @@ container_pull(
 
 ################################
 # HASKELL
-
+"""
 http_archive(
     name = "rules_haskell",
     strip_prefix = "rules_haskell-master",
     urls = ["https://github.com/pompon0/rules_haskell/archive/master.tar.gz"],
     sha256 = "1ea58bc22d7c8854826cbd154ce258743a5401c87c0d9c8cd39bd494d52da419",
+)
+"""
+local_repository(
+    name = "rules_haskell",
+    path = "/home/pompon/github/rules_haskell",
 )
 
 load("@rules_haskell//haskell:repositories.bzl", "rules_haskell_dependencies")
@@ -115,14 +120,6 @@ rules_haskell_dependencies()
 load("@rules_haskell//haskell:toolchain.bzl", "rules_haskell_toolchains")
 
 rules_haskell_toolchains()
-
-http_archive(
-    name = "happy",
-    strip_prefix = "happy-1.19.10",
-    urls = ["http://hackage.haskell.org/package/happy-1.19.10/happy-1.19.10.tar.gz"],
-    sha256 = "22eb606c97105b396e1c7dc27e120ca02025a87f3e44d2ea52be6a653a52caed",
-    build_file = "//:third_party/happy.BUILD",
-)
 
 load("@rules_haskell//haskell:cabal.bzl", "stack_snapshot")
 
@@ -171,7 +168,6 @@ stack_snapshot(
         "semigroups",
     ],
     snapshot = "lts-14.2",
-    tools = ["@happy"],
 )
 
 http_archive(
@@ -256,18 +252,6 @@ http_file(
     urls = ["https://storage.googleapis.com/tptp/tptp_problems.zip"],
     sha256 = "f56cd27648898713e83e2e0dc69e295b316ba4b7acad0e41d7667610b666c5f0",
 )
-
-
-"""http_archive(
-    name = "com_google_protobuf",
-    strip_prefix = "protobuf-3.11.4",
-    urls = ["https://github.com/google/protobuf/archive/v3.11.4.zip"],
-    sha256 = "9748c0d90e54ea09e5e75fb7fac16edce15d2028d4356f32211cfa3c0e956564"
-)
-
-load("@com_google_protobuf//:protobuf_deps.bzl", "protobuf_deps")
-
-protobuf_deps()"""
 
 ################################
 # GENERATE SUMMARY

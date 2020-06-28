@@ -28,6 +28,9 @@ r = return
 for :: (Monad m, Foldable f) => f a -> (a -> (s -> m s) -> (s -> m s)) -> (s -> m s)
 for c f = (M.appEndo $ foldMap (M.Endo . f) c) return
 
+forI :: Monad m => [a] -> ((Int,a) -> (s -> m s) -> (s -> m s)) -> (s -> m s)
+forI c f = for (zip [0..] c) f
+
 while :: Monad m => (s -> Bool) -> (s -> m s) -> (s -> m s)
 while p f s = if not (p s) then r s else while p f =<< f s
 

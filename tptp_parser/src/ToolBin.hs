@@ -23,7 +23,7 @@ import Valid(counterExample)
 import qualified Parser
 import IO
 import Tptp
-
+import Debug.Trace
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Control.Lens
@@ -40,7 +40,7 @@ help = do
 
 tptp [proto_path] = do
   file :: T.File <- readProtoFile proto_path
-  putStrLn =<< assert (Parser.prettyPrint file)
+  putStrLn =<< assert (Parser.prettyPrint file ??? "prettyPrint")
 
 flattenProof :: SPB.Proof -> T.File
 flattenProof p = defMessage
@@ -52,8 +52,8 @@ validate [solution_proto_file] = do
   (problem,proof,stats) <- assert $ do
     flatProofProto <-r$ flattenProof (solutionProto^. #proof)
     -- # build a common index to make sure that node sets are consistent
-    idx <- nodes'index (solutionProto^. #problem. #nodes)
-    idx <- index'merge idx =<< nodes'index (flatProofProto^. #nodes)
+    idx <- nodes'index (solutionProto^. #problem. #nodes) ??? "nodes'index problem"
+    idx <- index'merge idx =<< nodes'index (flatProofProto^. #nodes) ??? "nodes'index proof"
     problem <- DNF.fromProto'File (solutionProto^. #problem)
     proof <- DNF.fromProto'File flatProofProto
     stats <- Proof.classify idx proof problem

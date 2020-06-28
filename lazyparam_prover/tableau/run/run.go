@@ -9,11 +9,13 @@ import (
   "time"
   "os"
   "io/ioutil"
+  "strings"
 
   "github.com/pompon0/tptp_benchmark_go/tool"
   "github.com/pompon0/tptp_benchmark_go/problems"
   "github.com/pompon0/tptp_benchmark_go/utils"
   "github.com/pompon0/tptp_benchmark_go/lazyparam_prover/tableau"
+  tpb "github.com/pompon0/tptp_benchmark_go/tptp_parser/proto/tptp_go_proto"
   spb "github.com/pompon0/tptp_benchmark_go/tptp_parser/proto/solutions_go_proto"
   ppb "github.com/pompon0/tptp_benchmark_go/lazyparam_prover/prover_go_proto"
 )
@@ -26,6 +28,35 @@ var trans = (*ppb.Transformation)(utils.NewEnumFlag("trans", ppb.Transformation_
 var transOnly = flag.Bool("trans_only",false,"")
 var method = (*ppb.Method)(utils.NewEnumFlag("method", ppb.Method_CONNECTION_TABLEAU))
 
+func tptpInputString(i *tpb.Input) string {
+  return fmt.Sprintf("%v",i.Formula)
+}
+
+func tptpFileString(f *tpb.File) string {
+  b := &strings.Builder{}
+  for ii,i := range f.Input {
+    fmt.Fprintf(b,"Input[%d] = %v\n",ii,tptpInputString(i))
+  }
+  for _,n := range f.Nodes {
+    fmt.Fprintf(b,"Nodes = %v\n",n)
+  }
+  return b.String()
+}
+
+func tptpProofString(p *spb.Proof) string {
+  b := &strings.Builder{}
+  for ci,c := range p.Clauses {
+    for si,s := range c.Sources {
+      fmt.Fprintf(b,"Clauses[%d].Sources[%d].ground = %v\n",ci,si,tptpInputString(s.Ground))
+      fmt.Fprintf(b,"Clauses[%d].Sources[%d].source = %v\n",ci,si,tptpInputString(s.Source))
+    }
+  }
+  for _,n := range p.Nodes {
+    fmt.Fprintf(b,"Nodes = %v\n",n)
+  }
+  return b.String()
+}
+
 func prove(ctx context.Context, tptp []byte) error {
   ctxProve,cancel := context.WithTimeout(ctx,*timeout)
   defer cancel()
@@ -35,6 +66,7 @@ func prove(ctx context.Context, tptp []byte) error {
     log.Printf("not solved")
     out.CnfProblem = nil
     if *transOnly {
+      log.Printf("out.TransformedProblem = %s",tptpFileString(out.TransformedProblem))
       tptpProblem,err := tool.ProtoToTptp(ctx,out.TransformedProblem)
       if err!=nil { return fmt.Errorf("tool.ProtoToTptp(out.TransformedProblem): %v",err) }
       fmt.Printf("-- PROBLEM BEGIN --\n%s-- PROBLEM END--\n",tptpProblem)
@@ -43,11 +75,13 @@ func prove(ctx context.Context, tptp []byte) error {
     }
     return nil
   }
+  log.Printf("out.CnfProblem = %v",out.CnfProblem)
+  log.Printf("out.Proof = %s",tptpProofString(out.Proof))
   tptpProblem,err := tool.ProtoToTptp(ctx,out.CnfProblem)
   if err!=nil { return fmt.Errorf("tool.ProtoToTptp(problem): %v",err) }
   fmt.Printf("-- PROBLEM BEGIN --\n%s-- PROBLEM END--\n",tptpProblem)
   tptpProof,err := tool.ProofToTptp(ctx,out.Proof)
-  if err!=nil { return fmt.Errorf("tool.ProtoToTptp(%q): %v",*caseName,err) }
+  if err!=nil { return fmt.Errorf("tool.ProofToTptp(%q): %v",*caseName,err) }
   fmt.Printf("-- PROOF BEGIN --\n%s-- PROOF END--\n",tptpProof)
   //log.Printf("out = %v",out)
   _,err = tool.ValidateProof(ctx,&spb.CNF{Problem:out.CnfProblem,Proof:out.Proof})

@@ -1,4 +1,4 @@
-//#define DEBUG_MODE
+#define DEBUG_MODE
 //#define VERBOSE
 //#define PROFILE
 
@@ -48,51 +48,31 @@ OrForm apply_trans(OrForm f) {
   }
 }
 
-Atom remove_eq(Atom a, u64 pred) {
-  if(a.pred()!=Atom::EQ) return a;
-  Atom::Builder b(a.sign(),pred,a.arg_count(),a.strong_only());
-  for(size_t i=a.arg_count(); i--;) b.set_arg(i,a.arg(i));
-  return b.build();
-}
-
-AndClause remove_eq(AndClause cla, u64 pred) {
-  AndClause::Builder b(cla.atom_count());
-  for(size_t i=cla.atom_count(); i--;) b.set_atom(i,remove_eq(cla.atom(i),pred));
-  return b.build();
-}
-
-DerAndClause remove_eq(DerAndClause cla, u64 pred) {
-  auto b = cla.to_builder();
-  b.derived = remove_eq(b.derived,pred);
-  for(auto &s : b.sources) s = remove_eq(s,pred);
-  return b.build();
-}
-
-OrForm remove_eq(OrForm f) {
-  ArityCtx actx; actx.traverse(f);
-  u64 pred = 0;
-  while(actx.pred_arity.count(pred)) pred++;
-  for(auto &cla : f.and_clauses) cla = remove_eq(cla,pred+1);
-  return f;
-}
-
 StreamLogger _(std::cerr);
 int main(int argc, char **argv) {
   std::ios::sync_with_stdio(0);
   absl::ParseCommandLine(argc, argv);
 
   str file_raw((std::istreambuf_iterator<char>(std::cin)), (std::istreambuf_iterator<char>()));
-  ParseCtx parse_ctx;
-  OrForm f(parse_ctx.parse_orForm(file_raw));
+  tptp::File file = file_from_raw(file_raw);
+  OrForm f(ParseCtx().parse_orForm(file));
+  RevNodeIndex idx(file.nodes());
 
   auto emergency_block = new char[1000*1000];
   try {
     solutions::ProverOutput outProto;
-    ProtoCtx pctx(parse_ctx);
+    ProtoCtx pctx(idx);
     f = apply_trans(f);
     if(absl::GetFlag(FLAGS_trans_only)) {
-      f = remove_eq(f);
-      *outProto.mutable_transformed_problem() = pctx.proto_orForm(f);
+      auto proto_f = pctx.proto_orForm(f);
+      // replace equality with a regular predicate.
+      for(auto &n : *proto_f.mutable_nodes()) {
+        if(n.type()==tptp::PRED_EQ) {
+          n.set_type(tptp::PRED);
+          n.set_arity(2);
+        }
+      }
+      *outProto.mutable_transformed_problem() = proto_f;
       if(!outProto.SerializeToOstream(&std::cout)) {
         error("outProto.SerializeToOstream() failed");  
       }

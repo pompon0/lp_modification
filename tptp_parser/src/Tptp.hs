@@ -92,7 +92,7 @@ instance Show NodeTree where
 
 stream'tree :: NodeIndex -> [Int32] -> Err (NodeTree,[Int32])
 stream'tree idx (h:t) = do
-  Just node <-r$ idx^.at h
+  node <-r$ idx^.at h.non (error (printf "%d not found" h))
   (arity:t) <-r$ case (node^.arity) of { a|a==variadicArity->t; a->a:t }
   (args,t) <- ([],t) & for [1..arity] (\_ cont (_,t) -> do
     (a,t) <- stream'tree idx t
@@ -152,6 +152,7 @@ nodes'index nodes = Map.empty & for nodes (\n cont s -> do
     if a==customArity then n^. #arity else a :: Int32
   x <-r$ case n^. #name.unpacked of { "" -> Nothing; x -> Just x }
   q <-r$ Node { _type_ = t, _id = i, _arity = a, _name = x }
+  when ((s^.at i)/=Nothing) (err (printf "redefined node %d" i))
   cont (s & at i %~ (\Nothing -> Just q)))
 
 index'nodes :: NodeIndex -> [T.Node]

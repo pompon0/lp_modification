@@ -73,11 +73,24 @@ cc_test(
 )
 
 cc_library(
+    name = "node",
+    hdrs = [
+        "node.h",
+    ],
+    deps = [
+        ":types",
+        "//tptp_parser/proto:tptp_cc_proto",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
     name = "parse",
     hdrs = [
         "parse.h",
     ],
     deps = [
+        ":node",
         ":types",
         "//lazyparam_prover/syntax:syntax",
         "//tptp_parser/proto:tptp_cc_proto",
@@ -92,6 +105,7 @@ cc_library(
     ],
     copts = ["-std=c++11"],
     deps = [
+        ":node",
         ":types",
         "//lazyparam_prover/syntax:syntax",
         "//tptp_parser/proto:tptp_cc_proto",

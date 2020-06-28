@@ -30,23 +30,23 @@ import qualified Proto.Tptp as T
 import Debug.Trace
 
 prettyPrint :: T.File -> Err String
-prettyPrint x = show.pretty <$> tptp'file x
+prettyPrint x = show.pretty <$> (tptp'file x ??? "tptp'file")
 
 tptp'file :: T.File -> Err TPTP 
 tptp'file f = do
-  idx <- nodes'index (f^. #nodes)
-  us <- [] & for (f^. #input) (\i cont [] -> do
-    u <- unit'input idx i
+  idx <- nodes'index (f^. #nodes) ??? "nodes'index"
+  us <- [] & forI (f^. #input) (\(ii,i) cont [] -> do
+    u <- unit'input idx i ??? printf "unit'input[%d]" ii
     ut <- cont []
     r$ u:ut)
   r$ TPTP us
 
 unit'input :: NodeIndex -> T.Input -> Err Unit 
 unit'input idx i = do
-  (f,_) <- stream'tree idx (i^. #formula)
+  (f,_) <- stream'tree idx (i^. #formula) ??? "stream'tree"
   f <- case i^. #language of {
-    T.Input'CNF -> CNF <$> cnf'formula f;
-    T.Input'FOF -> FOF <$> fof'formula f;
+    T.Input'CNF -> CNF <$> (cnf'formula f ??? printf "cnf'formula (%s)" (show f));
+    T.Input'FOF -> FOF <$> (fof'formula f ??? "fof'formula");
   }
   r$ Unit
     (text'unitName (i^. #name))

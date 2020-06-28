@@ -1,13 +1,13 @@
 load("@rules_haskell//haskell:defs.bzl", "haskell_library", "haskell_test", "haskell_binary")
 
 haskell_library(
-  name = "Err",
-  srcs = ["Err.hs"],
-  deps = [
-    "@stackage//:base",
-    "@stackage//:containers",
-    "@stackage//:transformers",
-  ],
+    name = "Err",
+    srcs = ["Err.hs"],
+    deps = [
+        "@stackage//:base",
+        "@stackage//:containers",
+        "@stackage//:transformers",
+    ],
 )
 
 haskell_test(

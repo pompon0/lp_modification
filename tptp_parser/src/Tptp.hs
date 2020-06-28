@@ -27,8 +27,6 @@ import Text.Printf
 import Data.List(intercalate)
 import Data.Int(Int32)
 
-import Debug.Trace
-
 data Node = Node {
   _type_ :: T.Type,
   _id :: Int32,

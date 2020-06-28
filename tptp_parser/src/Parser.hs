@@ -27,8 +27,6 @@ import Tptp
 import Ctx
 import qualified Proto.Tptp as T
 
-import Debug.Trace
-
 prettyPrint :: T.File -> Err String
 prettyPrint x = show.pretty <$> (tptp'file x ??? "tptp'file")
 

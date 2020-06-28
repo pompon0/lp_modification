@@ -18,6 +18,7 @@ import Data.Either(partitionEithers)
 import Valid
 import EqAxioms
 import qualified Proto.Solutions as SPB
+import Text.Printf
 
 classify :: NodeIndex -> OrForm -> OrForm -> Err SPB.Stats
 classify idx (OrForm c) f = do
@@ -27,9 +28,7 @@ classify idx (OrForm c) f = do
   (trans,c) <-r$ partition isTransAxiom c;
   (fmono,c) <-r$ partitionEithers (map (\c -> case isFunCongAxiom c of { Just fn -> Left fn; Nothing -> Right c }) c);
   (pmono,c) <-r$ partitionEithers (map (\c -> case isPredCongAxiom c of { Just pn -> Left pn; Nothing -> Right c }) c);
-  x <- case isSubForm (OrForm c) f of
-    Just x -> return x
-    Nothing -> fail "proof doesn't imply the formula"
+  x <- isSubForm (OrForm c) f ??? "proof doesn't imply the formula"
   let {
     funMono = (flip map) (group $ sort fmono) (\fns -> (defMessage :: SPB.Stats'FunMono)
       & #name.unpacked .~ show (head fns)

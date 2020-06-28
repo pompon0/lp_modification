@@ -23,7 +23,6 @@ import Valid(counterExample)
 import qualified Parser
 import IO
 import Tptp
-import Debug.Trace
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Control.Lens

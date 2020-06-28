@@ -21,6 +21,7 @@ import qualified Data.Text as Text
 import Control.Lens
 import qualified Data.List as List
 import Data.ProtoLens(defMessage)
+import Text.Printf
 
 data Atom = Atom { _atom'sign :: Bool, _atom'pred :: Pred } deriving(Eq,Ord)
 makeLenses ''Atom
@@ -77,8 +78,11 @@ simplify (OrForm x) =
     notSubsumed = Set.filter (\c -> not $ any (\d -> d /= c && Set.isSubsetOf d c) nonTrivial) nonTrivial
   in OrForm $ Set.toAscList $ Set.map (AndClause . Set.toAscList) notSubsumed
 
-isSubForm :: OrForm -> OrForm -> Maybe [AndClause]
-isSubForm a b = mapM (\c -> List.find (isInstance c) (b^.orForm'andClauses)) (a^.orForm'andClauses)
+isSubForm :: OrForm -> OrForm -> Err [AndClause]
+isSubForm a b = [] & for (a^.orForm'andClauses) (\ac cont [] -> do
+  h <- assert (List.find (isInstance ac) (b^.orForm'andClauses)) ??? printf "ac=%s b=%s" (show ac) (show (b^.orForm'andClauses))
+  t <- cont []
+  r$ h:t)
 
 atom'mgu :: (Atom,Atom) -> MGU.Valuation -> Maybe MGU.Valuation
 atom'mgu (a1,a2) val = do
@@ -94,8 +98,9 @@ andClause'mgu (c1,c2) val = do
   val & for (zip (c1^.andClause'atoms) (c2^.andClause'atoms)) (\a12 cont val -> cont =<< atom'mgu a12 val)
 
 isInstance :: AndClause -> AndClause -> Bool
-isInstance a b = andClause'mgu (a,b) MGU.empty /= Nothing
-
+isInstance a b = runIdentity $ do
+  ok <-r$ andClause'mgu (a,b) MGU.empty /= Nothing
+  r$ ok
 -----------------------------------------------------
 
 fromProto'File :: T.File -> Err OrForm

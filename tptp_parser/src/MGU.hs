@@ -9,7 +9,6 @@ import Control.Monad
 import Control.Monad.State.Class(get,modify)
 import Control.Monad.Trans.Class(lift)
 import qualified Data.Map as Map
-import Debug.Trace
 import Control.Lens hiding(assign)
 import Control.Exception(assert)
 import Text.Printf

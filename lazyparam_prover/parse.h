@@ -37,7 +37,11 @@ struct ParseCtx {
     auto n = s.node();
     switch(n.type()) {
     case tptp::FORM_NEG: return parse_atom(s).neg();
-    case tptp::PRED_EQ: return Atom::eq(true, parse_term(s), parse_term(s));
+    case tptp::PRED_EQ: {
+      Term l = parse_term(s);
+      Term r = parse_term(s);
+      return Atom::eq(true,l,r);
+    }
     case tptp::PRED: {
       size_t ac = n.arity();
       Atom::Builder b(true,n.id(),ac,false);

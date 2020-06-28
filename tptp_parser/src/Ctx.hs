@@ -19,7 +19,6 @@ import Prelude hiding(fail)
 import Control.Monad hiding(fail)
 import Control.Monad.Fail
 import qualified Control.Exception as E
-import Debug.Trace
 import qualified Proto.Tptp as T
 
 instance HashSeq String where hashSeq = map (unit.fromIntegral.fromEnum)
@@ -78,9 +77,6 @@ newtype PredName = PredName Node deriving(Eq,Ord,HashSeq,Show)
 
 isEq :: PredName -> Bool
 isEq (PredName n) = n^.type_==T.PRED_EQ
-
---eqPredName = PredName "eq"
---extraConstName = FunName "c"
 
 data Global = Global {
   _funs :: Stack FunName,

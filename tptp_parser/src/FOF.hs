@@ -19,7 +19,6 @@ import Control.Lens
 import Data.ProtoLens(defMessage)
 import Data.ProtoLens.Labels()
 import Text.Printf
-import Debug.Trace
 
 data FOF = Forall VarName FOF
   | Exists VarName FOF

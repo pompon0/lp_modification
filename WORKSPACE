@@ -100,17 +100,12 @@ container_pull(
 
 ################################
 # HASKELL
-"""
+
 http_archive(
     name = "rules_haskell",
     strip_prefix = "rules_haskell-master",
     urls = ["https://github.com/pompon0/rules_haskell/archive/master.tar.gz"],
-    sha256 = "1ea58bc22d7c8854826cbd154ce258743a5401c87c0d9c8cd39bd494d52da419",
-)
-"""
-local_repository(
-    name = "rules_haskell",
-    path = "/home/pompon/github/rules_haskell",
+    sha256 = "a9206c65254b9fbcda87ed2b5bcfab41aa076fac7eca53c11614810116edd065",
 )
 
 load("@rules_haskell//haskell:repositories.bzl", "rules_haskell_dependencies")

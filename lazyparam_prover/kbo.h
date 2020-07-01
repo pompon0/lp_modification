@@ -10,6 +10,7 @@
 #include "lazyparam_prover/constraint.h"
 #include "lazyparam_prover/types.h"
 #include "lazyparam_prover/mgu.h"
+#include "lazyparam_prover/fun_ord.h"
 #include "lazyparam_prover/log.h"
 #include <algorithm>
 
@@ -19,7 +20,10 @@ struct KBO {
 private:
   ResetArray<int> var_occ;
   using Res = OrderAtom::Relation;
+  FunOrd fun_ord;
 public:
+  KBO(const FunOrd &_fun_ord) : fun_ord(_fun_ord) {}
+
   struct Snapshot { size_t var_occ_size; };
   Snapshot snapshot(){ return {var_occ.size()}; }
   void rewind(Snapshot s){ var_occ.resize(s.var_occ_size,0); }
@@ -40,7 +44,7 @@ private:
     int neg = 0;
     int weight = 0;
   
-    static inline Res cmp(u64 l, u64 r) { return l<r ? OrderAtom::L : l>r ? OrderAtom::G : OrderAtom::E; }
+    inline Res cmp(u64 l, u64 r) const { return kbo.fun_ord.less(l,r) ? OrderAtom::L : kbo.fun_ord.less(r,l) ? OrderAtom::G : OrderAtom::E; }
 
     inline void accum(Term t, int f) { FRAME("Balance.accum()");
       t = val.shallow_eval(t);

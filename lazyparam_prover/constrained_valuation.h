@@ -10,6 +10,7 @@
 #include "lazyparam_prover/constraint.h"
 #include "lazyparam_prover/types.h"
 #include "lazyparam_prover/mgu.h"
+#include "lazyparam_prover/fun_ord.h"
 #include "lazyparam_prover/log.h"
 #include <algorithm>
 
@@ -35,6 +36,8 @@ private:
   Valuation val;
   Ordering ord;
 public:
+  ConstrainedValuation() : ord(FunOrd()) {}
+  ConstrainedValuation(const FunOrd &fun_ord) : ord(fun_ord) {}
   ValuationStats stats;
 
   Valuation get_valuation() const { return val; }

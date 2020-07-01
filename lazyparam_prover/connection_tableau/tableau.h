@@ -287,9 +287,9 @@ struct Cont {
   }
 };
 
-ProverOutput prove(const Ctx &ctx, const ClauseIndex &cla_index, size_t limit) { FRAME("prove()");
+ProverOutput prove(const Ctx &ctx, const ClauseIndex &cla_index, const FunOrd &fun_ord, size_t limit) { FRAME("prove()");
   SCOPE("prove");
-  SearchState s(cla_index);
+  SearchState s(cla_index,fun_ord);
   Cont::StartFrame::Builder b;
   b->nodes_limit = limit;
   auto res = alt::search(ctx,s,Cont{List<Cont::Frame>(Cont::Frame(b.build()))});
@@ -303,7 +303,7 @@ ProverOutput prove(const Ctx &ctx, const ClauseIndex &cla_index, size_t limit) {
   };
 }
 
-ProverOutput prove_loop(const Ctx &ctx, OrForm form) { FRAME("prove_loop()");
+ProverOutput prove_loop(const Ctx &ctx, OrForm form, const FunOrd &fun_ord) { FRAME("prove_loop()");
   SCOPE("prove_loop"); 
   Stats stats;
   size_t cont_count = 0;
@@ -314,7 +314,7 @@ ProverOutput prove_loop(const Ctx &ctx, OrForm form) { FRAME("prove_loop()");
   for(;!ctx.done();) {
     limit++; // avoid incrementing limit before context check
     DEBUG info("limit = %",limit);
-    ProverOutput out = prove(ctx,idx,limit);
+    ProverOutput out = prove(ctx,idx,fun_ord,limit);
     out.cont_count += cont_count;
     out.stats += stats;
     if(out.proof) {

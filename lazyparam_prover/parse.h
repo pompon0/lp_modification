@@ -90,16 +90,6 @@ struct ParseCtx {
   } 
 };
 
-inline static tptp::File file_from_raw(const str &file_raw) { FRAME("file_from_raw()");
-  tptp::File file;
-  auto stream = new google::protobuf::io::CodedInputStream((const uint8_t*)(&file_raw[0]),file_raw.size());
-  stream->SetRecursionLimit(100000000);
-  if(!file.ParseFromCodedStream(stream)) {
-    error("failed to parse input");
-  }
-  return file;
-}
-
 struct ProtoCtx {
   RevNodeIndex idx;
   ProtoCtx(const RevNodeIndex &_idx) : idx(_idx) {

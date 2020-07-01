@@ -16,8 +16,8 @@
 #include "lazyparam_prover/syntax/term.h"
 #include "lazyparam_prover/syntax/atom.h"
 #include "lazyparam_prover/syntax/clause.h"
-#include "lazyparam_prover/log.h"
 #include "lazyparam_prover/node.h"
+#include "lazyparam_prover/log.h"
 
 namespace tableau {
 

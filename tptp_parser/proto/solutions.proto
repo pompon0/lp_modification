@@ -50,6 +50,19 @@ message ProverStats {
   int64 val_comparisons = 11;
 }
 
+message FunOrd {
+  message Fun {
+    string name = 1;
+    int64 size = 2;
+  };
+  repeated Fun funs = 1;
+};
+
+message ProverInput {
+  tptp.File problem = 1;
+  FunOrd fun_ord = 2;
+};
+
 message ProverOutput {
   int64 cost = 1;
   int64 continuation_count = 2;

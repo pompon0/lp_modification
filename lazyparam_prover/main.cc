@@ -48,15 +48,25 @@ OrForm apply_trans(OrForm f) {
   }
 }
 
+template<typename Proto> inline static Proto proto_from_raw(const str &file_raw) { FRAME("proto_from_raw()");
+  Proto proto;
+  auto stream = new google::protobuf::io::CodedInputStream((const uint8_t*)(&file_raw[0]),file_raw.size());
+  stream->SetRecursionLimit(100000000);
+  if(!proto.ParseFromCodedStream(stream)) {
+    error("failed to parse input");
+  }
+  return proto;
+}
+
 StreamLogger _(std::cerr);
 int main(int argc, char **argv) {
   std::ios::sync_with_stdio(0);
   absl::ParseCommandLine(argc, argv);
 
-  str file_raw((std::istreambuf_iterator<char>(std::cin)), (std::istreambuf_iterator<char>()));
-  tptp::File file = file_from_raw(file_raw);
-  OrForm f(ParseCtx().parse_orForm(file));
-  RevNodeIndex idx(file.nodes());
+  str input_raw((std::istreambuf_iterator<char>(std::cin)), (std::istreambuf_iterator<char>()));
+  auto input = proto_from_raw<solutions::ProverInput>(input_raw);
+  OrForm f(ParseCtx().parse_orForm(input.problem()));
+  RevNodeIndex idx(input.problem().nodes());
 
   auto emergency_block = new char[1000*1000];
   try {
@@ -82,15 +92,16 @@ int main(int argc, char **argv) {
     auto ctx = Ctx::with_timeout(absl::GetFlag(FLAGS_timeout));
     auto method = absl::GetFlag(FLAGS_method);
     ProverOutput out;
+    FunOrd fun_ord(input.fun_ord(),input.problem().nodes());
     switch(method.get()) {
       case prover::CONNECTION_TABLEAU:
-        out = connection_tableau::prove_loop(*ctx,f);
+        out = connection_tableau::prove_loop(*ctx,f,fun_ord);
         break;
       case prover::LAZY_PARAMODULATION:
         if(absl::GetFlag(FLAGS_trans).get()!=prover::SKIP) {
           error("method=LAZY_PARAMODULATION requires trans=SKIP");
         }
-        out = lazy_paramodulation::prove_loop(*ctx,f);
+        out = lazy_paramodulation::prove_loop(*ctx,f,fun_ord);
         break;
       default:
         error("method = %",show(method));

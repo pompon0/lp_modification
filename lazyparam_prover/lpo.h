@@ -4,9 +4,10 @@
 #include "lazyparam_prover/constraint.h"
 #include "lazyparam_prover/syntax/term.h"
 #include "lazyparam_prover/syntax/atom.h"
-#include "lazyparam_prover/mgu.h"
-#include "lazyparam_prover/log.h"
 #include "lazyparam_prover/memory/list.h"
+#include "lazyparam_prover/mgu.h"
+#include "lazyparam_prover/fun_ord.h"
+#include "lazyparam_prover/log.h"
 
 namespace tableau {
 
@@ -87,11 +88,15 @@ struct LPO {
   void rewind(Snapshot){}
   void resize(size_t){}
 
-  OrderAtom::Relation cmp(const Valuation &val, Term l, Term r) { return Ctx(val)(l,r); }
+  OrderAtom::Relation cmp(const Valuation &val, Term l, Term r) { return Ctx(val,fun_ord)(l,r); }
+  LPO(FunOrd _fun_ord) : fun_ord(_fun_ord) {}
 private:
+  FunOrd fun_ord;
+
   struct Ctx {
-    explicit Ctx(const Valuation &_val) : val(_val) {}
+    explicit Ctx(const Valuation &_val, const FunOrd &_fun_ord) : val(_val), fun_ord(_fun_ord) {}
     const Valuation &val;
+    const FunOrd &fun_ord;
 
     OrderAtom::Relation operator()(Term a, Term b) {
       return 
@@ -102,7 +107,7 @@ private:
     }
     
     bool less(Fun a, Fun b){ 
-      bool lex = a.fun()<b.fun();
+      bool lex = fun_ord.less(a.fun(),b.fun());
       size_t i=0;
       if(a.fun()==b.fun()) {
         size_t n = a.arg_count();

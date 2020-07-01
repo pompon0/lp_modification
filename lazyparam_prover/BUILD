@@ -103,7 +103,6 @@ cc_library(
     hdrs = [
         "parse2.h",
     ],
-    copts = ["-std=c++11"],
     deps = [
         ":node",
         ":types",
@@ -143,12 +142,14 @@ cc_library(
         "mgu.h",
         "kbo.h",
         "lpo.h",
+        "fun_ord.h",
         "constraint.h",
         "constrained_valuation.h",
         "rewrite_test_utils.h",
     ],
     deps = [
         ":derived",
+        "//tptp_parser/proto:solutions_cc_proto",
         "//lazyparam_prover/syntax:syntax",
         "//lazyparam_prover/memory:memory",
     ],

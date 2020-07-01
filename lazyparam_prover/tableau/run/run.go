@@ -11,6 +11,7 @@ import (
   "io/ioutil"
   "strings"
 
+  "github.com/golang/protobuf/proto"
   "github.com/pompon0/tptp_benchmark_go/tool"
   "github.com/pompon0/tptp_benchmark_go/problems"
   "github.com/pompon0/tptp_benchmark_go/utils"
@@ -27,6 +28,8 @@ var timeout = flag.Duration("timeout",time.Hour,"")
 var trans = (*ppb.Transformation)(utils.NewEnumFlag("trans", ppb.Transformation_LP_MODIFICATION))
 var transOnly = flag.Bool("trans_only",false,"")
 var method = (*ppb.Method)(utils.NewEnumFlag("method", ppb.Method_CONNECTION_TABLEAU))
+
+var funOrdPath = flag.String("fun_ord_path","","Path to a file with FunOrd text proto.")
 
 func tptpInputString(i *tpb.Input) string {
   return fmt.Sprintf("%v",i.Formula)
@@ -57,10 +60,10 @@ func tptpProofString(p *spb.Proof) string {
   return b.String()
 }
 
-func prove(ctx context.Context, tptp []byte) error {
+func prove(ctx context.Context, tptp []byte, funOrd *spb.FunOrd) error {
   ctxProve,cancel := context.WithTimeout(ctx,*timeout)
   defer cancel()
-  out,err := tableau.Prove(ctxProve,tptp,*method,*trans,*transOnly)
+  out,err := tableau.Prove(ctxProve,tptp,nil,*method,*trans,*transOnly)
   if err!=nil { return fmt.Errorf("Tableau(%q): %v",*caseName,err) }
   if !out.Solved {
     log.Printf("not solved")
@@ -125,7 +128,15 @@ func run(ctx context.Context) error {
     if err!=nil {
       return fmt.Errorf("find(%q): %w",*caseName,err)
     }
-    return prove(ctx,tptp)
+    var funOrd spb.FunOrd
+    if *funOrdPath!="" {
+      funOrdRaw,err := ioutil.ReadFile(*funOrdPath)
+      if err!=nil { return fmt.Errorf("ioutil.ReadFile(): %w") }
+      if err:=proto.UnmarshalText(string(funOrdRaw),&funOrd); err!=nil {
+        return fmt.Errorf("proto.UnmarshalText(funOrd): %w",err)
+      }
+    }
+    return prove(ctx,tptp,&funOrd)
   } else {
     mp,cancel,err := problems.MizarProblems()
     if err!=nil { return fmt.Errorf("problems.MizarProblems(): %v",err) }
@@ -139,7 +150,7 @@ func run(ctx context.Context) error {
     sort.Slice(ps,func(i,j int) bool { return len(ps[i].tptp)<len(ps[j].tptp) })
     for _,p := range ps {
       log.Printf("== %q ==",p.name)
-      if err:=prove(ctx,p.tptp); err!=nil {
+      if err:=prove(ctx,p.tptp,nil); err!=nil {
         return fmt.Errorf("prove(%q): %w",p.name,err)
       }
     }

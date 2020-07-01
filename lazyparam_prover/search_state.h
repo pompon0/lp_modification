@@ -48,7 +48,10 @@ inline str show(Branch b) {
 using Val = ConstrainedValuation<LPO>;
 
 struct SearchState {
-  SearchState(const ClauseIndex &_cla_index) : cla_index(&_cla_index) {}
+  SearchState(
+    const ClauseIndex &_cla_index,
+    const FunOrd &fun_ord
+  ) : cla_index(&_cla_index), val(fun_ord) {}
  
   ClauseIndex::State cla_index;
 

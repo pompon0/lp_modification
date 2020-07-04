@@ -63,7 +63,7 @@ func tptpProofString(p *spb.Proof) string {
 func prove(ctx context.Context, tptp []byte, funOrd *spb.FunOrd) error {
   ctxProve,cancel := context.WithTimeout(ctx,*timeout)
   defer cancel()
-  out,err := tableau.Prove(ctxProve,tptp,nil,*method,*trans,*transOnly)
+  out,err := tableau.Prove(ctxProve,tptp,funOrd,*method,*trans,*transOnly)
   if err!=nil { return fmt.Errorf("Tableau(%q): %v",*caseName,err) }
   if !out.Solved {
     log.Printf("not solved")

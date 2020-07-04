@@ -8,7 +8,9 @@ struct _LazyPreStrongConnectionFrame {
 using LazyPreStrongConnectionFrame = Variant<Frame,Frame::LAZY_PRE_STRONG_CONNECTION,_LazyPreStrongConnectionFrame>;
 
 template<typename Alts> void lazy_pre_strong_connection(State &state, LazyPreStrongConnectionFrame f, Alts alts) const { 
-  auto cla = state.allocate(f->dcla);
+  auto mcla = state.allocate(f->dcla);
+  if(!mcla) return;
+  auto cla = mcla.get();
   STATE_FRAME(state,"lazy_pre_strong_connection(strong_id=%,cla=%)",f->strong_id,show(cla));
   if(f->dcla.cost()==0) state.nodes_used++; // this implementation doesn't check regularity, so it doesn't have halting property with free clauses .
   if(state.nodes_used>f->nodes_limit) return;

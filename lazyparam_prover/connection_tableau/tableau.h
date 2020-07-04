@@ -97,7 +97,9 @@ struct Cont {
       state.stats.strong_only_steps++;
       auto ca = mca.get();
       // Connect the new clause and analyze the new atoms recursively.
-      auto cla = state.allocate(ca.cla);
+      auto mcla = state.allocate(ca.cla);
+      if(!mcla) return nothing();
+      auto cla = mcla.get();
       if(!state.val.unify(a,cla.atom(ca.i))) return nothing();
       for(size_t i=cla.atom_count(); i--;) if(i!=ca.i) todo += cla.atom(i);
     }
@@ -113,7 +115,9 @@ struct Cont {
   using StrongFrame = Variant<Frame,Frame::STRONG,_StrongFrame>;
   template<typename Alts> void strong(State &state, StrongFrame f, Alts alts) const { FRAME("strong(%,%)",show(f->dcla),f->strong_id);
     state.stats.strong_steps++;
-    auto cla = state.allocate(f->dcla);
+    auto mcla = state.allocate(f->dcla);
+    if(!mcla) return;
+    auto cla = mcla.get();
     if(f->strong_id>=0) if(!state.val.unify(f->branch.false_.head(),cla.atom(f->strong_id))) return;
 
     List<Atom> todo;

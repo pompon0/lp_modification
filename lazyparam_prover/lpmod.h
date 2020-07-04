@@ -172,10 +172,13 @@ struct SplitBuilder {
         }
       } else {
         if(l.type()==Term::VAR) {
+          // NOTE: we could have used [a!=b] constraint for a-/>b,
+          //   because a->b provides [a>=b] constraint, however
+          //   this delays a potential contradiction.
           // x!=y /\ C
           // ==> -T(x,y) /\ C
-          // ==> T(x,y) /\ x-/>y  [x!=y]
-          // ==> T(x,y) /\ y-/>x  [y!=x]
+          // ==> T(x,y) /\ x-/>y  [x>y]
+          // ==> T(x,y) /\ y-/>x  [y>x]
           Atom a(false,next_pred++,{l,r});
           a = a.set_strong_only();
           atoms.push_back(a);
@@ -184,21 +187,21 @@ struct SplitBuilder {
             DerAndClause::Builder c1;
             c1.cost = 1;
             c1.derived = AndClause::make(a.neg(),red(false,l,r));
-            c1.constraints.push_back(OrderAtom(OrderAtom::NE,l,r));
+            c1.constraints.push_back(OrderAtom(OrderAtom::G,l,r));
             extra.push_back(reduce_vars(c1.build()));
           } {
             DerAndClause::Builder c2;
             c2.cost = 1;
             c2.derived = AndClause::make(a.neg(),red(false,r,l));
-            c2.constraints = {OrderAtom(OrderAtom::NE,r,l)};
+            c2.constraints = {OrderAtom(OrderAtom::G,r,l)};
             c2.sources.push_back(neg_symm_axiom(l,r));
             extra.push_back(reduce_vars(c2.build()));
           }
         } else if(r.type()==Term::VAR) {
           // f(x)!=y /\ C
           // ==> -T(x,y) /\ C
-          // ==> T(x,y) /\ f(x)-/>y  [f(x)!=y]
-          // ==> T(x,y) /\ y-/>w /\ f(x)->w  [y!=w /\ f(x)>=w]
+          // ==> T(x,y) /\ f(x)-/>y  [f(x)>y]
+          // ==> T(x,y) /\ y-/>w /\ f(x)->w  [y>w /\ f(x)>=w]
           Fun lf(l);
           size_t lc = lf.arg_count();
           Atom::Builder b(false,next_pred++,lc+1,true);
@@ -211,7 +214,7 @@ struct SplitBuilder {
             DerAndClause::Builder c1;
             c1.cost = 1;
             c1.derived = AndClause::make(a.neg(),red(false,l,r));
-            c1.constraints = {OrderAtom(OrderAtom::NE,l,r)};
+            c1.constraints = {OrderAtom(OrderAtom::G,l,r)};
             extra.push_back(reduce_vars(c1.build()));
           }
           {
@@ -220,7 +223,7 @@ struct SplitBuilder {
             Term w(val.allocate(Var(0)));
             c2.derived = AndClause::make(a.neg(),red(false,r,w),red(true,l,w));
             c2.constraints = {
-              OrderAtom(OrderAtom::NE,r,w),
+              OrderAtom(OrderAtom::G,r,w),
               OrderAtom(OrderAtom::LE,w,l),
             };
             c2.sources = {
@@ -232,8 +235,8 @@ struct SplitBuilder {
         } else {
           // f(x)!=g(y) /\ C
           // ==> -T(x,y) /\ C
-          // ==> T(x,y) /\ f(x)-/>w /\ g(y)->w  [f(x)!=w /\ g(y)>=w]
-          // ==> T(x,y) /\ g(y)-/>w /\ f(x)->w  [g(y)!=w /\ f(x)>=w]
+          // ==> T(x,y) /\ f(x)-/>w /\ g(y)->w  [f(x)>w /\ g(y)>=w]
+          // ==> T(x,y) /\ g(y)-/>w /\ f(x)->w  [g(y)>w /\ f(x)>=w]
           Fun lf(l), rf(r);
           size_t lc = lf.arg_count(), rc = rf.arg_count();
           Atom::Builder b(false,next_pred++,lc+rc,true);
@@ -248,7 +251,7 @@ struct SplitBuilder {
             Term w(val.allocate(Var(0)));
             c1.derived = AndClause::make(a.neg(),red(false,l,w),red(true,r,w));
             c1.constraints = {
-              OrderAtom(OrderAtom::NE,l,w),
+              OrderAtom(OrderAtom::G,l,w),
               OrderAtom(OrderAtom::LE,w,r),
             };
             c1.sources = {neg_trans_axiom(l,r,w)};
@@ -259,7 +262,7 @@ struct SplitBuilder {
             Term w(val.allocate(Var(0)));
             c2.derived = AndClause::make(a.neg(),red(true,l,w),red(false,r,w));
             c2.constraints = {
-              OrderAtom(OrderAtom::NE,r,w),
+              OrderAtom(OrderAtom::G,r,w),
               OrderAtom(OrderAtom::LE,w,l),
             };
             c2.sources = {

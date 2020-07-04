@@ -8,7 +8,9 @@ using StrongFrame = Variant<Frame,Frame::STRONG,_StrongFrame>;
 
 template<typename Alts> void strong(State &state, StrongFrame f, Alts alts) const { 
   state.stats.strong_steps++;
-  auto cla = state.allocate(f->dcla);
+  auto mcla = state.allocate(f->dcla);
+  if(!mcla) return;
+  auto cla = mcla.get();
   STATE_FRAME(state,"strong(strong_id=%,cla=%)",f->strong_id,show(cla));
   if(f->strong_id>=0) if(!state.val.unify(f->branch.false_.head(),cla.atom(f->strong_id))) return;
 

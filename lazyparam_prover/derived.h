@@ -100,7 +100,9 @@ struct OrForm {
 str show(const DerAndClause &cla) {
   vec<str> source;
   for(size_t i=0; i<cla.source_count(); ++i) source.push_back(show(cla.source(i)));
-  return util::fmt("%   [%]",show(cla.derived()),util::join(", ",source));
+  vec<str> constraints;
+  for(size_t i=0; i<cla.constraint_count(); ++i) constraints.push_back(show(cla.constraint(i)));
+  return util::fmt("%   [%] [%]",show(cla.derived()),util::join(", ",constraints),util::join(", ",source));
 }
 
 str show(const OrForm &f) {

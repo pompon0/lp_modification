@@ -5,6 +5,7 @@ COPTS = [
   "-Wno-terminate",
   "-Wno-maybe-uninitialized",
   "-Wno-switch",
+  "-Wno-unused-result",
   "-Wno-unused-value",
   "-Wno-unused-variable",
   "-Wno-unused-but-set-variable",

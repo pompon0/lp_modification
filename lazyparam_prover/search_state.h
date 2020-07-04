@@ -63,14 +63,14 @@ struct SearchState {
   
   Stats stats;
 
-  AndClause allocate(DerAndClause dcla) { FRAME("SearchState::allocate()");
+  Maybe<AndClause> allocate(DerAndClause dcla) { FRAME("SearchState::allocate()");
     dcla = val.allocate(dcla);
     clauses_used += dcla;
     nodes_used += dcla.cost();
     for(size_t i=dcla.constraint_count(); i--;){
-      val.push_constraint(dcla.constraint(i));
+      if(!val.push_constraint(dcla.constraint(i))) return nothing();
     }
-    return dcla.derived();
+    return just(dcla.derived());
   }
 
   // cannot return the proto, because parsing context is not available.

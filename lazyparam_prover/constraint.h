@@ -106,6 +106,14 @@ private:
       default: error("decide(%)",rel);
     }
   }
+
+  friend inline str show(OrderAtom a) {
+    vec<str> pairs;
+    for(size_t i=0; i<a.pair_count(); i++) {
+      pairs.push_back(util::fmt("[%,%]",show(a.pair(i).a),show(a.pair(i).b)));
+    }
+    return util::fmt("% %",a.rel(),util::join(" ",pairs));
+  }
 };
 
 }  // namespace tableau

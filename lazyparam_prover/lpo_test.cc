@@ -54,3 +54,30 @@ TEST(LPO,incompleteness) {
     ASSERT_EQ(want,got) << util::fmt("cmp(%,%) = %, want %",show(lpo.eval(a)),show(lpo.eval(b)),got,want);
   }
 }
+
+void assert_cmp(ConstrainedValuation<LPO> &lpo, OrderAtom::Relation want, Term a, Term b) {
+  auto got = lpo.cmp(a,b);
+  ASSERT_EQ(want,got) << util::fmt("cmp(%,%) = %, want %",show(lpo.eval(a)),show(lpo.eval(b)),got,want);
+}
+
+void assert_less(ConstrainedValuation<LPO> &lpo, Term a, Term b) {
+  assert_cmp(lpo,OrderAtom::L,a,b);
+  assert_cmp(lpo,OrderAtom::G,b,a);
+}
+
+TEST(LPO,robinson) {
+    StreamLogger _(std::cerr);
+    TestCtx ctx(7589354);
+    auto o = ctx.new_fun<>();
+    auto s = ctx.new_fun<Term>();
+    auto sum = ctx.new_fun<Term,Term>();
+    auto prod = ctx.new_fun<Term,Term>();
+    ConstrainedValuation<LPO> lpo;
+    Term x(lpo.allocate(Var(0)));
+    Term y(lpo.allocate(Var(0)));
+    assert_less(lpo,x,sum(x,o()));
+    assert_less(lpo,s(sum(x,y)),sum(x,s(y)));
+    assert_less(lpo,o(),prod(x,o()));
+    assert_less(lpo,sum(x,prod(x,y)),prod(x,s(y)));
+    assert_less(lpo,s(s(s(s(s(s(o())))))),prod(s(s(o())),s(s(s(o())))));
+  }

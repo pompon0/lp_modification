@@ -12,7 +12,7 @@ template<typename Alts> void lazy_pre_weak_connection(State &state, LazyPreWeakC
   DEBUG if(lr.pred()!=Atom::EQ || lr.sign()) error("lr = %",show(lr));
   auto l = lr.arg(0);
   auto r = lr.arg(1);
-  state.val.push_constraint(OrderAtom(OrderAtom::G,l,r));
+  if(!state.val.push_constraint(OrderAtom(OrderAtom::G,l,r))) return;
   state.lazy_clauses_used += lazy(AxiomClause{AndClause::make(
     lr.neg(),
     Atom::eq(lr.sign(),r,l)

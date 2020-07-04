@@ -73,7 +73,7 @@ public:
   Term shallow_eval(Term t) const { return val.shallow_eval(t); }
   
   // unifies values, validates constraints afterwards.
-  template<typename T> bool unify(T x, T y) { FRAME("mgu()");
+  template<typename T> [[nodiscard]] bool unify(T x, T y) { FRAME("mgu()");
     stats.unifications++;
     if(!val.mgu(x,y)){
       stats.failed_unifications++;
@@ -94,12 +94,12 @@ public:
   }
 
   // returning false invalidates the object 
-  bool push_constraint(OrderAtom c) {
+  [[nodiscard]] bool push_constraint(OrderAtom c) {
     if(c.status()==OrderAtom::TRUE) return 1;
     return check_and_push_constraint(constraints,c);
   }
 
-  bool check_constraints() {
+  [[nodiscard]] bool check_constraints() {
     List<OrderAtom> c2;
     for(auto c = constraints; !c.empty(); c = c.tail()) {
       if(!check_and_push_constraint(c2,c.head())) return false;

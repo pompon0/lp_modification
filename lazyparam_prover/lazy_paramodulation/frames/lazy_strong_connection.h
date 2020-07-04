@@ -13,7 +13,7 @@ struct _LazyStrongConnectionFrame {
 using LazyStrongConnectionFrame = Variant<Frame,Frame::LAZY_STRONG_CONNECTION,_LazyStrongConnectionFrame>;
 
 template<typename Alts> void lazy_strong_connection(State &state, LazyStrongConnectionFrame f, Alts alts) const { STATE_FRAME(state,"lazy_strong_connection(branch_lr=%,L=%,p=%,l=%,r=%)",f->base.branch_lr,show(f->base.L.A),show(f->base.L.get()),show(f->l),show(f->r));
-  state.val.push_constraint(OrderAtom(OrderAtom::G,f->l,f->r));
+  if(!state.val.push_constraint(OrderAtom(OrderAtom::G,f->l,f->r))) return;
   // -L[f(v)], L[w], f(v)=w
   auto bs = f->base.branch_set;
   Term w(f->base.w);
@@ -28,7 +28,7 @@ template<typename Alts> void lazy_strong_connection(State &state, LazyStrongConn
       Term p = L.get();
       Term r = f->r;
       // unify
-      state.val.push_constraint(OrderAtom(OrderAtom::G,z,w));
+      if(!state.val.push_constraint(OrderAtom(OrderAtom::G,z,w))) return;
       if(!state.val.unify(p,z)) return;
       Atom r_w = Atom::eq(true,r,w);
       Atom z_r = Atom::eq(true,z,r);
@@ -61,7 +61,7 @@ template<typename Alts> void lazy_strong_connection(State &state, LazyStrongConn
       }
       Term fv(fvb.build());
       // unify
-      state.val.push_constraint(OrderAtom(OrderAtom::G,fv,w));
+      if(!state.val.push_constraint(OrderAtom(OrderAtom::G,fv,w))) return;
       if(!state.val.unify(p,fv)) return;
       Atom fv_fs = Atom::eq(true,fv,fs);
       Atom fs_r = Atom::eq(true,fs,r);
@@ -99,7 +99,7 @@ template<typename Alts> void lazy_strong_connection(State &state, LazyStrongConn
     }
     Term fv(fvb.build());
     // unify
-    state.val.push_constraint(OrderAtom(OrderAtom::G,l,r));
+    if(!state.val.push_constraint(OrderAtom(OrderAtom::G,l,r))) return;
     if(!state.val.unify(fv,l)) return;
     if(!state.val.unify(r,w)) return;
     Atom fs_fv = Atom::eq(true,fs,fv);

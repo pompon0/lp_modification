@@ -16,6 +16,8 @@ public:
   List() : List((const Node*)0) {}
   List(Nothing) : List() {}
   List(E h, List<E> t) : List(alloc_init(Node{t.ptr,h})) {}
+  template<typename Alloc> List(Alloc &a, E h, List<E> t) : List(a.alloc_init(Node{t.ptr,h}) {}
+  List(E h, List<E> t) : List(alloc_init(Node{t.ptr,h})) {}
   explicit List(E h) : List(h,List()) {}
   
   bool empty() const { return !ptr; }

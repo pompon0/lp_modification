@@ -12,6 +12,7 @@ cc_library(
         "list.h",
         "maybe.h",
         "variant.h",
+        "stack.h",
     ],
     srcs = [
         "alloc.cc",
@@ -31,3 +32,14 @@ cc_test(
         "@gtest//:gtest_main",
     ],
 )
+
+cc_test(
+    name = "stack_test",
+    srcs = ["stack_test.cc"],
+    deps = [
+      ":memory",
+      "//lazyparam_prover/util:util",
+      "@gtest//:gtest_main",
+    ],
+)
+

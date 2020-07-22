@@ -43,9 +43,8 @@ auto closed = 0;
 auto edges = 0;
 auto totfea = 0;
 
-Xgb.init (!predict_policy || !predict_value);;
 
-let priors ((Prover p, _), _) actions =
+vec<double> priors(Prover p, vec<Action> actions) {
   edges += actions.size();
   if(!predict_policy) {
     return actions.map(_ => 1.);
@@ -64,6 +63,8 @@ let priors ((Prover p, _), _) actions =
   }
   auto predicts = Xgb.predict_p(fealist);
   for(auto &p : predics) p = exp(p/policy_temp);
+  return predicts;
+}
 
 // Initial tree with one unexplored node *)
 Tree itree {
@@ -149,7 +150,7 @@ double get_rel(sum_visits,Tree t) {
 
 double logistic(double v){ return 1./(1.+exp(-v)); }
 
-double reward(((Prover p, _), _),Tree tree) {
+double reward(Prover *p, Tree tree) {
   if(tree.kind==Tree::Won) return 1;
   if(tree.kind==Lost) return 0.;
   if(predict_value) {
@@ -163,14 +164,6 @@ double reward(((Prover p, _), _),Tree tree) {
 
 auto start_time = Sys.time();
 
-/* TODO: set SIGINT i SIGTERM to exit by throwing exception */
-
-void check_limits() {
-  if(infer>=max_infs) error("max_infs");
-  if(Sys.time()-start_time>=max_time) error("max_time");
-  if(Xgb.c_mem()>=max_mem) error("max_mem");
-}
-
 void playout(int depth,(st, Tree tree, vec<Tree> thist, vec<Action> acts)) {
   check_limits();
   if(tree.kind==Tree::Open && depth >= 0) {
@@ -179,7 +172,7 @@ void playout(int depth,(st, Tree tree, vec<Tree> thist, vec<Action> acts)) {
     return playout(depth - 1, do_tree, tree.b[i], thist, Ff.extend(st,acts[i]));
   }
   if(tree.kind==Unexplored) tree.kind = Open;
-  tree.r = reward(st,tree);
+  tree.r = reward(st.sr.p,tree);
   for(auto &t : thist){ t.w += tree.r; t.n++; }
 }
 
@@ -192,18 +185,18 @@ double logit(x) {
   return ret;
 }
 
-void print_guides(init_tree,won) {
+void print_guides(init_tree, bool won) {
   auto do_seq(ostream &oc, ps) {
     for(auto [i,n] : ps) oc << util::fmt(" %:%",i,n);
   }
-  auto ((((Prover p, _), _) as st), t, _, al) = init_tree;
+  auto (st, t, _, al) = init_tree;
 
   let ts = won ? is_theorem : bigstep_trees;
-  Ff.restart(st);
+  st.p->restore(0);
   auto ocv = ofstream(path_v);
   auto ocp = ofstream(path_p);
   size_t l = ts.size()-1; 
-  auto print_more(Prover p, Tree t, dist, st, al) {
+  auto print_more(Prover p, Tree t, int dist, State st, vec<Action> al) {
     if(dist==0) return;
     if(t.kind!=Tree::Open) error("aaa");
     p->fea_global_update();
@@ -231,7 +224,7 @@ void print_guides(init_tree,won) {
       for(auto x : ts) if(t.b[i]==x){ ok = true; nt = t.b[i]; na = al[i]; }
     }
     if(!ok) error("not_found");
-    auto [_, (ns, al)] = extend1(st,na,in);
+    auto [_, (ns, al)] = extend(st,na,in);
     print_more(p,nt,dist - 1,ns,al);
   }
   print_more(p,t,l,st,al);
@@ -241,28 +234,39 @@ void print_guides(init_tree,won) {
 
 auto bigstep_hist = [];
 
-enum Status { Solved, DeadEnd };
+enum Status { Solved, DeadEnd, ResourceOut };
+
+Maybe<Status> check_limits() {
+  if(infer>=max_infs) return just(ResourceOut); // error("max_infs");
+  if(Sys.time()-start_time>=max_time) return just(ResourceOut); // error("max_time");
+  if(Xgb.c_mem()>=max_mem) return just(ResourceOut); // error("max_mem");
+  return nothing();
+}
 
 Status bigstep((st, Tree tree, vec<Tree> thist, acts) as state) {
-  if(tree.kind==Tree::Unexplored) tree.kind = Open;  // (* freshly visited *)
-  for(size_t i = 0; i<play_count; i++) {
-    playout(play_dep,state);
-    check_limits();
+  while(1) {
+    if(tree.kind==Tree::Unexplored) tree.kind = Open;  // (* freshly visited *)
+    for(size_t i = 0; i<play_count; i++) {
+      playout(play_dep,state);
+      if(auto ms = check_limits()) return ms.get();
+    }
+    if(tree.kind==Tree::Won) return Solved;
+    if(tree.kind==Tree::Lost) return DeadEnd;
+    auto i = (is_theorem==[] || thm_play_count == -1) ? 
+      (arg_max (fun t -> t.n==0 ? 0 : t.n + t.w/double(t.n)) tree.b)
+      (arg_max (fun t -> t.kind==tree::Won ? 2 : is_theorem.contains(t) ? 1 : 0) tree.b);
+    bigsteps++;
+    bigstep_hist += i;
+    bigstep_trees += tree;
+    (st,tree,thist,acts) = do_tree(tree.b[i],thist,Ff.extend(st,acts[i]));
   }
-  if(tree.kind==Tree::Won) return Solved;
-  if(tree.kind==Tree::Lost) return DeadEnd;
-  auto i = (is_theorem==[] || thm_play_count == -1) ? 
-    (arg_max (fun t -> t.n==0 ? 0 : t.n + t.w/double(t.n)) tree.b)
-    (arg_max (fun t -> t.kind==tree::Won ? 2 : is_theorem.contains(t) ? 1 : 0) tree.b);
-  bigsteps++;
-  bigstep_hist += i;
-  bigstep_trees += tree 
-  return bigstep(do_tree(tree.b[i],thist,(Ff.extend(st,acts[i]))));;
 }
 
 void main(int argc, char **argv) {
-  let (_, (((p, _), _), _)) as init_state = Ff.start(argv[1]);
-  Ff.fea_init(p,0);
+  /* TODO: set SIGINT i SIGTERM to exit by throwing exception */
+  Xgb.init (predict_policy || predict_value);;
+  auto init_state = Ff.start(argv[1]);
+  init_state.sr.p->fea_init(0);
   auto init_tree = do_tree(itree,[],init_state);
   try {
     playout(play_dep,init_tree);

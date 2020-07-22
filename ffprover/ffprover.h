@@ -162,7 +162,6 @@ struct prover {
     return save_hist.size() - 1;
   }
   void restore(uint32_t bi) { restore(save_hist[bi]); save_hist.resize(bi+1); }
-  void restart() {restore(0);}
  
   //function<void(uint32_t, uint32_t)> new_action;
   ostream& print_tm(ostream& os, const trm& t, uint32_t o) const;

@@ -1,4 +1,4 @@
-#define DEBUG
+#define DEBUG_MODE
 #include "lazyparam_prover/lpo.h"
 #include "lazyparam_prover/util/log.h"
 #include "lazyparam_prover/rewrite_test_utils.h"
@@ -14,10 +14,10 @@ TEST(LPO,reduction_ordering) {
 
 TEST(LPO,simple) {
   StreamLogger _(std::cerr);
-  ConstrainedValuation<LPO> lpo;
-  Term x(lpo.allocate(Var(0)));
-  Term y(lpo.allocate(Var(0)));
   TestCtx ctx(7895374);
+  ConstrainedValuation<LPO> lpo(ctx.A);
+  Term x(lpo.allocate(Var(ctx.A,0)));
+  Term y(lpo.allocate(Var(ctx.A,0)));
   auto f = ctx.new_fun<Term,Term>();
   auto g = ctx.new_fun<Term>(); 
   auto h = ctx.new_fun<Term>();
@@ -38,9 +38,9 @@ TEST(LPO,incompleteness) {
   TestCtx ctx(7589354);
   auto f = ctx.new_fun<Term,Term>();
   for(size_t cases=10; cases--;) {
-    ConstrainedValuation<LPO> lpo;
-    Term x(lpo.allocate(Var(0)));
-    Term y(lpo.allocate(Var(0)));
+    ConstrainedValuation<LPO> lpo(ctx.A);
+    Term x(lpo.allocate(Var(ctx.A,0)));
+    Term y(lpo.allocate(Var(ctx.A,0)));
     auto a = f(x,y);
     auto b = f(y,f(x,x));
     // case 0: unevaluated a,b -> U
@@ -72,9 +72,9 @@ TEST(LPO,robinson) {
     auto s = ctx.new_fun<Term>();
     auto sum = ctx.new_fun<Term,Term>();
     auto prod = ctx.new_fun<Term,Term>();
-    ConstrainedValuation<LPO> lpo;
-    Term x(lpo.allocate(Var(0)));
-    Term y(lpo.allocate(Var(0)));
+    ConstrainedValuation<LPO> lpo(ctx.A);
+    Term x(lpo.allocate(Var(ctx.A,0)));
+    Term y(lpo.allocate(Var(ctx.A,0)));
     assert_less(lpo,x,sum(x,o()));
     assert_less(lpo,s(sum(x,y)),sum(x,s(y)));
     assert_less(lpo,o(),prod(x,o()));

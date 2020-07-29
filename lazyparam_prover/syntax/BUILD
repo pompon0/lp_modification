@@ -27,7 +27,7 @@ cc_test(
 
 cc_test(
     name = "clause_test",
-    srcs = ["clause_test.cpp"],
+    srcs = ["clause_test.cc"],
     deps = [
         ":syntax",
         "//lazyparam_prover:types",

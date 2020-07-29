@@ -6,7 +6,7 @@
 
 namespace memory {
 
-template<uint32_t BLOCK = 1<<20> struct Stack {
+template<uint32_t BLOCK> struct Stack {
 public:
   struct Save {
     size_t blocks_used;
@@ -47,6 +47,9 @@ public:
   }
 };
 
-} // namespace mmeory
+using Alloc = Stack<(1<<20)>;
+
+} // namespace memory
+
 
 #endif // MEMORY_STACK_H_

@@ -7,13 +7,8 @@ namespace tableau {
 namespace alt {
 
 struct ExampleCont {
-  struct State {
-    struct Snapshot {};
-    void rewind(Snapshot){}
-    Snapshot snapshot(){ return {}; }
-  };
   bool done() const { return 1; }
-  template<typename Alts> void run(State &state, Alts &alts) const {}
+  List<ExampleCont> run() const { return nothing(); }
 };
 
 struct SearchResult {

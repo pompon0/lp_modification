@@ -5,6 +5,7 @@
 #include "lazyparam_prover/syntax/atom.h"
 #include "lazyparam_prover/syntax/clause.h"
 #include "lazyparam_prover/syntax/show.h"
+#include "lazyparam_prover/memory/stack.h"
 
 namespace tableau {
 
@@ -24,8 +25,8 @@ struct DerAndClause {
   size_t constraint_count() const { return CONSTRAINTS::size(constraints_ptr); }
   OrderAtom constraint(size_t i) const { return CONSTRAINTS::ref(constraints_ptr,i).shift(offset); }
 
-  DerAndClause(size_t cost, AndClause cla) {
-    Builder b;
+  DerAndClause(memory::Alloc &A, size_t cost, AndClause cla) {
+    Builder b(A);
     b.cost = cost;
     b.derived = cla;
     b.sources.push_back(cla);
@@ -33,16 +34,20 @@ struct DerAndClause {
   }
 
   struct Builder {
+  private:
+    memory::Alloc *alloc;
+  public:
     size_t offset = 0;
     size_t id_offset = 0;
     size_t cost = 0;
-    AndClause derived = AndClause::make();
+    AndClause derived;
     vec<AndClause> sources;
     vec<OrderAtom> constraints;
 
+    Builder(memory::Alloc &a) : alloc(&a), derived(AndClause::make(a)) {}
     DerAndClause build() {
-      auto ptr = SOURCES::alloc(sources.size());
-      auto constraints_ptr = CONSTRAINTS::alloc(constraints.size());
+      auto ptr = SOURCES::alloc(*alloc,sources.size());
+      auto constraints_ptr = CONSTRAINTS::alloc(*alloc,constraints.size());
       VarRange var_range{0,0};
       var_range |= derived.var_range();
       for(auto &s : sources) var_range |= s.var_range();
@@ -56,8 +61,8 @@ struct DerAndClause {
     }
   };
 
-  Builder to_builder() {
-    Builder b;
+  Builder to_builder(memory::Alloc &a) {
+    Builder b(a);
     b.offset = offset;
     b.id_offset = id_offset;
     b.cost = cost();

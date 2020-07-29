@@ -5,7 +5,6 @@ package(
 cc_library(
     name = "memory",
     hdrs = [
-        "alloc.h",
         "array.h",
         "layout.h",
         "lazy.h",
@@ -13,9 +12,6 @@ cc_library(
         "maybe.h",
         "variant.h",
         "stack.h",
-    ],
-    srcs = [
-        "alloc.cc",
     ],
     deps = [
         "//lazyparam_prover:log",
@@ -43,3 +39,12 @@ cc_test(
     ],
 )
 
+cc_test(
+    name = "list_test",
+    srcs = ["list_test.cc"],
+    deps = [
+      "//lazyparam_prover:log",
+      ":memory",
+      "@gtest//:gtest_main",
+    ],
+)

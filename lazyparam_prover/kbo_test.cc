@@ -1,6 +1,5 @@
-#define DEBUG
+#define DEBUG_MODE
 #include "lazyparam_prover/kbo.h"
-#include "lazyparam_prover/util/log.h"
 #include "lazyparam_prover/rewrite_test_utils.h"
 #include "lazyparam_prover/constrained_valuation.h"
 #include "gtest/gtest.h"
@@ -14,12 +13,13 @@ TEST(KBO,reduction_ordering) {
 
 TEST(KBO,simple) {
   StreamLogger _(std::cerr);
-  ConstrainedValuation<KBO> kbo;
-  Term x(kbo.allocate(Var(0)));
-  Term y(kbo.allocate(Var(0)));
-  auto f = [](auto ...a){ return Term(Fun(0,{a...})); };
-  auto g = [](auto ...a){ return Term(Fun(1,{a...})); };
-  auto h = [](auto ...a){ return Term(Fun(2,{a...})); };
+  memory::Alloc A;
+  ConstrainedValuation<KBO> kbo(A);
+  Term x(kbo.allocate(Var(A,0)));
+  Term y(kbo.allocate(Var(A,0)));
+  auto f = [&A](auto ...a){ return Term(Fun(A,0,{a...})); };
+  auto g = [&A](auto ...a){ return Term(Fun(A,1,{a...})); };
+  auto h = [&A](auto ...a){ return Term(Fun(A,2,{a...})); };
 
   ASSERT_EQ(OrderAtom::E,kbo.cmp(x,x));
   ASSERT_EQ(OrderAtom::L,kbo.cmp(x,f(x)));

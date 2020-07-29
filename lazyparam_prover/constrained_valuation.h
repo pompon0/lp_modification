@@ -32,12 +32,13 @@ struct ValuationStats {
 
 template<typename Ordering> struct ConstrainedValuation {
 private:
+  memory::Alloc *A;
   List<OrderAtom> constraints;
   Valuation val;
   Ordering ord;
 public:
-  ConstrainedValuation() : ord(FunOrd()) {}
-  ConstrainedValuation(const FunOrd &fun_ord) : ord(fun_ord) {}
+  ConstrainedValuation(memory::Alloc &_A) : A(&_A), val(_A), ord(FunOrd()) {}
+  ConstrainedValuation(memory::Alloc &_A, const FunOrd &fun_ord) : A(&_A), val(_A), ord(fun_ord) {}
   ValuationStats stats;
 
   Valuation get_valuation() const { return val; }
@@ -112,7 +113,7 @@ public:
     c = c.reduce(*this);
     switch(c.status()) {
     case OrderAtom::TRUE: return true;
-    case OrderAtom::UNKNOWN: constraints += c; return true;
+    case OrderAtom::UNKNOWN: constraints.push(*A,c); return true;
     case OrderAtom::FALSE: return false;
     default: error("c.status() = %",c.status());
     }

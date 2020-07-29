@@ -1,16 +1,18 @@
-#define DEBUG if(1)
+#define DEBUG_MODE
 #include "gtest/gtest.h"
 #include "lazyparam_prover/syntax/term.h"
+#include "lazyparam_prover/memory/stack.h"
 #include "lazyparam_prover/util/log.h"
 
 using namespace tableau;
 
 TEST(Term,var_range) {
   StreamLogger _(std::cerr);
-  Term x(Var(0));
-  Term y(Var(1));
-  auto f = [](auto ...a){ return Term(Fun(0,{a...})); };
-  auto g = [](auto ...a){ return Term(Fun(1,{a...})); };
+  memory::Alloc S;
+  Term x(Var(S,0));
+  Term y(Var(S,1));
+  auto f = [&S](auto ...a){ return Term(Fun(S,0,{a...})); };
+  auto g = [&S](auto ...a){ return Term(Fun(S,1,{a...})); };
   ASSERT_EQ(x.var_range(),(VarRange{0,1}));
   ASSERT_EQ(y.var_range(),(VarRange{1,2}));
   ASSERT_EQ(f(x).var_range(),(VarRange{0,1}));

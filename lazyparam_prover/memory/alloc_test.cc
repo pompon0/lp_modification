@@ -1,9 +1,9 @@
-#define DEBUG if(1)
+#define DEBUG_MODE
 #include "gtest/gtest.h"
-#include "lazyparam_prover/memory/alloc.h"
 #include "lazyparam_prover/memory/array.h"
 #include "lazyparam_prover/memory/maybe.h"
 #include "lazyparam_prover/util/log.h"
+#include "lazyparam_prover/memory/stack.h"
 
 using namespace tableau;
 
@@ -30,10 +30,11 @@ TEST(RewindArray,simple) {
 }
 
 TEST(Array,copy_constructor) {
+  memory::Alloc A;
   StreamLogger _(std::cerr);
-  Array<int> a(3);
+  Array<int> a(A,3);
   a[1] = 7;
-  auto b = a;
+  Array<int> b(A,a);
   b[1] = 9;
   ASSERT_EQ(a[1],7);
   ASSERT_EQ(b[1],9);

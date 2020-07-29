@@ -54,7 +54,9 @@ template<typename Cmp> void expect_subterm_order(Cmp &cmp, Term t, Term subeq) {
 }
 
 struct TestCtx {
-  TestCtx(uint64_t seed) : rnd(seed) { new_fun(0); }
+  TestCtx(const TestCtx &) = delete;
+  explicit TestCtx(uint64_t seed) : rnd(seed) { new_fun(0); }
+  memory::Alloc A;
   std::minstd_rand rnd;
   vec<size_t> zero_arity_funs;
   vec<size_t> arity;
@@ -67,7 +69,7 @@ struct TestCtx {
   void new_random_funs(size_t n, size_t max_arity) { while(n--) new_fun(rnd()%(max_arity+1)); }
   template<typename ...T> std::function<Term(T...)> new_fun(){
     size_t f = new_fun(sizeof...(T));
-    return [f](T ...args){ return Term(Fun(f,{args...})); };
+    return [this,f](T ...args){ return Term(Fun(A,f,{args...})); };
   }
 };
 
@@ -75,13 +77,13 @@ template<typename V> Term make_term(TestCtx &ctx, const V &val, bool ground, siz
   if(max_depth==0) {
     if(ground || ctx.rnd()%2) {
       auto &fs = ctx.zero_arity_funs;
-      return Term(Fun(fs[ctx.rnd()%fs.size()],{}));
+      return Term(Fun(ctx.A,fs[ctx.rnd()%fs.size()],{}));
     } else {
-      return Term(Var(ctx.rnd()%val.size()));
+      return Term(Var(ctx.A,ctx.rnd()%val.size()));
     }
   } else {
     auto f = ctx.rnd()%ctx.arity.size();
-    Fun::Builder b(f,ctx.arity[f]);
+    Fun::Builder b(ctx.A,f,ctx.arity[f]);
     for(size_t i=0; i<ctx.arity[f]; i++) b.set_arg(i,make_term(ctx,val,ground,max_depth-1));
     return Term(b.build());
   }
@@ -89,7 +91,7 @@ template<typename V> Term make_term(TestCtx &ctx, const V &val, bool ground, siz
 
 template<typename V> void random_valuate(TestCtx &ctx, V &val, size_t max_depth, bool ground) { FRAME("random_valuate");
   for(size_t i=0; i<val.size(); i++) {
-    auto x = Term(Var(i));
+    auto x = Term(Var(ctx.A,i));
     if(val.eval(x).type()==Term::VAR) {
       if(!ground && ctx.rnd()%2==0) continue;
       if(!val.unify(x,make_term(ctx,val,true,max_depth))) {
@@ -99,12 +101,12 @@ template<typename V> void random_valuate(TestCtx &ctx, V &val, size_t max_depth,
   }
 }
 
-template<typename Cmp> Term replace_smaller_subterm(TestCtx ctx, Cmp &cmp, Term t, Term sub) { FRAME("replace_smaller_subterm");
+template<typename Cmp> Term replace_smaller_subterm(TestCtx &ctx, Cmp &cmp, Term t, Term sub) { FRAME("replace_smaller_subterm");
   if(ctx.rnd()%3==0 && cmp.cmp(t,sub)==OrderAtom::L) return sub;
   if(t.type()!=Term::FUN) return t;
   Fun f(t);
   if(f.arg_count()==0) return t;
-  Fun::Builder b(f.fun(),f.arg_count());
+  Fun::Builder b(ctx.A,f.fun(),f.arg_count());
   for(size_t i=f.arg_count(); i--;) b.set_arg(i,f.arg(i));
   size_t i = ctx.rnd()%f.arg_count();
   b.set_arg(i,replace_smaller_subterm(ctx,cmp,f.arg(i),sub));
@@ -118,7 +120,7 @@ template<typename Ord> void ordering_test() {
   TestCtx ctx(90830845);
   for(size_t arity=4; arity--;) ctx.new_fun(arity);
   for(size_t depth=0; depth<4; depth++) {
-    ConstrainedValuation<Ord> ord; for(size_t i=4; i--;) ord.allocate(Var(0));
+    ConstrainedValuation<Ord> ord(ctx.A); for(size_t i=4; i--;) ord.allocate(Var(ctx.A,0));
     random_valuate(ctx,ord,depth,false);
     vec<Term> T;
     // generate bunch of terms: both ground and non-ground
@@ -133,7 +135,7 @@ template<typename Ord> void ground_total_ordering_test() {
   TestCtx ctx(87539745);
   for(size_t arity=4; arity--;) ctx.new_fun(arity);
   for(size_t depth=0; depth<4; depth++) {
-    ConstrainedValuation<Ord> ord; for(size_t i=3; i--;) ord.allocate(Var(0));
+    ConstrainedValuation<Ord> ord(ctx.A); for(size_t i=3; i--;) ord.allocate(Var(ctx.A,0));
     random_valuate(ctx,ord,depth,true);
     vec<Term> T;
     // generate bunch of ground terms
@@ -147,7 +149,7 @@ template<typename Ord> void subterm_test() {
   TestCtx ctx(19843054);
   for(size_t arity=1;arity<4;arity++) ctx.new_fun(arity);
   for(size_t cases=10; cases--;) {
-    ConstrainedValuation<Ord> ord; for(size_t i=10; i--;) ord.allocate(Var(0));
+    ConstrainedValuation<Ord> ord(ctx.A); for(size_t i=10; i--;) ord.allocate(Var(ctx.A,0));
     random_valuate(ctx,ord,6,false);
     auto t = make_term(ctx,ord,false,4);
     expect_subterm_order(ord,t,t);
@@ -158,7 +160,7 @@ template<typename Ord> void substitution_test() {
   SCOPED_TRACE("substitution_test");
   TestCtx ctx(1893443);
   for(size_t arity=1;arity<4;arity++) ctx.new_fun(arity);
-  ConstrainedValuation<Ord> ord; for(size_t i=15; i--;) ord.allocate(Var(0));
+  ConstrainedValuation<Ord> ord(ctx.A); for(size_t i=15; i--;) ord.allocate(Var(ctx.A,0));
   random_valuate(ctx,ord,6,false);
   for(size_t cases=20;cases;) {
     auto s = make_term(ctx,ord,false,5);
@@ -183,7 +185,7 @@ template<typename Ord> void monotonicity_test() {
   SCOPED_TRACE("monotonicity_test");
   TestCtx ctx(7895374);
   for(size_t arity=1;arity<4;arity++) ctx.new_fun(arity);
-  ConstrainedValuation<Ord> ord; for(size_t i=5; i--;) ord.allocate(Var(0));
+  ConstrainedValuation<Ord> ord(ctx.A); for(size_t i=5; i--;) ord.allocate(Var(ctx.A,0));
   random_valuate(ctx,ord,3,false);
   for(size_t cases=20;cases;) {
     auto t = make_term(ctx,ord,false,6);

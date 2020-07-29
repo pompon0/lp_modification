@@ -19,33 +19,33 @@ struct AtomPath {
     for(auto p=path; !p.empty(); p=p.tail()) t = Fun(t).arg(p.head());
     return t;
   }
-  Atom replace(Term a) const {
-    return A.replace_arg(i,replace(A.arg(i),path,a));
+  Atom replace(memory::Alloc &x, Term a) const {
+    return A.replace_arg(x,i,replace(x,A.arg(i),path,a));
   }
 private:
-  static Term replace(Term t, Path tp, Term a) {
+  static Term replace(memory::Alloc &x, Term t, Path tp, Term a) {
     if(tp.empty()) return a;
     Fun tf(t);
-    return Term(tf.replace_arg(tp.head(),replace(tf.arg(tp.head()),tp.tail(),a)));
+    return Term(tf.replace_arg(x, tp.head(),replace(x, tf.arg(tp.head()),tp.tail(),a)));
   }
 };
 
-List<Path> paths(Term t) {
+List<Path> paths(memory::Alloc &A, Term t) {
   if(t.type()==Term::VAR) return nothing();
   Fun f(t);
   List<Path> res;
-  res += nothing();
+  res.push(A,nothing());
   for(size_t i=f.arg_count(); i--;)
-    for(auto l=paths(f.arg(i)); !l.empty(); l = l.tail())
-      res += i+l.head();
+    for(auto l=paths(A,f.arg(i)); !l.empty(); l = l.tail())
+      res.push(A,l.head().add(A,i));
   return res;
 };
 
-List<AtomPath> paths(Atom a) {
+List<AtomPath> paths(memory::Alloc &A, Atom a) {
   List<AtomPath> res;
   for(size_t i=a.arg_count(); i--;)
-    for(auto l=paths(a.arg(i)); !l.empty(); l = l.tail())
-      res += AtomPath{a,i,l.head()};
+    for(auto l=paths(A,a.arg(i)); !l.empty(); l = l.tail())
+      res.push(A,AtomPath{a,i,l.head()});
   return res;
 }
 
@@ -56,23 +56,23 @@ struct ApClause : Lazy<DerAndClause>::Impl {
   AtomPath ap;
   Term r;
 
-  DerAndClause get() const {
+  DerAndClause get(memory::Alloc &A) const {
     auto A0 = ap.A;
-    auto A1 = ap.replace(r);
+    auto A1 = ap.replace(A,r);
 
-    DerAndClause::Builder b;
+    DerAndClause::Builder b(A);
 
     // build derived clause
-    b.derived = AndClause::make(A0.neg(),A1,Atom::eq(true,ap.get(),r));
+    b.derived = AndClause::make(A,A0.neg(),A1,Atom::eq(A,true,ap.get(),r));
 
     // build atom monotonicity axiom.
     Term t0 = A0.arg(ap.i);
     Term t1 = A1.arg(ap.i);
-    b.sources.push_back(AndClause::make(A0.neg(),A1,Atom::eq(true,t0,t1)));
+    b.sources.push_back(AndClause::make(A,A0.neg(),A1,Atom::eq(A,true,t0,t1)));
     for(auto l=ap.path; !l.empty(); l = l.tail()) {
       Term s0 = Fun(t0).arg(l.head());
       Term s1 = Fun(t1).arg(l.head());
-      b.sources.push_back(AndClause::make(Atom::eq(false,t0,t1),Atom::eq(true,s0,s1)));
+      b.sources.push_back(AndClause::make(A,Atom::eq(A,false,t0,t1),Atom::eq(A,true,s0,s1)));
       t0 = s0;
       t1 = s1;
     }

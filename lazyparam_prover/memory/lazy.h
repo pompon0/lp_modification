@@ -1,8 +1,6 @@
 #ifndef MEMORY_LAZY_H_
 #define MEMORY_LAZY_H_
 
-#include "lazyparam_prover/memory/alloc.h"
-
 namespace tableau {
 
 template<typename R> struct Lazy {
@@ -16,8 +14,8 @@ private:
   const Impl *impl;
 };
 
-template<typename T> Lazy<typename T::Res> lazy(const T &t) {
-  return Lazy<typename T::Res>(alloc_init(t));
+template<typename Alloc, typename T> Lazy<typename T::Res> lazy(Alloc &a, const T &t) {
+  return Lazy<typename T::Res>(a.alloc_init(t));
 }
 
 }  // namespace tableau

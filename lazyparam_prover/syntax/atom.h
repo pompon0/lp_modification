@@ -37,8 +37,8 @@ public:
   Atom neg() const { return Atom(ptr,offset,!sign_,id_,strong_only_); }
   Atom set_id(size_t _id) const { return Atom(ptr,offset,sign_,_id,strong_only_); }
   Atom set_strong_only() const { return Atom(ptr,offset,sign_,id_,true); }
-  Atom replace_arg(size_t i, Term t) const {
-    Builder b(sign(),pred(),arg_count(),strong_only());
+  template<typename Alloc> Atom replace_arg(Alloc &a, size_t i, Term t) const {
+    Builder b(a,sign(),pred(),arg_count(),strong_only());
     for(size_t i=arg_count(); i--;) b.set_arg(i,arg(i));
     b.set_arg(i,t);
     return b.build();
@@ -50,14 +50,14 @@ public:
   inline u64 id() const { return id_; } 
   inline bool strong_only() const { return strong_only_; }
 
-  explicit Atom(bool sign, u64 pred, const vec<Term> &args) {
-    Builder b(sign,pred,args.size(),false);
+  template<typename Alloc> Atom(Alloc &a, bool sign, u64 pred, const vec<Term> &args) {
+    Builder b(a,sign,pred,args.size(),false);
     for(size_t i=0; i<args.size(); ++i) b.set_arg(i,args[i]);
     *this = b.build();
   }
 
-  static inline Atom eq(bool sign, Term l, Term r) {
-    return Builder(sign,EQ,2,false).set_arg(0,l).set_arg(1,r).build();
+  template<typename Alloc> static inline Atom eq(Alloc &a, bool sign, Term l, Term r) {
+    return Builder(a,sign,EQ,2,false).set_arg(0,l).set_arg(1,r).build();
   }
 
   struct Builder {
@@ -66,8 +66,8 @@ public:
     u8 *ptr;
     bool strong_only_;
   public:
-    Builder(bool _sign, u64 _pred, u64 _arg_count, bool _strong_only)
-        : sign_(_sign), ptr(ARGS::alloc(_arg_count)), strong_only_(_strong_only) {
+    template<typename Alloc> Builder(Alloc &a, bool _sign, u64 _pred, u64 _arg_count, bool _strong_only)
+        : sign_(_sign), ptr(ARGS::alloc(a,_arg_count)), strong_only_(_strong_only) {
       COUNTER("Atom::Builder");
       VAR_RANGE::ref(ptr) = {0,0};
       PRED::ref(ptr) = _pred;

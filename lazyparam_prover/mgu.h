@@ -4,6 +4,7 @@
 #include "lazyparam_prover/log.h"
 #include "lazyparam_prover/types.h"
 #include "lazyparam_prover/memory/array.h"
+#include "lazyparam_prover/memory/stack.h"
 #include "lazyparam_prover/syntax/term.h"
 #include "lazyparam_prover/syntax/atom.h"
 #include "lazyparam_prover/syntax/show.h"
@@ -17,7 +18,10 @@ struct Valuation {
 private:
   // there is NO cycles in valuation, even x -> x
   RewindArray<Term> val;
+  memory::Alloc *alloc = 0;
+  Valuation() = delete;
 public:
+  Valuation(memory::Alloc &a) : alloc(&a) {}
   using Snapshot = RewindArray<Term>::Snapshot;
   size_t size() const { return val.size(); }
   
@@ -140,12 +144,12 @@ public:
     switch(t.type()) {
       case Term::VAR: {
         u64 id = Var(t).id();
-        if(auto mv = val[id]) return eval(mv.get()); else return Term(Var(id));
+        if(auto mv = val[id]) return eval(mv.get()); else return Term(Var(*alloc,id));
       }
       case Term::FUN: {
         Fun tf(t);
         size_t ac = tf.arg_count();
-        Fun::Builder b(tf.fun(),ac);
+        Fun::Builder b(*alloc,tf.fun(),ac);
         for(size_t i=0; i<ac; ++i) b.set_arg(i,eval(tf.arg(i)));
         return Term(b.build());
       }
@@ -156,13 +160,13 @@ public:
   // clears offset
   inline Atom eval(Atom a) const { FRAME("eval(%)",show(a));
     size_t ac = a.arg_count();
-    Atom::Builder b(a.sign(),a.pred(),ac,a.strong_only());
+    Atom::Builder b(*alloc,a.sign(),a.pred(),ac,a.strong_only());
     for(size_t i=ac; i--;) b.set_arg(i,eval(a.arg(i)));
     return b.build();
   }
 
   inline AndClause eval(AndClause cla) const { FRAME("eval(%)",show(cla));
-    AndClause::Builder b(cla.atom_count());
+    AndClause::Builder b(*alloc,cla.atom_count());
     for(size_t i=cla.atom_count(); i--;) b.set_atom(i,eval(cla.atom(i)));
     return b.build();
   }
@@ -172,13 +176,13 @@ public:
   }
 
   inline OrderAtom eval(OrderAtom c) const {
-    OrderAtom::Builder b(c.rel(),c.pair_count());
+    OrderAtom::Builder b(*alloc,c.rel(),c.pair_count());
     for(size_t i=c.pair_count(); i--;) b.set_pair(i,eval(c.pair(i)));
     return b.build();
   }
 
   inline DerAndClause eval(DerAndClause cla) const {
-    auto b = cla.to_builder();
+    auto b = cla.to_builder(*alloc);
     b.derived = eval(b.derived);
     for(auto &s : b.sources) s = eval(s);
     for(auto &c : b.constraints) c = eval(c);

@@ -4,6 +4,7 @@
 #include "lazyparam_prover/syntax/atom.h"
 #include "lazyparam_prover/types.h"
 #include "lazyparam_prover/memory/layout.h"
+#include "lazyparam_prover/memory/stack.h"
 
 namespace tableau {
 
@@ -18,12 +19,8 @@ private:
   size_t id_offset;
   AndClause(u8 *_ptr, size_t _offset, size_t _id_offset) : ptr(_ptr), offset(_offset), id_offset(_id_offset) {}
 public:
-  template<typename ...Atoms> static AndClause make(Atoms... atoms) {
-    if(sizeof...(Atoms)==0) {
-      static Builder b(0);
-      return b.build();
-    }
-    Builder b(sizeof...(Atoms));
+  template<typename ...Atoms> static AndClause make(memory::Alloc &a, Atoms... atoms) {
+    Builder b(a,sizeof...(Atoms));
     size_t i=0; (b.set_atom(i++,atoms),...);
     return b.build();
   }
@@ -39,7 +36,7 @@ public:
   private:
     u8 *ptr;
   public:
-    Builder(size_t _atom_count) : ptr(ATOMS::alloc(_atom_count)) {
+    template<typename Alloc> Builder(Alloc &a, size_t _atom_count) : ptr(ATOMS::alloc(a,_atom_count)) {
       VAR_RANGE::ref(ptr) = {0,0};
     }
     void set_atom(size_t i, Atom a) { FRAME("AndClause0.Builder.set_atom()");

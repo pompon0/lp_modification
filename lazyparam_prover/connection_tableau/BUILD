@@ -5,9 +5,11 @@ package(
 cc_library(
     name = "prover",
     hdrs = [
+        "cont.h",
         "tableau.h",
     ],
     deps = [
+        "//lazyparam_prover/connection_tableau/frames:frames",
         "//tptp_parser/proto:tptp_cc_proto",
         "//tptp_parser/proto:solutions_cc_proto",
         "//lazyparam_prover:log",

@@ -1,4 +1,5 @@
 #ifndef LAZY_PARAMODULATION_CONT_H_
+#define LAZY_PARAMODULATION_CONT_H_
 
 #include "lazyparam_prover/lazy_paramodulation/split.h"
 #include "lazyparam_prover/search_state.h"

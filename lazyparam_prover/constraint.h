@@ -50,7 +50,7 @@ struct OrderAtom {
   private:
     u8 *ptr;
   public:
-    Builder(Relation rel, size_t pair_count) : ptr(TERM_PAIRS::alloc(pair_count)) {
+    template<typename Alloc> Builder(Alloc &a, Relation rel, size_t pair_count) : ptr(TERM_PAIRS::alloc(a,pair_count)) {
       VAR_RANGE::ref(ptr) = {0,0};
       RELATION::ref(ptr) = rel;
     }
@@ -65,15 +65,15 @@ struct OrderAtom {
   };
   
   // ignores sign
-  static OrderAtom neq(Atom l, Atom r) {
+  template<typename Alloc> static OrderAtom neq(Alloc &a, Atom l, Atom r) {
     if(l.pred()!=r.pred()) return OrderAtom(0,0,TRUE,0);
     DEBUG if(l.arg_count()!=r.arg_count()) error("l.arg_count() = %, r.arg_count() = %",show(l),show(r));
-    Builder b(NE,l.arg_count());
+    Builder b(a,NE,l.arg_count());
     for(size_t i=l.arg_count(); i--;) b.set_pair(i,{l.arg(i),r.arg(i)});
     return b.build();
   }
 
-  OrderAtom(Relation rel, Term l, Term r) : OrderAtom(Builder(rel,1).set_pair(0,{l,r}).build()) {}
+  template<typename Alloc> OrderAtom(Alloc &a, Relation rel, Term l, Term r) : OrderAtom(Builder(a,rel,1).set_pair(0,{l,r}).build()) {}
 
   friend bool operator==(const OrderAtom &a, const OrderAtom &b) {
     bool ok = a.rel()==b.rel();

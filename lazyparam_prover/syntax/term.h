@@ -2,7 +2,6 @@
 #define SYNTAX_TERM_H_
 
 #include "lazyparam_prover/types.h"
-#include "lazyparam_prover/memory/alloc.h"
 #include "lazyparam_prover/memory/layout.h"
 #include "lazyparam_prover/util/short.h"
 
@@ -49,7 +48,7 @@ public:
   explicit Var(Term t) : term(t) {
     DEBUG if(Term::TYPE::ref(t.ptr)!=Term::VAR) error("Var(<type=%>)",Term::TYPE::ref(t.ptr));
   }
-  explicit Var(u64 id) : term(Term::LAST_FIELD::alloc(),id) { Term::TYPE::ref(term.ptr) = Term::VAR; }
+  template<typename Alloc> Var(Alloc &a, u64 id) : term(Term::LAST_FIELD::alloc(a),id) { Term::TYPE::ref(term.ptr) = Term::VAR; }
   explicit operator Term() const { return term; }
   u64 id() const { return term.offset; }
   VarRange var_range() const { return {term.offset,term.offset+1}; }
@@ -62,8 +61,8 @@ private:
   using FUN = Field<u64,VAR_RANGE>;
   using ARGS = ArrayField<Term,FUN>;
   Term term;
-  static Term _Fun(u64 fun, const vec<Term> &args) { FRAME("_Fun(%)",fun);
-    Builder b(fun,args.size());
+  template<typename Alloc> static Term _Fun(Alloc &a, u64 fun, const vec<Term> &args) { FRAME("_Fun(%)",fun);
+    Builder b(a,fun,args.size());
     for(size_t i=0; i<args.size(); ++i) b.set_arg(i,args[i]);
     return Term(b.build());
   }
@@ -72,15 +71,15 @@ public:
   explicit Fun(Term t) : term(t) {
     DEBUG if(Term::TYPE::ref(t.ptr)!=Term::FUN) error("Fun(<type=%>)",Term::TYPE::ref(t.ptr));
   }
-  explicit Fun(u64 fun, const vec<Term> &args) : Fun(_Fun(fun,args)) {}
+  template<typename Alloc> Fun(Alloc &a, u64 fun, const vec<Term> &args) : Fun(_Fun(a,fun,args)) {}
   explicit operator Term() const { return term; }
   u64 fun() const { return FUN::ref(term.ptr); }
   u64 arg_count() const { return ARGS::size(term.ptr); }
   Term arg(size_t i) const { return ARGS::ref(term.ptr,i).shift(term.offset); }
   VarRange var_range() const { return VAR_RANGE::ref(term.ptr)+term.offset; }
   Fun shift(size_t offset) const { return Fun(term.shift(offset)); }
-  Fun replace_arg(size_t i, Term t) const {
-    Builder b(fun(),arg_count());
+  template<typename Alloc> Fun replace_arg(Alloc &a, size_t i, Term t) const {
+    Builder b(a,fun(),arg_count());
     for(size_t i=arg_count(); i--;) b.set_arg(i,arg(i));
     b.set_arg(i,t);
     return b.build();
@@ -89,7 +88,7 @@ public:
   private:
     u8 *ptr;
   public:
-    Builder(u64 _fun, u64 _arg_count) : ptr(ARGS::alloc(_arg_count)) {
+    template<typename Alloc> Builder(Alloc &a, u64 _fun, u64 _arg_count) : ptr(ARGS::alloc(a,_arg_count)) {
       COUNTER("Fun::Builder");
       VAR_RANGE::ref(ptr) = {0,0};
       Term::TYPE::ref(ptr) = Term::FUN;
@@ -108,8 +107,8 @@ inline VarRange Term::var_range() const { FRAME("var_range()");
   switch(type()) {
   case VAR: return Var(*this).var_range();
   case FUN: return Fun(*this).var_range();
-  default: error("<type=%>.var_range()",type());
   }
+  error("<type=%>.var_range()",type());
 }
 
 

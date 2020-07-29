@@ -1,8 +1,8 @@
 #ifndef MEMORY_LAYOUT_H_
 #define MEMORY_LAYOUT_H_
 
-#include "lazyparam_prover/memory/alloc.h"
 #include "lazyparam_prover/types.h"
+#include "lazyparam_prover/log.h"
 
 namespace tableau {
 
@@ -11,14 +11,14 @@ struct Empty { enum { SIZE = 0 }; };
 template<typename T, typename Prev = Empty> struct Field {
   enum { SIZE = Prev::SIZE+sizeof(T) };
   static T& ref(u8 *ptr){ return *(T*)(ptr+Prev::SIZE); }
-  static u8* alloc(){ return alloc_bytes(SIZE); }
+  template<typename Alloc> static u8* alloc(Alloc &a){ return a.alloc_bytes(SIZE); }
 };
 
 template<typename T, typename Prev = Empty> struct ArrayField {
   using SizeField = Field<size_t,Prev>;
   static size_t size(u8 *ptr){ return SizeField::ref(ptr); }
-  static u8* alloc(size_t n){
-    auto p = alloc_bytes(SizeField::SIZE+n*sizeof(T));
+  template<typename Alloc> static u8* alloc(Alloc &a, size_t n){
+    auto p = a.alloc_bytes(SizeField::SIZE+n*sizeof(T));
     SizeField::ref(p) = n;
     return p;
   }

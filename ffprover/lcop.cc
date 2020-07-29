@@ -1,3 +1,5 @@
+#include "lazyparam_prover/types.h"
+
 auto thm_play_count = 0;
 auto play_count = 2000;
 auto one_per_play = true;
@@ -11,22 +13,62 @@ auto predict_value = true;
 auto predict_policy = true;
 auto policy_temp = 2.;
 
-auto max_time = 60.
+auto max_time = 60. // seconds
 auto max_mem = 3000000;
 auto max_infs = 20000000;
+
+double logit(x) {
+  if(x==1.) return 10.;
+  if(x==0.) return -10;
+  auto ret = log(x/(1.-x));
+  if(ret<-10.) return -10.;
+  if(ret>10.) return 10.;
+  return ret;
+}
+
+double logistic(double v){ return 1./(1.+exp(-v)); }
 
 struct Tree {
   enum Kind { Open, Unexplored, Lost, Won };
   Kind kind;
-  double p; // prediction value
-  double w; // W = wins
-  int n; // N = visit count
-  vec<Tree> b; // subtrees for actions
-  double r;
+  Tree *parent;
+  double prior; // prediction value
+  double wins; // W = wins
+  int visits; // N = visit count
+  vec<Tree> branches; // subtrees for actions
+  double reward;
+
+  void fail() {
+    if(kind!=Lost) closed++;
+    kind = Lost;
+  }
+
+  double ucb(double sum_visits) {
+    double visits = max(1.0,visits);
+    souble sum_visits = max(1.0,sum_visits);
+    switch(ucb_mode) {
+    case 1: factor = sqrt(sum_visits/visits); break; // UCB no logarithm *)
+    case 2: factor = sqrt(sum_visits/visits); break; // PUCB from Alpha Zero *)
+    default: factor = sqrt(log(sum_visits)/visits); break; // Original Csaba Szepesvari *)
+    }
+    if(do_ucb) return (wins/visits) + ucb_const*prior*factor;
+    return Random.float(1.) * prior;;
+  }
+
+  size_t get_rel() {
+    size_t max_i = 0;
+    double max_u = -1;
+    for(size_t i=0; i<branches.size(); i++) {
+      if(branches[i].kind==Lost) continue;
+      auto u = branches[i].ucb(visits);
+      if(u>max_u){ max_u = u; max_i = i; }
+    }
+    return max_i;
+  }
 };
 
 // Shortest proof so far
-Proof is_theorem = [];
+Tree *is_theorem = 0;
 // Main history otherwise *)
 vec<Tree> bigstep_trees = {};
 
@@ -44,21 +86,14 @@ auto edges = 0;
 auto totfea = 0;
 
 
-vec<double> priors(Prover p, vec<Action> actions) {
-  edges += actions.size();
+vec<double> priors(State st) {
+  edges += st.actions.size();
   if(!predict_policy) {
-    return actions.map(_ => 1.);
+    return st.actions.map(_ => 1.);
   }
-  p->fea_global_update();
-  
-  auto fealist;
+  vec<vec<int,int>> fealist;
   for(a : actions) {
-    auto back = p->save();
-    auto subst_before = p->subst_hist.size();
-    p->act(a);
-    p->fea_action_update(subst_before);
-    fealist.push_back(p->get_action_features());
-    p->restore(back);
+    fealist.push_back(p->get_action_features(a));
     totfea += fealist.back().size();
   }
   auto predicts = Xgb.predict_p(fealist);
@@ -66,124 +101,80 @@ vec<double> priors(Prover p, vec<Action> actions) {
   return predicts;
 }
 
-// Initial tree with one unexplored node *)
-Tree itree {
-  .kind = Tree::Unexplored,
-  .p = 1.,
-  .w = 0.,
-  .n = 0,
-  .b = [],
-  .r = 0.,
-};
-
 vec<double> normalize(vec<double> l) {
   double s = 0; for(auto x : l) s += x;
   for(auto &x : l) x /= s;
   return l;
 }
 
-auto fail(Tree tree) {
-  if(tree.kind!=Tree::Lost) {
-    closed++;
-    tree.kind = Tree::Lost;
-  }
-}
-
-auto do_tree(tree,thist,(i, (st, acts))) {
-  if(i==1) {
-    tree.kind := Won;
-    if(is_theorem==[] || is_theorem.size() > thist.size() + 1) {
-      is_theorem = List(tree,thist);
-      auto max_infs = 1000000000;
+void do_tree(Tree &tree, const State &st) {
+  if(st.win==1) {
+    tree.kind = Won;
+    if(!is_theorem || is_theorem.size() > tree.depth() + 1) {
+      is_theorem = tree;
+      max_infs = 1000000000;
       if(thm_play_count >= 0) play_count = thm_play_count;
     }
-    return (st, tree, tree :: thist, []);
+  } else if(st.win==-1 || st.actions==[]) {
+    tree.fail();
   }
-  if(i==-1 || acts==[]) {
-    fail(tree);
-    return (st, tree, tree :: thist, [])
-  } 
   switch(tree.kind) {
     case Tree::Won:
     case Tree::Lost:
-      return (st, tree, tree :: thist, []);
+      return;
     case Open:
-      for(auto x : tree.b) if(x.kind!=Tree::Lost) 
-        return (st, tree, tree :: thist, acts);
+      // check if not all branches are lost.
+      for(Tree &x : tree.branches) if(x.kind!=Tree::Lost) return;
       fail(tree);
-      return (st, tree, tree :: thist, []);
+      return;
     case Unexplored:
       opened++;
-      auto l = normalize(priors(st,acts));
-      auto b = List.map (fun p -> {kind=Unexplored; p; w=0.; n=0; b=[]; r=0.}) l in
-      if(not one_per_play) tree.kind = Open;
-      tree.b = b;
-      return (st, tree, tree :: thist, acts);;
+      if(!one_per_play) tree.kind = Tree::Open;
+      for(auto p : normalize(priors(st))) {
+        tree.branches.push_back({
+          .kind = Tree::Unexplored,
+          .prio = p,
+          .wins = 0.,
+          .visits = 0.,
+          .branches = [],
+          .reward = 0.,
+        });
+      }
+      return;
   }
 }
 
-// 'arg_max get_val l' computes the _index_ of element of list l which has maximal get_val *)
-size_t arg_max(get_val,vec<T> l) {
-  if(l.size()==0) error("arg_max: empty list");
-  int res = MIN_INT;
-  size_t idx = 0;
-  for(size_t i=0; i<l.size(); i++) if(get_val(h)>res) idx = i;
-  return idx;
-}
-
-auto ucb(double sum_visits, double prior, double wins, double visits) {
-  auto visits = max(1.0,visits);
-  auto sum_visits = max(1.0,sum_visits);
-  switch(ucb_mode) {
-  case 1: factor = sqrt(sum_visits/visits); break; // UCB no logarithm *)
-  case 2: factor = sqrt(sum_visits/visits); break; // PUCB from Alpha Zero *)
-  default: factor = sqrt(log(sum_visits)/visits); break; // Original Csaba Szepesvari *)
-  }
-  if(do_ucb) return (wins/visits) + ucb_const*prior*factor;
-  return Random.float(1.) * prior;;
-}
-
-double get_rel(sum_visits,Tree t) {
-  if(tree.kind==Tree::Lost) return -1;
-  return ucb(sum_visits,t.p,t.w,t.n);
-}
-
-double logistic(double v){ return 1./(1.+exp(-v)); }
-
-double reward(Prover *p, Tree tree) {
+double reward(State st, Tree tree) {
   if(tree.kind==Tree::Won) return 1;
-  if(tree.kind==Lost) return 0.;
+  if(tree.kind==Tree::Lost) return 0.;
   if(predict_value) {
-    p->fea_global_update();
-    auto f = p->get_fea();
+    auto f = st.p->get_state_features();
     totfea += f.size();
-    return logistic (Xgb.predict_v(f));
+    return logistic(Xgb.predict_v(f));
   }
   return value_factor;
 }
 
-auto start_time = Sys.time();
+enum Status { Solved, DeadEnd, ResourceOut };
 
-void playout(int depth,(st, Tree tree, vec<Tree> thist, vec<Action> acts)) {
-  check_limits();
-  if(tree.kind==Tree::Open && depth >= 0) {
-    auto i = arg_max(get_rel(tree.n,_),tree.b);
+Maybe<Status> playout(int depth, Tree tree, State st) {
+  while(depth-- && tree.kind==Tree::Open) {
+    if(auto ms = check_limits()) return ms.get();
     infer++;
-    return playout(depth - 1, do_tree, tree.b[i], thist, Ff.extend(st,acts[i]));
+    auto i = tree.get_rel();
+    tree = tree.branches[i];
+    st.move(st.acts[i]);
+    do_tree(tree,st);
   }
-  if(tree.kind==Unexplored) tree.kind = Open;
-  tree.r = reward(st.sr.p,tree);
-  for(auto &t : thist){ t.w += tree.r; t.n++; }
+  if(tree.kind==Unexplored) tree.kind = Tree::Open;
+  tree.reward = reward(st,tree);
+  for(Tree *x := tree; x!=0; x = x.parent) {
+    x.wins += tree.reward;
+    x.visits++;
+  }
+  return nothing();
 }
 
-double logit(x) {
-  if(x==1.) return 10.;
-  if(x==0.) return -10;
-  auto ret = log(x/(1.-x));
-  if(ret<-10.) return -10.;
-  if(ret>10.) return 10.;
-  return ret;
-}
 
 void print_guides(init_tree, bool won) {
   auto do_seq(ostream &oc, ps) {
@@ -234,8 +225,6 @@ void print_guides(init_tree, bool won) {
 
 auto bigstep_hist = [];
 
-enum Status { Solved, DeadEnd, ResourceOut };
-
 Maybe<Status> check_limits() {
   if(infer>=max_infs) return just(ResourceOut); // error("max_infs");
   if(Sys.time()-start_time>=max_time) return just(ResourceOut); // error("max_time");
@@ -243,31 +232,57 @@ Maybe<Status> check_limits() {
   return nothing();
 }
 
-Status bigstep((st, Tree tree, vec<Tree> thist, acts) as state) {
+Status bigstep(State st, Tree tree) {
   while(1) {
     if(tree.kind==Tree::Unexplored) tree.kind = Open;  // (* freshly visited *)
     for(size_t i = 0; i<play_count; i++) {
-      playout(play_dep,state);
+      playout(play_dep,st,tree);
       if(auto ms = check_limits()) return ms.get();
     }
     if(tree.kind==Tree::Won) return Solved;
     if(tree.kind==Tree::Lost) return DeadEnd;
-    auto i = (is_theorem==[] || thm_play_count == -1) ? 
-      (arg_max (fun t -> t.n==0 ? 0 : t.n + t.w/double(t.n)) tree.b)
-      (arg_max (fun t -> t.kind==tree::Won ? 2 : is_theorem.contains(t) ? 1 : 0) tree.b);
+    size_t max_i = 0;
+    if(thm_play_count == -1 || !is_theorem) {
+      double max_p = -1;
+      for(size_t i=0; i<tree.branches.size(); i++) {
+        auto *t = tree.branches[i];
+        if(t.visits==0) continue;
+        double p = t.visits + t.wins/double(t.visits);
+        if(p>max_p){ max_p = p; max_i = i; }
+      }
+    } else {
+      for(size_t i=0; i<tree.branches.size(); i++ {
+        auto *t = tree.branches[i];
+        if(t.kind==tree::Won){ max_i = i; break; }
+        for(Tree *x = is_theorem; x!=0 && x!=t; x = x.parent) {
+        }
+        if(x==t){ max_i = i; break; }
+      }
+    }
     bigsteps++;
     bigstep_hist += i;
     bigstep_trees += tree;
-    (st,tree,thist,acts) = do_tree(tree.b[i],thist,Ff.extend(st,acts[i]));
+    tree = tree.branches[i];
+    st.move(st.actions[i]);
+    do_tree(tree,st);
   }
 }
 
 void main(int argc, char **argv) {
+  auto start_time = Sys.time();
   /* TODO: set SIGINT i SIGTERM to exit by throwing exception */
   Xgb.init (predict_policy || predict_value);;
   auto init_state = Ff.start(argv[1]);
-  init_state.sr.p->fea_init(0);
-  auto init_tree = do_tree(itree,[],init_state);
+  // Initial tree with one unexplored node *)
+  Tree itree {
+    .kind = Tree::Unexplored,
+    .prior = 1.,
+    .wins = 0.,
+    .visits = 0,
+    .branches = [],
+    .reward = 0.,
+  };
+  auto init_tree = do_tree(itree,init_state);
   try {
     playout(play_dep,init_tree);
     bigstep(init_tree);

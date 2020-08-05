@@ -50,21 +50,21 @@ public:
     return t;
   }
 
-  struct Snapshot {
-    Valuation::Snapshot val;
-    typename Ordering::Snapshot ord;
+  struct Save {
+    Valuation::Save val;
+    typename Ordering::Save ord;
     List<OrderAtom> constraints;
   };
-  Snapshot snapshot(){
+  Save save(){
     return {
-      val.snapshot(),
-      ord.snapshot(),
+      val.save(),
+      ord.save(),
       constraints
     };
   }
-  void rewind(Snapshot s){
-    val.rewind(s.val);
-    ord.rewind(s.ord);
+  void restore(Save s){
+    val.restore(s.val);
+    ord.restore(s.ord);
     constraints = s.constraints;
   }
   
@@ -80,10 +80,10 @@ public:
       stats.failed_unifications++;
       return 0;
     }
-    auto s = snapshot();
+    auto s = save();
     if(!check_constraints()){
       stats.broken_constraints++;
-      rewind(s);
+      restore(s);
       return 0;
     }
     return 1;

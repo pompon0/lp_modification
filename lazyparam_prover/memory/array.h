@@ -64,9 +64,9 @@ public:
     diffs.push_back(i);
   }
 
-  struct Snapshot { size_t data_size, diffs_size; };
-  Snapshot snapshot(){ return {data.size(),diffs.size()}; }
-  void rewind(Snapshot s){ FRAME("rewind(diffs_size = %, data_size = %)",s.diffs_size,s.data_size);
+  struct Save { size_t data_size, diffs_size; };
+  Save save(){ return {data.size(),diffs.size()}; }
+  void restore(Save s){ FRAME("rewind(diffs_size = %, data_size = %)",s.diffs_size,s.data_size);
     DEBUG if(s.diffs_size>diffs.size()) error("s.diffs_size = % > diffs.size() = %",s.diffs_size,diffs.size());
     DEBUG if(s.data_size>data.size()) error("s.data_size = % > data.size() = %",s.data_size,data.size());
     while(diffs.size()>s.diffs_size){ data[diffs.back()] = Maybe<E>(); diffs.pop_back(); }

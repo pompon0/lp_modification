@@ -12,8 +12,8 @@ struct _LazyStrongConnectionFrame {
 };
 using LazyStrongConnectionFrame = Variant<Frame,Frame::LAZY_STRONG_CONNECTION,_LazyStrongConnectionFrame>;
 
-template<typename Alts> void lazy_strong_connection(State &state, LazyStrongConnectionFrame f, Alts alts) const { STATE_FRAME(state,"lazy_strong_connection(branch_lr=%,L=%,p=%,l=%,r=%)",f->base.branch_lr,show(f->base.L.A),show(f->base.L.get()),show(f->l),show(f->r));
-  if(!state.val.push_constraint(OrderAtom(OrderAtom::G,f->l,f->r))) return;
+List<Cont> lazy_strong_connection(LazyStrongConnectionFrame f) const { STATE_FRAME(state,"lazy_strong_connection(branch_lr=%,L=%,p=%,l=%,r=%)",f->base.branch_lr,show(f->base.L.A),show(f->base.L.get()),show(f->l),show(f->r));
+  if(!state->val.push_constraint(OrderAtom(state->A,OrderAtom::G,f->l,f->r))) return nothing();
   // -L[f(v)], L[w], f(v)=w
   auto bs = f->base.branch_set;
   Term w(f->base.w);
@@ -28,15 +28,15 @@ template<typename Alts> void lazy_strong_connection(State &state, LazyStrongConn
       Term p = L.get();
       Term r = f->r;
       // unify
-      if(!state.val.push_constraint(OrderAtom(OrderAtom::G,z,w))) return;
-      if(!state.val.unify(p,z)) return;
-      Atom r_w = Atom::eq(true,r,w);
-      Atom z_r = Atom::eq(true,z,r);
-      Atom z_w = Atom::eq(true,z,w);
-      bs.push(L.replace(w));
-      bs.push(r_w);
-      state.lazy_clauses_used += lazy(ApClause(L,w));
-      state.lazy_clauses_used += lazy(AxiomClause{AndClause::make(z_r,r_w,z_w.neg())});
+      if(!state->val.push_constraint(OrderAtom(state->A,OrderAtom::G,z,w))) return nothing();
+      if(!state->val.unify(p,z)) return nothing();
+      Atom r_w = Atom::eq(state->A,true,r,w);
+      Atom z_r = Atom::eq(state->A,true,z,r);
+      Atom z_w = Atom::eq(state->A,true,z,w);
+      bs.push(state->A,L.replace(state->A,w));
+      bs.push(state->A,r_w);
+      state->lazy_clauses_used.push(state->A,lazy(state->A,ApClause(L,w)));
+      state->lazy_clauses_used.push(state->A,lazy(state->A,AxiomClause{AndClause::make(state->A,z_r,r_w,z_w.neg())}));
     } else {
       // L[p], f(s)/=r | (p=f(v)>w), L[w], r=w, s_i=v_i
       //    -L[p], L[w], f(v)=w
@@ -49,32 +49,32 @@ template<typename Alts> void lazy_strong_connection(State &state, LazyStrongConn
       Term r = f->r;
       Term w(f->base.w);
       size_t n = Fun(fs).arg_count();
-      Fun::Builder fvb(Fun(fs).fun(),n);
-      AndClause::Builder mb(n+1);
+      Fun::Builder fvb(state->A,Fun(fs).fun(),n);
+      AndClause::Builder mb(state->A,n+1);
       for(size_t i=n; i--;) {
-        Term vi(state.val.allocate(Var(0)));
+        Term vi(state->val.allocate(Var(state->A,0)));
         Term si = Fun(fs).arg(i);
-        Atom si_vi = Atom::eq(true,si,vi);
-        bs.push(si_vi);
+        Atom si_vi = Atom::eq(state->A,true,si,vi);
+        bs.push(state->A,si_vi);
         mb.set_atom(i,si_vi);
         fvb.set_arg(i,vi);
       }
       Term fv(fvb.build());
       // unify
-      if(!state.val.push_constraint(OrderAtom(OrderAtom::G,fv,w))) return;
-      if(!state.val.unify(p,fv)) return;
-      Atom fv_fs = Atom::eq(true,fv,fs);
-      Atom fs_r = Atom::eq(true,fs,r);
-      Atom fv_r = Atom::eq(true,fv,r);
-      Atom r_w = Atom::eq(true,r,w);
-      Atom fv_w = Atom::eq(true,fv,w);
-      bs.push(L.replace(w));
-      bs.push(r_w);
+      if(!state->val.push_constraint(OrderAtom(state->A,OrderAtom::G,fv,w))) return nothing();
+      if(!state->val.unify(p,fv)) return nothing();
+      Atom fv_fs = Atom::eq(state->A,true,fv,fs);
+      Atom fs_r = Atom::eq(state->A,true,fs,r);
+      Atom fv_r = Atom::eq(state->A,true,fv,r);
+      Atom r_w = Atom::eq(state->A,true,r,w);
+      Atom fv_w = Atom::eq(state->A,true,fv,w);
+      bs.push(state->A,L.replace(state->A,w));
+      bs.push(state->A,r_w);
       mb.set_atom(n,fv_fs.neg());
-      state.lazy_clauses_used += lazy(ApClause(L,w));
-      state.lazy_clauses_used += lazy(AxiomClause{AndClause::make(fv_fs,fs_r,fv_r.neg())});
-      state.lazy_clauses_used += lazy(AxiomClause{AndClause::make(fv_r,r_w,fv_w.neg())});
-      state.lazy_clauses_used += lazy(AxiomClause{mb.build()});
+      state->lazy_clauses_used.push(state->A,lazy(state->A,ApClause(L,w)));
+      state->lazy_clauses_used.push(state->A,lazy(state->A,AxiomClause{AndClause::make(state->A,fv_fs,fs_r,fv_r.neg())}));
+      state->lazy_clauses_used.push(state->A,lazy(state->A,AxiomClause{AndClause::make(state->A,fv_r,r_w,fv_w.neg())}));
+      state->lazy_clauses_used.push(state->A,lazy(state->A,AxiomClause{mb.build()}));
     }
   } else {
     // l/=r, L[f(s)] |  (f(v)=l>r=w), L[w], s_i=v_i
@@ -87,33 +87,33 @@ template<typename Alts> void lazy_strong_connection(State &state, LazyStrongConn
     Term r = f->r;
     Term w(f->base.w);
     size_t n = Fun(fs).arg_count();
-    Fun::Builder fvb(Fun(fs).fun(),n);
-    AndClause::Builder mb(n+1);
+    Fun::Builder fvb(state->A,Fun(fs).fun(),n);
+    AndClause::Builder mb(state->A,n+1);
     for(size_t i=n; i--;) {
-      Term vi(state.val.allocate(Var(0)));
+      Term vi(state->val.allocate(Var(state->A,0)));
       Term si = Fun(fs).arg(i);
-      Atom si_vi = Atom::eq(true,si,vi);
-      bs.push(si_vi);
+      Atom si_vi = Atom::eq(state->A,true,si,vi);
+      bs.push(state->A,si_vi);
       mb.set_atom(i,si_vi);
       fvb.set_arg(i,vi);
     }
     Term fv(fvb.build());
     // unify
-    if(!state.val.push_constraint(OrderAtom(OrderAtom::G,l,r))) return;
-    if(!state.val.unify(fv,l)) return;
-    if(!state.val.unify(r,w)) return;
-    Atom fs_fv = Atom::eq(true,fs,fv);
-    Atom l_r = Atom::eq(true,l,r);
-    Atom fs_w = Atom::eq(true,fs,w);
-    bs.push(L.replace(w));
+    if(!state->val.push_constraint(OrderAtom(state->A,OrderAtom::G,l,r))) return nothing();
+    if(!state->val.unify(fv,l)) return nothing();
+    if(!state->val.unify(r,w)) return nothing();
+    Atom fs_fv = Atom::eq(state->A,true,fs,fv);
+    Atom l_r = Atom::eq(state->A,true,l,r);
+    Atom fs_w = Atom::eq(state->A,true,fs,w);
+    bs.push(state->A,L.replace(state->A,w));
     mb.set_atom(n,fs_fv.neg());
-    state.lazy_clauses_used += lazy(ApClause(L,w));
-    state.lazy_clauses_used += lazy(AxiomClause{mb.build()});
-    state.lazy_clauses_used += lazy(AxiomClause{AndClause::make(fs_fv,l_r,fs_w.neg())});
+    state->lazy_clauses_used.push(state->A,lazy(state->A,ApClause(L,w)));
+    state->lazy_clauses_used.push(state->A,lazy(state->A,AxiomClause{mb.build()}));
+    state->lazy_clauses_used.push(state->A,lazy(state->A,AxiomClause{AndClause::make(state->A,fs_fv,l_r,fs_w.neg())}));
   }
-  WeakSetFrame::Builder b;
+  WeakSetFrame::Builder b(state->A);
   b->nodes_limit = f->base.nodes_limit;
   b->branches = bs.branches;
   b->branch_count = bs.branches_size;
-  alts(Cont{Frame(b.build()) + frames.tail()});
+  return List<Cont>(state->A,builder().add(Frame(b.build())).build());
 }

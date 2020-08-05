@@ -24,7 +24,7 @@ public:
 
   struct Builder {
     uint8_t *ptr;
-    template<typename Alloc> explicit Builder(Alloc &a) : ptr(a.alloc_bytes(SIZE)) { *Sum::LType::at(ptr) = V; }
+    explicit Builder(memory::Alloc &a) : ptr(a.alloc_bytes(SIZE)) { *Sum::LType::at(ptr) = V; }
     T& operator*(){ return *LValue::at(ptr); }
     T* operator->(){ return LValue::at(ptr); }
     Variant build(){ return Variant(Sum(ptr)); }

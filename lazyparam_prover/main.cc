@@ -27,7 +27,7 @@ ABSL_FLAG(bool,trans_only,false,"");
 
 using namespace tableau;
 
-OrForm apply_trans(OrForm f) {
+OrForm apply_trans(memory::Alloc &A, OrForm f) {
   // TODO: restrict it further to the case when equality atoms are reachable from all possible starting clause sets
   // TODO: look for starting sets with unreachable clauses - iteratively eliminate them
   if(!has_equality(f)) { return f; }
@@ -36,13 +36,13 @@ OrForm apply_trans(OrForm f) {
   case prover::SKIP:
     return f;
   case prover::AXIOMATIC_EQ:
-    return append_eq_axioms(f);
+    return append_eq_axioms(A,f);
   case prover::AXIOMATIC_EQ_FLAT:
-    return reduce_monotonicity_and_append_eq_axioms(f);
+    return reduce_monotonicity_and_append_eq_axioms(A,f);
   case prover::AXIOMATIC_EQ_RESTRICTED_TRANS:
-    return append_eq_axioms_with_restricted_transitivity(f);
+    return append_eq_axioms_with_restricted_transitivity(A,f);
   case prover::LP_MODIFICATION:
-    return lpmod::conv(f);
+    return lpmod::conv(A,f);
   default:
     error("trans = %",show(trans));
   }
@@ -65,14 +65,16 @@ int main(int argc, char **argv) {
 
   str input_raw((std::istreambuf_iterator<char>(std::cin)), (std::istreambuf_iterator<char>()));
   auto input = proto_from_raw<solutions::ProverInput>(input_raw);
-  OrForm f(ParseCtx().parse_orForm(input.problem()));
+  
+  memory::Alloc A;
+  OrForm f(ParseCtx().parse_orForm(A,input.problem()));
   RevNodeIndex idx(input.problem().nodes());
 
   auto emergency_block = new char[1000*1000];
   try {
     solutions::ProverOutput outProto;
     ProtoCtx pctx(idx);
-    f = apply_trans(f);
+    f = apply_trans(A,f);
     if(absl::GetFlag(FLAGS_trans_only)) {
       auto proto_f = pctx.proto_orForm(f);
       // replace equality with a regular predicate.
@@ -95,13 +97,13 @@ int main(int argc, char **argv) {
     FunOrd fun_ord(input.fun_ord(),input.problem().nodes());
     switch(method.get()) {
       case prover::CONNECTION_TABLEAU:
-        out = connection_tableau::prove_loop(*ctx,f,fun_ord);
+        out = connection_tableau::prove_loop(*ctx,A,f,fun_ord);
         break;
       case prover::LAZY_PARAMODULATION:
         if(absl::GetFlag(FLAGS_trans).get()!=prover::SKIP) {
           error("method=LAZY_PARAMODULATION requires trans=SKIP");
         }
-        out = lazy_paramodulation::prove_loop(*ctx,f,fun_ord);
+        out = lazy_paramodulation::prove_loop(*ctx,A,f,fun_ord);
         break;
       default:
         error("method = %",show(method));
@@ -113,7 +115,7 @@ int main(int argc, char **argv) {
     *outProto.mutable_stats() = out.stats.to_proto();
     if(out.proof){
       outProto.set_solved(true);
-      *outProto.mutable_proof() = pctx.proto_Proof(*out.proof,out.val);
+      *outProto.mutable_proof() = pctx.proto_Proof(A,*out.proof,out.val);
     }
     if(!outProto.SerializeToOstream(&std::cout)) {
       error("outProto.SerializeToOstream() failed");  

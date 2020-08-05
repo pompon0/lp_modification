@@ -32,9 +32,9 @@ struct BranchSet {
   List<Branch> branches;
   size_t branches_size;
 
-  void push(Atom a) { FRAME("BranchSet::push(%)",show(a));
-    auto b = branch; b.false_ += a; branches += b;
-    branch.true_ += a;
+  void push(memory::Alloc &A, Atom a) { FRAME("BranchSet::push(%)",show(a));
+    auto b = branch; b.false_.push(A,a); branches.push(A,b);
+    branch.true_.push(A,a);
     branches_size++;
   }
 };
@@ -49,10 +49,12 @@ using Val = ConstrainedValuation<LPO>;
 
 struct SearchState {
   SearchState(
+    memory::Alloc &_A,
     const ClauseIndex &_cla_index,
     const FunOrd &fun_ord
-  ) : cla_index(&_cla_index), val(fun_ord) {}
+  ) : A(_A), cla_index(&_cla_index), val(A,fun_ord) {}
  
+  memory::Alloc &A;
   ClauseIndex::State cla_index;
 
   Val val;
@@ -65,7 +67,7 @@ struct SearchState {
 
   Maybe<AndClause> allocate(DerAndClause dcla) { FRAME("SearchState::allocate()");
     dcla = val.allocate(dcla);
-    clauses_used += dcla;
+    clauses_used.push(A,dcla);
     nodes_used += dcla.cost();
     for(size_t i=dcla.constraint_count(); i--;){
       if(!val.push_constraint(dcla.constraint(i))) return nothing();
@@ -75,20 +77,20 @@ struct SearchState {
 
   // cannot return the proto, because parsing context is not available.
   // This means that Valuation has to be included in the ProverOutput.
-  ptr<OrForm> get_proof() {
+  ptr<OrForm> get_proof(memory::Alloc &A) {
     auto proof = util::make<OrForm>();
     for(auto l=clauses_used; !l.empty(); l = l.tail()) {
       proof->and_clauses.push_back(l.head());
     }
     for(auto l=lazy_clauses_used; !l.empty(); l = l.tail()) {
-      proof->and_clauses.push_back(l.head().get());
+      proof->and_clauses.push_back(l.head().get(A));
     }
     return proof;
   }
 
-  struct Snapshot {
-    Val::Snapshot val;
-    tableau::Snapshot stack;
+  struct Save {
+    memory::Alloc::Save A;
+    Val::Save val;
     size_t nodes_used;
     List<DerAndClause> clauses_used;
     List<Lazy<DerAndClause>> lazy_clauses_used;
@@ -96,9 +98,9 @@ struct SearchState {
     DEBUG_ONLY(List<str> trace;)
   };
 
-  void rewind(Snapshot s) {
-    val.rewind(s.val);
-    stack = s.stack;
+  void restore(Save s) {
+    A.restore(s.A);
+    val.restore(s.val);
     nodes_used = s.nodes_used;
     clauses_used = s.clauses_used;
     lazy_clauses_used = s.lazy_clauses_used;
@@ -106,10 +108,10 @@ struct SearchState {
     DEBUG_ONLY(trace = s.trace;)
   }
 
-  Snapshot snapshot(){
+  Save save(){
     return {
-      .val = val.snapshot(),
-      .stack = stack,
+      .A = A.save(),
+      .val = val.save(),
       .nodes_used = nodes_used,
       .clauses_used = clauses_used,
       .lazy_clauses_used = lazy_clauses_used,

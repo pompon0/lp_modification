@@ -2,12 +2,12 @@
 #define INDEX_H_
 
 #include <algorithm>
-
 #include "lazyparam_prover/eq_axioms.h"
 #include "lazyparam_prover/syntax/term.h"
 #include "lazyparam_prover/syntax/atom.h"
 #include "lazyparam_prover/syntax/clause.h"
 #include "lazyparam_prover/syntax/show.h"
+#include "lazyparam_prover/memory/stack.h"
 #include "lazyparam_prover/mgu.h"
 #include "lazyparam_prover/ctx.h"
 
@@ -130,14 +130,14 @@ public:
       }
     }
     //for(size_t i=0; i<preindex.size(); ++i) info("preindex[%].size() = %",i,preindex[i].size());
-    
-    Valuation val;
-    auto s1 = val.snapshot();
+    memory::Alloc A;
+    Valuation val(A);
+    auto s1 = val.save();
     for(auto _c1 : and_clauses) {
       // allocate c1
-      val.rewind(s1);
+      val.restore(s1);
       auto c1 = val.allocate(_c1).derived();
-      auto s2 = val.snapshot(); 
+      auto s2 = val.save(); 
       for(size_t i1=0; i1<c1.atom_count(); ++i1) {
         DEBUG info("[%] % ::>",c1.atom(i1).id(),show(c1.atom(i1)));
         auto h = Index::atom_hash(c1.atom(i1));
@@ -148,7 +148,7 @@ public:
           sets.push_back({});
           for(auto x : preindex[h^1]) {
             // allocate c2
-            val.rewind(s2);
+            val.restore(s2);
             auto c2 = val.allocate(and_clauses[x.clause_id]).derived();
             // unify
             if(c1.atom(i1).sign()==c2.atom(x.atom_id).sign()) continue;

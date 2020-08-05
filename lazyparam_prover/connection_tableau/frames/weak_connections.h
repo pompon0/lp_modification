@@ -6,7 +6,7 @@ struct _WeakConnectionsFrame {
   Branch next;
 };
 using WeakConnectionsFrame = Variant<Frame,Frame::WEAK_CONNECTIONS,_WeakConnectionsFrame>;
-void weak_connections(WeakConnectionsFrame f) const { FRAME("weak_connections");
+List<Cont> weak_connections(WeakConnectionsFrame f) const { FRAME("weak_connections");
   state->stats.weak_connections_steps++;
   List<Cont> alts;
   if(!f->atoms.empty()) {
@@ -15,7 +15,7 @@ void weak_connections(WeakConnectionsFrame f) const { FRAME("weak_connections");
     // try to do weak connection for each atom of the clause, or add a != constraint.
     // TODO: add constraints preventing clauses becoming contradictory
     auto atom_hash = Index::atom_hash(a);
-    WeakConnectionsFrame::Builder cb;
+    WeakConnectionsFrame::Builder cb(state->A);
     cb->nodes_limit = f->nodes_limit;
     cb->atoms = f->atoms.tail();
     cb->branches = f->branches;
@@ -27,17 +27,17 @@ void weak_connections(WeakConnectionsFrame f) const { FRAME("weak_connections");
     for(auto b = f->next.true_; !b.empty(); b = b.tail()) {
       if(atom_hash!=Index::atom_hash(b.head())) continue;
       if(!state->val.equal_mod_sign(a,b.head())) continue;
-      alts += tail.build();
+      alts.push(state->A,tail.build());
       return alts;
     }
     // try to unify with path
     if(!a.strong_only()) {
       for(auto b = f->next.false_; !b.empty(); b = b.tail()) {
         if((atom_hash^1)!=Index::atom_hash(b.head())) continue;
-        WeakUnifyFrame::Builder ub;
+        WeakUnifyFrame::Builder ub(state->A);
         ub->a1 = a;
         ub->a2 = b.head();
-        alts += tail.add(Frame(ub.build()).build());
+        alts.push(state->A,tail.add(Frame(ub.build())).build());
       }
     }
     
@@ -46,24 +46,30 @@ void weak_connections(WeakConnectionsFrame f) const { FRAME("weak_connections");
       // add constraints (wrt path)
       if(!a.strong_only()) {
         for(auto b = f->next.false_; !b.empty(); b = b.tail())
-          if(!state->val.push_constraint(OrderAtom::neq(a,b.head()))) return;
+          if(!state->val.push_constraint(OrderAtom::neq(state->A,a,b.head()))) return alts;
       }
-      WeakConnectionsFrame::Builder cb;
+      WeakConnectionsFrame::Builder cb(state->A);
       cb->nodes_limit = f->nodes_limit;
       cb->atoms = f->atoms.tail();
-      cb->branches = Branch{a + f->next.false_, f->next.true_} + f->branches;
+      cb->branches = f->branches.add(state->A,Branch{
+        .false_ = f->next.false_.add(state->A,a),
+        .true_ = f->next.true_,
+      });
       cb->branch_count = f->branch_count + 1;
-      cb->next = Branch { f->next.false_, a + f->next.true_};
-      alts += builder().add(Frame(cb.build())).build();
+      cb->next = Branch {
+        .false_ = f->next.false_,
+        .true_ = f->next.true_.add(state->A,a),
+      };
+      alts.push(state->A,builder().add(Frame(cb.build())).build());
     }
   } else if(f->branch_count) {
-    WeakSetFrame::Builder b;
+    WeakSetFrame::Builder b(state->A);
     b->nodes_limit = f->nodes_limit;
     b->branches = f->branches;
     b->branch_count = f->branch_count;
-    alts += builder().add(Frame(b.build())).build();
+    alts.push(state->A,builder().add(Frame(b.build())).build());
   } else {
-    alts += builder().build();
+    alts.push(state->A,builder().build());
   }
   return alts;
 }

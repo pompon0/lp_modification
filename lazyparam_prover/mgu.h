@@ -18,11 +18,11 @@ struct Valuation {
 private:
   // there is NO cycles in valuation, even x -> x
   RewindArray<Term> val;
-  memory::Alloc *alloc = 0;
-  Valuation() = delete;
+  memory::Alloc *A = 0;
 public:
-  Valuation(memory::Alloc &a) : alloc(&a) {}
-  using Snapshot = RewindArray<Term>::Snapshot;
+  Valuation() {}
+  Valuation(memory::Alloc &_A) : A(&_A) {}
+  using Save = RewindArray<Term>::Save;
   size_t size() const { return val.size(); }
   
   template<typename T> T allocate(T t) {
@@ -32,10 +32,10 @@ public:
     return t;
   }
 
-  Snapshot snapshot(){ return val.snapshot(); }
-  void rewind(Snapshot s){ 
-    val.rewind(s);
-    FRAME("Valuation::rewind(): %",DebugString());
+  Save save(){ return val.save(); }
+  void restore(Save s){ 
+    FRAME("Valuation::restore(): %",DebugString());
+    val.restore(s);
   }
   Maybe<Term> operator[](size_t i){ return val[i]; }
 
@@ -128,9 +128,9 @@ public:
     SCOPE("Valuation::mgu(Atom)");
     if(x.pred()!=y.pred()) return 0;
     DEBUG if(x.arg_count()!=y.arg_count()) error("arg_count() mismatch: %, %",show(x),show(y));
-    auto s = snapshot();
+    auto s = save();
     for(size_t i=x.arg_count(); i--;)
-      if(!mgu(x.arg(i),y.arg(i))){ rewind(s); return 0; }
+      if(!mgu(x.arg(i),y.arg(i))){ restore(s); return 0; }
     return 1;
   }
 
@@ -144,12 +144,12 @@ public:
     switch(t.type()) {
       case Term::VAR: {
         u64 id = Var(t).id();
-        if(auto mv = val[id]) return eval(mv.get()); else return Term(Var(*alloc,id));
+        if(auto mv = val[id]) return eval(mv.get()); else return Term(Var(*A,id));
       }
       case Term::FUN: {
         Fun tf(t);
         size_t ac = tf.arg_count();
-        Fun::Builder b(*alloc,tf.fun(),ac);
+        Fun::Builder b(*A,tf.fun(),ac);
         for(size_t i=0; i<ac; ++i) b.set_arg(i,eval(tf.arg(i)));
         return Term(b.build());
       }
@@ -160,13 +160,13 @@ public:
   // clears offset
   inline Atom eval(Atom a) const { FRAME("eval(%)",show(a));
     size_t ac = a.arg_count();
-    Atom::Builder b(*alloc,a.sign(),a.pred(),ac,a.strong_only());
+    Atom::Builder b(*A,a.sign(),a.pred(),ac,a.strong_only());
     for(size_t i=ac; i--;) b.set_arg(i,eval(a.arg(i)));
     return b.build();
   }
 
   inline AndClause eval(AndClause cla) const { FRAME("eval(%)",show(cla));
-    AndClause::Builder b(*alloc,cla.atom_count());
+    AndClause::Builder b(*A,cla.atom_count());
     for(size_t i=cla.atom_count(); i--;) b.set_atom(i,eval(cla.atom(i)));
     return b.build();
   }
@@ -176,13 +176,13 @@ public:
   }
 
   inline OrderAtom eval(OrderAtom c) const {
-    OrderAtom::Builder b(*alloc,c.rel(),c.pair_count());
+    OrderAtom::Builder b(*A,c.rel(),c.pair_count());
     for(size_t i=c.pair_count(); i--;) b.set_pair(i,eval(c.pair(i)));
     return b.build();
   }
 
   inline DerAndClause eval(DerAndClause cla) const {
-    auto b = cla.to_builder(*alloc);
+    auto b = cla.to_builder(*A);
     b.derived = eval(b.derived);
     for(auto &s : b.sources) s = eval(s);
     for(auto &c : b.constraints) c = eval(c);

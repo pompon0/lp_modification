@@ -16,15 +16,15 @@
 namespace tableau {
 
 struct ParseCtx {
-  Term parse_term(NodeInputStream &s) {
+  Term parse_term(memory::Alloc &A, NodeInputStream &s) {
     FRAME("parse_term()");
     auto n = s.node();
     switch(n.type()){
-      case tptp::TERM_VAR: return Term(Var(n.id()));
+      case tptp::TERM_VAR: return Term(Var(A,n.id()));
       case tptp::TERM_FUN: {
         size_t ac = n.arity();
-        Fun::Builder b(n.id(),ac);
-        for(size_t i=0; i<ac; ++i) b.set_arg(i,parse_term(s));
+        Fun::Builder b(A,n.id(),ac);
+        for(size_t i=0; i<ac; ++i) b.set_arg(i,parse_term(A,s));
         return Term(b.build());
       }
       default:
@@ -32,20 +32,20 @@ struct ParseCtx {
     }
   }
 
-  Atom parse_atom(NodeInputStream &s) {
+  Atom parse_atom(memory::Alloc &A, NodeInputStream &s) {
     FRAME("parse_atom()");
     auto n = s.node();
     switch(n.type()) {
-    case tptp::FORM_NEG: return parse_atom(s).neg();
+    case tptp::FORM_NEG: return parse_atom(A,s).neg();
     case tptp::PRED_EQ: {
-      Term l = parse_term(s);
-      Term r = parse_term(s);
-      return Atom::eq(true,l,r);
+      Term l = parse_term(A,s);
+      Term r = parse_term(A,s);
+      return Atom::eq(A,true,l,r);
     }
     case tptp::PRED: {
       size_t ac = n.arity();
-      Atom::Builder b(true,n.id(),ac,false);
-      for(size_t i=0; i<ac; ++i) b.set_arg(i,parse_term(s));
+      Atom::Builder b(A,true,n.id(),ac,false);
+      for(size_t i=0; i<ac; ++i) b.set_arg(i,parse_term(A,s));
       return b.build();
     }
     default:
@@ -53,7 +53,7 @@ struct ParseCtx {
     }
   }
 
-  OrClause parse_orClause(NodeInputStream &s) {
+  OrClause parse_orClause(memory::Alloc &A, NodeInputStream &s) {
     FRAME("parse_orClause(%)",show(s));
     size_t arity = 0;
     switch(s.node_peek().type()) {
@@ -61,12 +61,12 @@ struct ParseCtx {
       case tptp::FORM_FALSE: { s.node(); arity = 0; break; }
       default: { arity = 1; break; }
     }
-    AndClause::Builder b(arity);
-    for(size_t i=0; i<arity; ++i) b.set_atom(i,parse_atom(s).neg());
+    AndClause::Builder b(A,arity);
+    for(size_t i=0; i<arity; ++i) b.set_atom(i,parse_atom(A,s).neg());
     return b.build().neg();
   }
 
-  OrForm parse_orForm(const tptp::File &file) {
+  OrForm parse_orForm(memory::Alloc &A, const tptp::File &file) {
     OrForm form;
     NodeIndex idx(file.nodes());
     FRAME("parse_orForm() idx = %",show(idx));
@@ -78,8 +78,8 @@ struct ParseCtx {
       case tptp::Input::PLAIN:
       case tptp::Input::NEGATED_CONJECTURE: {
         NodeInputStream s(idx,input.formula());
-        OrClause cla = parse_orClause(s);
-        form.and_clauses.push_back(DerAndClause(cla.atom_count()>1,cla.neg()));
+        OrClause cla = parse_orClause(A,s);
+        form.and_clauses.push_back(DerAndClause(A,cla.atom_count()>1,cla.neg()));
         break;
       }
       default:
@@ -130,7 +130,7 @@ struct ProtoCtx {
     for(size_t i=0; i<cla.atom_count(); ++i) proto_atom(s,cla.atom(i));
   }
 
-  solutions::Derivation proto_derAndClause(const DerAndClause &cla, const Valuation &val) { FRAME("proto_derAndClause()");
+  solutions::Derivation proto_derAndClause(memory::Alloc &A, const DerAndClause &cla, const Valuation &val) { FRAME("proto_derAndClause()");
     solutions::Derivation d;
     d.set_cost(cla.cost());
     auto derived = d.mutable_derived();
@@ -138,7 +138,7 @@ struct ProtoCtx {
     derived->set_role(tptp::Input::PLAIN);
     derived->set_language(tptp::Input::CNF);
     NodeStream s;
-    proto_orClause(s,ground(val.eval(cla.derived())).neg());
+    proto_orClause(s,ground(A,val.eval(cla.derived())).neg());
     derived->mutable_formula()->Add(s.stream.begin(),s.stream.end());
     for(size_t i=0; i<cla.source_count(); ++i) {
       auto ps = d.add_sources();
@@ -147,7 +147,7 @@ struct ProtoCtx {
       pg->set_role(tptp::Input::PLAIN);
       pg->set_language(tptp::Input::CNF);
       NodeStream gs;
-      proto_orClause(gs,ground(val.eval(cla.source(i))).neg());
+      proto_orClause(gs,ground(A,val.eval(cla.source(i))).neg());
       pg->mutable_formula()->Add(gs.stream.begin(),gs.stream.end());
       auto pss = ps->mutable_source();
       NodeStream ss;
@@ -160,12 +160,12 @@ struct ProtoCtx {
     return d;
   }
 
-  solutions::Proof proto_Proof(const OrForm &f, const Valuation &val) { FRAME("proto_Proof");
+  solutions::Proof proto_Proof(memory::Alloc &A, const OrForm &f, const Valuation &val) { FRAME("proto_Proof");
     solutions::Proof proof;
     size_t i=0;
     for(const auto &cla : f.and_clauses) {
       auto pcla = proof.add_clauses();
-      *pcla = proto_derAndClause(cla,val);
+      *pcla = proto_derAndClause(A,cla,val);
       pcla->mutable_derived()->set_name(util::fmt("a%",i++));
     }
     proof.mutable_nodes()->CopyFrom(idx.nodes);

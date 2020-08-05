@@ -13,29 +13,29 @@ namespace tableau {
 namespace lpmod {
 
 // a = b /\ b = c /\ a != c
-inline AndClause neg_trans_axiom(Term a, Term b, Term c) {
-  return AndClause::make(
-    Atom::eq(true,a,b),
-    Atom::eq(true,b,c),
-    Atom::eq(false,a,c)
+inline AndClause neg_trans_axiom(memory::Alloc &A, Term a, Term b, Term c) {
+  return AndClause::make(A,
+    Atom::eq(A,true,a,b),
+    Atom::eq(A,true,b,c),
+    Atom::eq(A,false,a,c)
   );
 }
 
 // a = b /\ b != a
-inline AndClause neg_symm_axiom(Term a, Term b) {
-  return AndClause::make(
-    Atom::eq(true,a,b),
-    Atom::eq(false,b,a)
+inline AndClause neg_symm_axiom(memory::Alloc &A, Term a, Term b) {
+  return AndClause::make(A,
+    Atom::eq(A,true,a,b),
+    Atom::eq(A,false,b,a)
   );
 }
 
 // a != a
-inline AndClause neg_refl_axiom(Term a) {
-  return AndClause::make(Atom::eq(false,a,a));
+inline AndClause neg_refl_axiom(memory::Alloc &A, Term a) {
+  return AndClause::make(A,Atom::eq(A,false,a,a));
 }
 
-inline Atom red(bool sign, Term f, Term w) {
-  Atom::Builder b(sign,Atom::EQ_TRANS_POS,2,false);
+inline Atom red(memory::Alloc &A, bool sign, Term f, Term w) {
+  Atom::Builder b(A,sign,Atom::EQ_TRANS_POS,2,false);
   b.set_arg(0,f);
   b.set_arg(1,w);
   return b.build();
@@ -66,47 +66,47 @@ struct VarMap {
     }
   }
 
-  AndClause map(AndClause cla) {
+  AndClause map(memory::Alloc &A, AndClause cla) {
     size_t n = cla.atom_count();
-    AndClause::Builder b(n);
-    for(size_t i=n; i--;) b.set_atom(i,map(cla.atom(i)));
+    AndClause::Builder b(A,n);
+    for(size_t i=n; i--;) b.set_atom(i,map(A,cla.atom(i)));
     return b.build();
   }
-  Atom map(Atom a) {
-    Atom::Builder b(a.sign(),a.pred(),a.arg_count(),a.strong_only());
-    for(size_t i=a.arg_count(); i--;) b.set_arg(i,map(a.arg(i)));
+  Atom map(memory::Alloc &A, Atom a) {
+    Atom::Builder b(A,a.sign(),a.pred(),a.arg_count(),a.strong_only());
+    for(size_t i=a.arg_count(); i--;) b.set_arg(i,map(A,a.arg(i)));
     return b.build();
   }
-  Term map(Term t) {
+  Term map(memory::Alloc &A, Term t) {
     switch(t.type()) {
       case Term::VAR: {
         Var v(t);
         DEBUG if(v.id()>=V.size()) error("unknown variable");
-        return Term(Var(V[v.id()]));
+        return Term(Var(A,V[v.id()]));
       }
       case Term::FUN: {
         Fun f(t);
-        Fun::Builder b(f.fun(),f.arg_count());
-        for(size_t i=f.arg_count(); i--;) b.set_arg(i,map(f.arg(i)));
+        Fun::Builder b(A,f.fun(),f.arg_count());
+        for(size_t i=f.arg_count(); i--;) b.set_arg(i,map(A,f.arg(i)));
         return Term(b.build());
       }
       default: error("t.type() = %",t.type());
     }
   }
-  OrderAtom::TermPair map(OrderAtom::TermPair p) { return {map(p.a),map(p.b)}; }
-  OrderAtom map(OrderAtom c) {
-    OrderAtom::Builder b(c.rel(),c.pair_count());
-    for(size_t i=c.pair_count(); i--;) b.set_pair(i,map(c.pair(i)));
+  OrderAtom::TermPair map(memory::Alloc &A, OrderAtom::TermPair p) { return {map(A,p.a),map(A,p.b)}; }
+  OrderAtom map(memory::Alloc &A, OrderAtom c) {
+    OrderAtom::Builder b(A,c.rel(),c.pair_count());
+    for(size_t i=c.pair_count(); i--;) b.set_pair(i,map(A,c.pair(i)));
     return b.build();
   }
 };
 
-DerAndClause reduce_vars(DerAndClause cla) {
+DerAndClause reduce_vars(memory::Alloc &A, DerAndClause cla) {
   VarMap M(cla);
-  auto b = cla.to_builder();
-  b.derived = M.map(b.derived);
-  for(auto &s : b.sources) s = M.map(s);
-  for(auto &c : b.constraints) c = M.map(c);
+  auto b = cla.to_builder(A);
+  b.derived = M.map(A,b.derived);
+  for(auto &s : b.sources) s = M.map(A,s);
+  for(auto &c : b.constraints) c = M.map(A,c);
   return b.build();
 }
 
@@ -115,22 +115,22 @@ struct SplitBuilder {
   vec<Atom> atoms;
   vec<AndClause> source;
   vec<OrderAtom> constraints;
-  DerAndClause out() { FRAME("out");
-    DerAndClause::Builder b;
+  DerAndClause out(memory::Alloc &A) { FRAME("out");
+    DerAndClause::Builder b(A);
     b.cost = cost;
-    AndClause::Builder db(atoms.size());
+    AndClause::Builder db(A,atoms.size());
     for(size_t i = atoms.size(); i--;) db.set_atom(i,atoms[i]);
     b.derived = db.build();
     b.sources = source;
     b.constraints = constraints;
-    return reduce_vars(val.eval(b.build()));
+    return reduce_vars(A,val.eval(b.build()));
   }
 
   vec<DerAndClause> extra;
   Valuation val;
   u64 next_pred;
 
-  SplitBuilder(DerAndClause cla, u64 _next_pred) { FRAME("SplitBuilder");
+  SplitBuilder(memory::Alloc &A, DerAndClause cla, u64 _next_pred) { FRAME("SplitBuilder");
     next_pred = _next_pred;
     cla = val.allocate(cla);
     cost = cla.cost();
@@ -147,7 +147,7 @@ struct SplitBuilder {
       auto r = a.arg(1);
       if(l.type()==Term::VAR) {
         std::swap(l,r);
-        source.push_back(a.sign() ? neg_symm_axiom(l,r) : neg_symm_axiom(r,l));
+        source.push_back(a.sign() ? neg_symm_axiom(A,l,r) : neg_symm_axiom(A,r,l));
       }
       if(a.sign()) {
         if(l.type()==Term::VAR) {
@@ -157,18 +157,18 @@ struct SplitBuilder {
         } else if(r.type()==Term::VAR) { 
           // f(x)=y /\ C
           // ==> f(x)->y /\ C  [f(x)>=y]
-          atoms.push_back(red(true,l,r));
-          constraints.push_back(OrderAtom(OrderAtom::LE,r,l));
+          atoms.push_back(red(A,true,l,r));
+          constraints.push_back(OrderAtom(A,OrderAtom::LE,r,l));
         } else {
           // f(x)=g(y) /\ C
           // ==> f(x)->w /\ g(y)->w /\ C  [f(x)>=w /\ g(y)>=w]
-          Term w(val.allocate(Var(0)));
-          atoms.push_back(red(true,l,w));
-          atoms.push_back(red(true,r,w));
-          constraints.push_back(OrderAtom(OrderAtom::LE,w,l));
-          constraints.push_back(OrderAtom(OrderAtom::LE,w,r));
-          source.push_back(neg_trans_axiom(l,w,r));
-          source.push_back(neg_symm_axiom(r,w));
+          Term w(val.allocate(Var(A,0)));
+          atoms.push_back(red(A,true,l,w));
+          atoms.push_back(red(A,true,r,w));
+          constraints.push_back(OrderAtom(A,OrderAtom::LE,w,l));
+          constraints.push_back(OrderAtom(A,OrderAtom::LE,w,r));
+          source.push_back(neg_trans_axiom(A,l,w,r));
+          source.push_back(neg_symm_axiom(A,r,w));
         }
       } else {
         if(l.type()==Term::VAR) {
@@ -179,23 +179,23 @@ struct SplitBuilder {
           // ==> -T(x,y) /\ C
           // ==> T(x,y) /\ x-/>y  [x>y]
           // ==> T(x,y) /\ y-/>x  [y>x]
-          Atom a(false,next_pred++,{l,r});
+          Atom a(A,false,next_pred++,{l,r});
           a = a.set_strong_only();
           atoms.push_back(a);
 
           {
-            DerAndClause::Builder c1;
+            DerAndClause::Builder c1(A);
             c1.cost = 1;
-            c1.derived = AndClause::make(a.neg(),red(false,l,r));
-            c1.constraints.push_back(OrderAtom(OrderAtom::G,l,r));
-            extra.push_back(reduce_vars(c1.build()));
+            c1.derived = AndClause::make(A,a.neg(),red(A,false,l,r));
+            c1.constraints.push_back(OrderAtom(A,OrderAtom::G,l,r));
+            extra.push_back(reduce_vars(A,c1.build()));
           } {
-            DerAndClause::Builder c2;
+            DerAndClause::Builder c2(A);
             c2.cost = 1;
-            c2.derived = AndClause::make(a.neg(),red(false,r,l));
-            c2.constraints = {OrderAtom(OrderAtom::G,r,l)};
-            c2.sources.push_back(neg_symm_axiom(l,r));
-            extra.push_back(reduce_vars(c2.build()));
+            c2.derived = AndClause::make(A,a.neg(),red(A,false,r,l));
+            c2.constraints = {OrderAtom(A,OrderAtom::G,r,l)};
+            c2.sources.push_back(neg_symm_axiom(A,l,r));
+            extra.push_back(reduce_vars(A,c2.build()));
           }
         } else if(r.type()==Term::VAR) {
           // f(x)!=y /\ C
@@ -204,33 +204,33 @@ struct SplitBuilder {
           // ==> T(x,y) /\ y-/>w /\ f(x)->w  [y>w /\ f(x)>=w]
           Fun lf(l);
           size_t lc = lf.arg_count();
-          Atom::Builder b(false,next_pred++,lc+1,true);
+          Atom::Builder b(A,false,next_pred++,lc+1,true);
           for(size_t i=lc; i--;) b.set_arg(i,lf.arg(i));
           b.set_arg(lc,r);
           auto a = b.build();
           atoms.push_back(a);
 
           {
-            DerAndClause::Builder c1;
+            DerAndClause::Builder c1(A);
             c1.cost = 1;
-            c1.derived = AndClause::make(a.neg(),red(false,l,r));
-            c1.constraints = {OrderAtom(OrderAtom::G,l,r)};
-            extra.push_back(reduce_vars(c1.build()));
+            c1.derived = AndClause::make(A,a.neg(),red(A,false,l,r));
+            c1.constraints = {OrderAtom(A,OrderAtom::G,l,r)};
+            extra.push_back(reduce_vars(A,c1.build()));
           }
           {
-            DerAndClause::Builder c2;
+            DerAndClause::Builder c2(A);
             c2.cost = 1;
-            Term w(val.allocate(Var(0)));
-            c2.derived = AndClause::make(a.neg(),red(false,r,w),red(true,l,w));
+            Term w(val.allocate(Var(A,0)));
+            c2.derived = AndClause::make(A,a.neg(),red(A,false,r,w),red(A,true,l,w));
             c2.constraints = {
-              OrderAtom(OrderAtom::G,r,w),
-              OrderAtom(OrderAtom::LE,w,l),
+              OrderAtom(A,OrderAtom::G,r,w),
+              OrderAtom(A,OrderAtom::LE,w,l),
             };
             c2.sources = {
-              neg_trans_axiom(r,l,w),
-              neg_symm_axiom(l,r),
+              neg_trans_axiom(A,r,l,w),
+              neg_symm_axiom(A,l,r),
             };
-            extra.push_back(reduce_vars(c2.build()));
+            extra.push_back(reduce_vars(A,c2.build()));
           }
         } else {
           // f(x)!=g(y) /\ C
@@ -239,37 +239,37 @@ struct SplitBuilder {
           // ==> T(x,y) /\ g(y)-/>w /\ f(x)->w  [g(y)>w /\ f(x)>=w]
           Fun lf(l), rf(r);
           size_t lc = lf.arg_count(), rc = rf.arg_count();
-          Atom::Builder b(false,next_pred++,lc+rc,true);
+          Atom::Builder b(A,false,next_pred++,lc+rc,true);
           for(size_t i=0; i<lc; ++i) b.set_arg(i,lf.arg(i));
           for(size_t i=0; i<rc; ++i) b.set_arg(lc+i,rf.arg(i));
           auto a = b.build();
           atoms.push_back(a);
 
           { FRAME("T(x,y) /\\ f(x)-/>w /\\ g(y)->w");
-            DerAndClause::Builder c1;
+            DerAndClause::Builder c1(A);
             c1.cost = 1;
-            Term w(val.allocate(Var(0)));
-            c1.derived = AndClause::make(a.neg(),red(false,l,w),red(true,r,w));
+            Term w(val.allocate(Var(A,0)));
+            c1.derived = AndClause::make(A,a.neg(),red(A,false,l,w),red(A,true,r,w));
             c1.constraints = {
-              OrderAtom(OrderAtom::G,l,w),
-              OrderAtom(OrderAtom::LE,w,r),
+              OrderAtom(A,OrderAtom::G,l,w),
+              OrderAtom(A,OrderAtom::LE,w,r),
             };
-            c1.sources = {neg_trans_axiom(l,r,w)};
-            extra.push_back(reduce_vars(c1.build()));
+            c1.sources = {neg_trans_axiom(A,l,r,w)};
+            extra.push_back(reduce_vars(A,c1.build()));
           } { FRAME("T(x,y) /\\ g(y)-/>w /\\ f(x)->w"); 
-            DerAndClause::Builder c2;
+            DerAndClause::Builder c2(A);
             c2.cost = 1;
-            Term w(val.allocate(Var(0)));
-            c2.derived = AndClause::make(a.neg(),red(true,l,w),red(false,r,w));
+            Term w(val.allocate(Var(A,0)));
+            c2.derived = AndClause::make(A,a.neg(),red(A,true,l,w),red(A,false,r,w));
             c2.constraints = {
-              OrderAtom(OrderAtom::G,r,w),
-              OrderAtom(OrderAtom::LE,w,l),
+              OrderAtom(A,OrderAtom::G,r,w),
+              OrderAtom(A,OrderAtom::LE,w,l),
             };
             c2.sources = {
-              neg_trans_axiom(r,l,w),
-              neg_symm_axiom(l,r),
+              neg_trans_axiom(A,r,l,w),
+              neg_symm_axiom(A,l,r),
             };
-            extra.push_back(reduce_vars(c2.build()));
+            extra.push_back(reduce_vars(A,c2.build()));
           }
         }
       }
@@ -277,26 +277,26 @@ struct SplitBuilder {
   }
 };
 
-OrForm conv(OrForm f) { FRAME("lazy::conv");
+OrForm conv(memory::Alloc &A, OrForm f) { FRAME("lazy::conv");
   //info("before =\n%\n",show(f));
   ArityCtx ac; ac.traverse(f);
-  f = flatten_OrForm(f);
+  f = flatten_OrForm(A,f);
   //info("flattened =\n%\n",show(f));
   OrForm f2;
   u64 next_pred = 0;
   for(auto &p : ac.pred_count) if(p.first<Atom::PRED_MIN && p.first>=next_pred) next_pred = p.first+1;
   for(auto &c : f.and_clauses) {
-    SplitBuilder b(c,next_pred);
-    f2.and_clauses.push_back(b.out());
+    SplitBuilder b(A,c,next_pred);
+    f2.and_clauses.push_back(b.out(A));
     f2.and_clauses.insert(f2.and_clauses.end(),b.extra.begin(),b.extra.end());
     next_pred = b.next_pred;
   }
   // ==> x-/>x
-  DerAndClause::Builder refl;
+  DerAndClause::Builder refl(A);
   refl.cost = 0;
-  Term x(Var(0));
-  refl.derived = AndClause::make(red(false,x,x));
-  refl.sources = {neg_refl_axiom(x)};
+  Term x(Var(A,0));
+  refl.derived = AndClause::make(A,red(A,false,x,x));
+  refl.sources = {neg_refl_axiom(A,x)};
   f2.and_clauses.push_back(refl.build());
   //info("after =\n%\n",show(f2));
   return f2; 

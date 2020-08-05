@@ -36,7 +36,7 @@ public:
   private:
     u8 *ptr;
   public:
-    template<typename Alloc> Builder(Alloc &a, size_t _atom_count) : ptr(ATOMS::alloc(a,_atom_count)) {
+    Builder(memory::Alloc &A, size_t _atom_count) : ptr(ATOMS::alloc(A,_atom_count)) {
       VAR_RANGE::ref(ptr) = {0,0};
     }
     void set_atom(size_t i, Atom a) { FRAME("AndClause0.Builder.set_atom()");

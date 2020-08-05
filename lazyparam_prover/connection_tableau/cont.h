@@ -49,30 +49,30 @@ struct Cont {
     friend Variant<Frame,MIN_COST,_MinCostFrame>;
   };
  
-  SearchState::Snapshot snapshot;
+  SearchState::Save save;
   SearchState *state;
   List<Frame> frames;
   bool done(){ return frames.empty(); }
-
-  Builder builder(){ return Builder{state,frames}; }
 
   struct Builder {
     SearchState *state;
     List<Frame> frames;
   public:
-    Builder add(Frame f){ return Builder{state,f+frames}; }
-    Cont build() {
+    [[nodiscard]] Builder add(Frame f){ return Builder{state,frames.add(state->A,f)}; }
+    [[nodiscard]] Cont build() {
       return Cont {
+        .save = state->save(),
         .state = state,
-        .snapshot = state->snapshot(),
         .frames = frames,
       };
     }
   };
+  
+  [[nodiscard]] Builder builder() const { return Builder{state,frames}; }
 
-  List<Cont> run() const { FRAME("run");
+  [[nodiscard]] List<Cont> run() const { FRAME("run");
     DEBUG if(frames.empty()) error("frames.empty()");
-    state->rewind(snapshot);
+    state->restore(save);
     auto f = frames.head();
     switch(f.type()) {
       case Frame::START: return start(StartFrame(f));
@@ -80,8 +80,8 @@ struct Cont {
       case Frame::WEAK_CONNECTIONS: return weak_connections(WeakConnectionsFrame(f));
       case Frame::WEAK_SET: return weak_set(WeakSetFrame(f));
       case Frame::WEAK: return weak(WeakFrame(f));
-      case Frame::WEAK_UNIFY: return weak_unify(WeakUnifyFrame(f),alts);
-      case Frame::MIN_COST: return min_cost(MinCostFrame(f),alts);
+      case Frame::WEAK_UNIFY: return weak_unify(WeakUnifyFrame(f));
+      case Frame::MIN_COST: return min_cost(MinCostFrame(f));
       default: error("f.type() = %",f.type());
     }
   }

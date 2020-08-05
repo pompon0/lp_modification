@@ -83,9 +83,9 @@ namespace tableau {
 //  V(X) = V(Y)  =>  V(a_1) = V(b_1) and V(a_2) < V(b_2)  => V(a) < V(b)
 //  V(X) >LPO V(Y)  =>  V(a) < V(b_2)  =>  V(a) < V(b)
 struct LPO {
-  struct Snapshot {};
-  Snapshot snapshot(){ return {}; };
-  void rewind(Snapshot){}
+  struct Save {};
+  Save save(){ return {}; };
+  void restore(Save){}
   void resize(size_t){}
 
   OrderAtom::Relation cmp(const Valuation &val, Term l, Term r) { return Ctx(val,fun_ord)(l,r); }

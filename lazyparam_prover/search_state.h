@@ -15,7 +15,7 @@
   #define STATE_FRAME(state,args...)\
     auto _msg = util::fmt(args);\
     util::Frame _(VERBOSE,args);\
-    state.trace += _msg;
+    state->trace.push(state->A,_msg);
 #else
   #define STATE_FRAME(state,args...)
 #endif

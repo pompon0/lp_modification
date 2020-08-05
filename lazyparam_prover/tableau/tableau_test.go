@@ -26,6 +26,7 @@ func TestTransformations(t *testing.T) {
       k,v := k,v
       testName := fmt.Sprintf("case (%v,%q)",trans,k)
       t.Run(testName,func(t *testing.T) {
+        t.Parallel()
         log.Printf("[%s]",testName)
         out,err := Prove(ctx,v,nil,ppb.Method_UNKNOWN_METHOD,trans,true)
         if err!=nil { t.Fatalf("Tableau(%q): %v",k,err) }
@@ -59,6 +60,9 @@ func TestTableau(t *testing.T) {
       k,v := k,v
       testName := fmt.Sprintf("case (%v,%q)",p,k)
       t.Run(testName,func(t *testing.T) {
+        t.Parallel()
+        ctx,cancel := context.WithTimeout(ctx,3*time.Second)
+        defer cancel()
         log.Printf("[%s]",testName)
         proveCtx,cancel := context.WithTimeout(ctx,10*time.Second)
         defer cancel()

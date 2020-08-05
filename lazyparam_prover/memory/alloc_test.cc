@@ -12,7 +12,7 @@ TEST(RewindArray,simple) {
   RewindArray<int> a;
   a.resize(3);
   a.set(1,5);
-  auto s = a.snapshot();
+  auto s = a.save();
   a.resize(5);
   a.set(4,7);
   a.set(2,6);
@@ -22,7 +22,7 @@ TEST(RewindArray,simple) {
   ASSERT_EQ(a[2],Maybe<int>(6));
   ASSERT_EQ(a[3],Maybe<int>());
   ASSERT_EQ(a[4],Maybe<int>(7));
-  a.rewind(s);
+  a.restore(s);
   ASSERT_EQ(a.size(),3);
   ASSERT_EQ(a[0],Maybe<int>());
   ASSERT_EQ(a[1],Maybe<int>(5));

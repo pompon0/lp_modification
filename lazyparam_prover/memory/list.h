@@ -19,11 +19,11 @@ public:
   List(memory::Alloc &A, E h) : List(A,h,List()) {}
   
   bool empty() const { return !ptr; }
-  const E head() const {
+  const E head() const { FRAME("head()");
     DEBUG if(empty()) error("<0>.head()");
     return ptr->head;
   }
-  const List<E> tail() const {
+  const List<E> tail() const { FRAME("tail");
     DEBUG if(empty()) error("<0>.tail()");
     return List(ptr->tail);
   }

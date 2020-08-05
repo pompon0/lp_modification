@@ -1,5 +1,5 @@
-//#define DEBUG_MODE
-//#define VERBOSE
+#define DEBUG_MODE
+#define VERBOSE
 //#define PROFILE
 
 #include <csignal>

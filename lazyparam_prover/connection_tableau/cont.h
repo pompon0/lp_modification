@@ -19,9 +19,20 @@
 
 namespace tableau::connection_tableau {
 
-struct Cont { 
-  using State = SearchState;
- 
+struct State {
+private:
+  struct Cont { 
+    SearchState::Save save;
+    List<Frame> frames;
+  };
+  List<Cont> conts;
+  List<Frame> todo_;
+public:
+  SearchState state;
+  List<Frame> todo(){ return todo_; }
+  bool fail(){ return conts.empty(); }
+  bool success(){ return conts.head().frames.empty(); }
+
   struct _StartFrame;
   struct _StrongFrame;
   struct _WeakConnectionsFrame;
@@ -48,32 +59,11 @@ struct Cont {
     friend Variant<Frame,WEAK_UNIFY,_WeakUnifyFrame>;
     friend Variant<Frame,MIN_COST,_MinCostFrame>;
   };
- 
-  SearchState::Save save;
-  SearchState *state;
-  List<Frame> frames;
-  bool done(){ return frames.empty(); }
-
-  struct Builder {
-    SearchState *state;
-    List<Frame> frames;
-  public:
-    [[nodiscard]] Builder add(Frame f){ return Builder{state,frames.add(state->A,f)}; }
-    [[nodiscard]] Cont build() {
-      return Cont {
-        .save = state->save(),
-        .state = state,
-        .frames = frames,
-      };
-    }
-  };
   
-  [[nodiscard]] Builder builder() const { return Builder{state,frames}; }
-
-  [[nodiscard]] List<Cont> run() const { FRAME("run");
-    DEBUG if(frames.empty()) error("frames.empty()");
-    state->restore(save);
-    auto f = frames.head();
+  void run() { FRAME("run");
+    state->restore(conts.head().save);
+    auto f = conts.head().frames.head();
+    todo_ = conts.head().frames.tail();
     switch(f.type()) {
       case Frame::START: return start(StartFrame(f));
       case Frame::STRONG: return strong(StrongFrame(f));
@@ -84,6 +74,10 @@ struct Cont {
       case Frame::MIN_COST: return min_cost(MinCostFrame(f));
       default: error("f.type() = %",f.type());
     }
+  }
+
+  void push(List<Frame> frames) {
+    conts.push(state->A,Cont{frames,state->save()});
   }
 #include "lazyparam_prover/connection_tableau/frames/start.h"
 #include "lazyparam_prover/connection_tableau/frames/strong.h"

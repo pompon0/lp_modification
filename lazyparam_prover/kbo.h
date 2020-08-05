@@ -24,9 +24,9 @@ private:
 public:
   KBO(const FunOrd &_fun_ord) : fun_ord(_fun_ord) {}
 
-  struct Snapshot { size_t var_occ_size; };
-  Snapshot snapshot(){ return {var_occ.size()}; }
-  void rewind(Snapshot s){ var_occ.resize(s.var_occ_size,0); }
+  struct Save { size_t var_occ_size; };
+  Save save(){ return {var_occ.size()}; }
+  void restore(Save s){ var_occ.resize(s.var_occ_size,0); }
   inline void resize(size_t n) { var_occ.resize(n,0); }
 
   inline Res cmp(const Valuation &val, Term l, Term r) { FRAME("KBO.cmp()");

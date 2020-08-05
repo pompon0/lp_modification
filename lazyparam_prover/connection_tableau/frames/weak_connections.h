@@ -6,7 +6,7 @@ struct _WeakConnectionsFrame {
   Branch next;
 };
 using WeakConnectionsFrame = Variant<Frame,Frame::WEAK_CONNECTIONS,_WeakConnectionsFrame>;
-List<Cont> weak_connections(WeakConnectionsFrame f) const { FRAME("weak_connections");
+List<Cont> weak_connections(WeakConnectionsFrame f) const { FRAME("weak_connections :: len(atoms)==% branch_count==%",f->atoms.size(),f->branch_count);
   state->stats.weak_connections_steps++;
   List<Cont> alts;
   if(!f->atoms.empty()) {

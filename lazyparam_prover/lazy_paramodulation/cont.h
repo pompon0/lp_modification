@@ -76,7 +76,10 @@ struct Cont {
   SearchState::Save save;
   SearchState *state;
   List<Frame> frames;
-  bool done(){ return frames.empty(); }
+  bool done(){ 
+    FRAME("done() :: %, frames.size() = %",frames.empty(),frames.size());
+    return frames.empty();
+  }
 
   struct Builder {
     SearchState *state;
@@ -92,7 +95,7 @@ struct Cont {
     }
   };
   
-  [[nodiscard]] Builder builder() const { return Builder{state,frames}; }
+  [[nodiscard]] Builder builder() const { return Builder{state,frames.tail()}; }
 
   [[nodiscard]] List<Cont> run() const { FRAME("run");
     DEBUG if(frames.empty()) error("frames.empty()");

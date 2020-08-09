@@ -35,6 +35,7 @@ import (
 var workerAddr = flag.String("worker_addr","worker-su5lpnpdhq-uc.a.run.app:443","worker service address")
 
 var reportDir = flag.String("report_dir","","")
+var verboseLogPath = flag.String("verbose_log_path","/tmp/master.log","")
 
 var maxInFlight = flag.Int("max_in_flight",10,"")
 var problemLimit = flag.Int("problem_limit",-1,"number of problems to solve (-1 for all problems)")
@@ -126,12 +127,15 @@ func run(ctx context.Context) error {
     prob = x
   case problemSetTptp:
     x,cancel,err := problems.TptpProblems()
-    if err!=nil { return fmt.Errorf("problems.TptpProblems(): %v",err) }
+    if err!=nil { return fmt.Errorf("problems.TptpProblems(): %w",err) }
     defer cancel()
     prob = x
   default:
     return fmt.Errorf("unknown problem set %q",*problemSet)
   }
+
+  vlog,err := os.Create(*verboseLogPath)
+  if err!=nil { return fmt.Errorf("os.Create(): %w",err) }
 
   resultsChan := make(chan *spb.Case,1000)
   group,gCtx := errgroup.WithContext(ctx)
@@ -230,6 +234,9 @@ func run(ctx context.Context) error {
         if r==nil {
           filteredCount++
           continue
+        }
+        if _,err:=vlog.WriteString(fmt.Sprintf("%+v\n",r)); err!=nil {
+          return fmt.Errorf("vlog.WriteString(): %w",err)
         }
         report.Cases = append(report.Cases, r)
         if !r.Output.Solved {

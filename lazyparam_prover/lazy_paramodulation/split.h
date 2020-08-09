@@ -76,7 +76,7 @@ struct ApClause : Lazy<DerAndClause>::Impl {
       t0 = s0;
       t1 = s1;
     }
-    return b.build();
+    return b.build(A);
   }
 };
 

@@ -131,7 +131,7 @@ public:
     }
     //for(size_t i=0; i<preindex.size(); ++i) info("preindex[%].size() = %",i,preindex[i].size());
     memory::Alloc A;
-    Valuation val(A);
+    Valuation val;
     auto s1 = val.save();
     for(auto _c1 : and_clauses) {
       // allocate c1

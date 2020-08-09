@@ -14,7 +14,7 @@ TEST(KBO,reduction_ordering) {
 TEST(KBO,simple) {
   StreamLogger _(std::cerr);
   memory::Alloc A;
-  ConstrainedValuation<KBO> kbo(A);
+  ConstrainedValuation<KBO> kbo;
   Term x(kbo.allocate(Var(A,0)));
   Term y(kbo.allocate(Var(A,0)));
   auto f = [&A](auto ...a){ return Term(Fun(A,0,{a...})); };

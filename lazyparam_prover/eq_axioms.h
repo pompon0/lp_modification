@@ -126,7 +126,7 @@ OrForm add_refl_constraints(memory::Alloc &A, OrForm f) {
         b.constraints.push_back(OrderAtom(A,OrderAtom::NE,a.arg(0),a.arg(1)));
       }
     }
-    c = b.build();
+    c = b.build(A);
   }
   return f;
 }
@@ -153,38 +153,37 @@ OrForm append_eq_axioms(memory::Alloc &A, OrForm _f) {
 /////////////////////////////////////////////////////////////////////////////
 
 struct FlatClauseBuilder {
-  memory::Alloc *A;
   size_t var_count;
   vec<Atom> atoms;
   vec<AndClause> source_clauses;
   size_t cost;
 
-  FlatClauseBuilder(memory::Alloc &_A, DerAndClause cla) : A(&_A) {
+  FlatClauseBuilder(memory::Alloc &A, DerAndClause cla) {
     cost = cla.cost();
     var_count = cla.derived().var_range().end;
     for(size_t i=0; i<cla.source_count(); i++) {
       source_clauses.push_back(cla.source(i));
     }
     auto d = cla.derived();
-    for(size_t i=d.atom_count(); i--;) flatten_Atom(d.atom(i));
+    for(size_t i=d.atom_count(); i--;) flatten_Atom(A,d.atom(i));
   }
 
-  Var introduce_var(Term t) {
+  Var introduce_var(memory::Alloc &A, Term t) {
     switch(t.type()) {
       case Term::VAR: {
-        source_clauses.push_back(AndClause::make(*A,Atom::eq(*A,false,t,t)));
+        source_clauses.push_back(AndClause::make(A,Atom::eq(A,false,t,t)));
         return Var(t);
       }
       case Term::FUN: {
         Fun fa(t);
-        Fun fv = flatten_Term(fa);
+        Fun fv = flatten_Term(A,fa);
         // (f(a1..an)!=f(v1..vn)) (f(a1..an)=f(v1..vn) /\ f(v1..vn)=x /\ f(a1..an)!=x)
         // -> (f(v1..vn)=x /\ f(a1..an)!=x)
-        Var x(*A,var_count++);
-        auto fa_fv = Atom::eq(*A,true,Term(fa),Term(fv));
-        auto fv_x = Atom::eq(*A,true,Term(fv),Term(x));
-        auto fa_x = Atom::eq(*A,true,Term(fa),Term(x));
-        source_clauses.push_back(AndClause::make(*A,fa_fv,fv_x,fa_x.neg()));
+        Var x(A,var_count++);
+        auto fa_fv = Atom::eq(A,true,Term(fa),Term(fv));
+        auto fv_x = Atom::eq(A,true,Term(fv),Term(x));
+        auto fa_x = Atom::eq(A,true,Term(fa),Term(x));
+        source_clauses.push_back(AndClause::make(A,fa_fv,fv_x,fa_x.neg()));
         atoms.push_back(fv_x);
         return x;
       }
@@ -192,51 +191,51 @@ struct FlatClauseBuilder {
     }
   }
 
-  Fun flatten_Term(Fun fa) {
+  Fun flatten_Term(memory::Alloc &A, Fun fa) {
     // (a1!=v1)..(an!=vn)
     // (a1=v1 /\../\ an=vn /\ f(a1..an)!=f(v1..vn))
     // -> (f(a1..an)!=f(v1..vn))
     size_t n = fa.arg_count();
-    AndClause::Builder b(*A,n+1);
-    Fun::Builder fb(*A,fa.fun(),fa.arg_count());
+    AndClause::Builder b(A,n+1);
+    Fun::Builder fb(A,fa.fun(),fa.arg_count());
     for(size_t i=0; i<n; ++i){
-      Var vi = introduce_var(fa.arg(i));
-      b.set_atom(i,Atom::eq(*A,true,fa.arg(i),Term(vi)));
+      Var vi = introduce_var(A,fa.arg(i));
+      b.set_atom(i,Atom::eq(A,true,fa.arg(i),Term(vi)));
       fb.set_arg(i,Term(vi));
     }
     auto fv = fb.build();
-    b.set_atom(n,Atom::eq(*A,false,Term(fa),Term(fv)));
+    b.set_atom(n,Atom::eq(A,false,Term(fa),Term(fv)));
     source_clauses.push_back(b.build());
     return fv;
   }
 
-  void flatten_Atom(Atom a) {
+  void flatten_Atom(memory::Alloc &A, Atom a) {
     if(a.pred()==Atom::EQ) {
       auto l = a.arg(0);
       auto r = a.arg(1);
       if(l.type()==Term::FUN) {
         // (..l=r) (l=l2 /\ l2=r /\ l!=r)
-        Term l2(flatten_Term(Fun(l)));
+        Term l2(flatten_Term(A,Fun(l)));
         source_clauses.push_back(
-          AndClause::make(*A,Atom::eq(*A,true,l,l2),Atom::eq(*A,a.sign(),l2,r),Atom::eq(*A,!a.sign(),l,r)));
+          AndClause::make(A,Atom::eq(A,true,l,l2),Atom::eq(A,a.sign(),l2,r),Atom::eq(A,!a.sign(),l,r)));
         l = l2;
       }
       if(r.type()==Term::FUN) {
         // (..l=r) (r=r2 /\ l=r2 /\ l!=r)
-        Term r2(flatten_Term(Fun(r)));
+        Term r2(flatten_Term(A,Fun(r)));
         source_clauses.push_back(
-          AndClause::make(*A,Atom::eq(*A,true,r,r2),Atom::eq(*A,a.sign(),l,r2),Atom::eq(*A,!a.sign(),l,r)));
+          AndClause::make(A,Atom::eq(A,true,r,r2),Atom::eq(A,a.sign(),l,r2),Atom::eq(A,!a.sign(),l,r)));
         r = r2;
       }
-      atoms.push_back(Atom::eq(*A,a.sign(),l,r));
+      atoms.push_back(Atom::eq(A,a.sign(),l,r));
     } else {
-      Atom::Builder b(*A,a.sign(),a.pred(),a.arg_count(),a.strong_only());
+      Atom::Builder b(A,a.sign(),a.pred(),a.arg_count(),a.strong_only());
       // (... p(a1..an)) (a1=v1 /\../\ an=vn /\ !p(a1..an) /\ p(v1..vn)) -> (... p(v1..vn))
       size_t n = a.arg_count();
-      AndClause::Builder cb(*A,n+2);
+      AndClause::Builder cb(A,n+2);
       for(size_t i=0; i<a.arg_count(); ++i) {
-        Var v = introduce_var(a.arg(i));
-        cb.set_atom(i,Atom::eq(*A,true,a.arg(i),Term(v)));
+        Var v = introduce_var(A,a.arg(i));
+        cb.set_atom(i,Atom::eq(A,true,a.arg(i),Term(v)));
         b.set_arg(i,Term(v));
       }
       auto pv = b.build();
@@ -247,20 +246,20 @@ struct FlatClauseBuilder {
     }
   }
 
-  DerAndClause build() const {
-    DerAndClause::Builder b(*A);
+  DerAndClause build(memory::Alloc &A) const {
+    DerAndClause::Builder b(A);
     b.cost = cost;
-    AndClause::Builder cb(*A,atoms.size());
+    AndClause::Builder cb(A,atoms.size());
     for(size_t i=atoms.size(); i--;) cb.set_atom(i,atoms[i]);
     b.derived = cb.build();
     b.sources = source_clauses;
-    return b.build();
+    return b.build(A);
   }
 };
 
 inline OrForm flatten_OrForm(memory::Alloc &A, OrForm f) {
   OrForm f2;
-  for(auto cla : f.and_clauses) f2.and_clauses.push_back(FlatClauseBuilder(A,cla).build());
+  for(auto cla : f.and_clauses) f2.and_clauses.push_back(FlatClauseBuilder(A,cla).build(A));
   return f2;
 }
 
@@ -287,7 +286,7 @@ OrForm append_restricted_transitivity_axioms(memory::Alloc &A, OrForm f) {
       Atom(A,true,Atom::EQ_TRANS_POS,{a,b}),
       Atom(A,false,Atom::EQ_SYMM,{a,b})
     );
-    f.and_clauses.push_back(symm1.build());
+    f.and_clauses.push_back(symm1.build(A));
   }
   // -[b=a] symm(a,b)
   {
@@ -301,7 +300,7 @@ OrForm append_restricted_transitivity_axioms(memory::Alloc &A, OrForm f) {
       Atom(A,true,Atom::EQ,{b,a}),
       Atom(A,false,Atom::EQ,{a,b})
     ));
-    f.and_clauses.push_back(symm2.build());
+    f.and_clauses.push_back(symm2.build(A));
   }
   // -symm(a,b) b/=c a=c
   {
@@ -317,7 +316,7 @@ OrForm append_restricted_transitivity_axioms(memory::Alloc &A, OrForm f) {
       Atom(A,true,Atom::EQ,{b,c}),
       Atom(A,false,Atom::EQ,{a,c})
     ));
-    f.and_clauses.push_back(trans_pos.build());
+    f.and_clauses.push_back(trans_pos.build(A));
   }
   // {a=b} a/=c b/=c
   {
@@ -333,7 +332,7 @@ OrForm append_restricted_transitivity_axioms(memory::Alloc &A, OrForm f) {
       Atom(A,true,Atom::EQ,{b,c}),
       Atom(A,true,Atom::EQ,{a,c})
     ));
-    f.and_clauses.push_back(trans_neg.build());
+    f.and_clauses.push_back(trans_neg.build(A));
   }
   return f;
 }
@@ -356,7 +355,7 @@ OrForm append_eq_axioms_with_restricted_transitivity(memory::Alloc &A, OrForm f)
     }
     auto db = dc.to_builder(A);
     db.derived = b.build();
-    dc = db.build();
+    dc = db.build(A);
   }
   f.and_clauses.push_back(neg_refl_axiom(A));
   f = append_restricted_transitivity_axioms(A,f);

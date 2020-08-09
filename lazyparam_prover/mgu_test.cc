@@ -9,7 +9,7 @@ using namespace tableau;
 TEST(MGU,flat_loop) {
   StreamLogger _(std::cerr);
   memory::Alloc S;
-  Valuation V(S);
+  Valuation V;
   Term var0(V.allocate(Var(S,0)));
   Term var1(V.allocate(Var(S,0)));
   ASSERT_TRUE(V.mgu(var1,var0));
@@ -21,7 +21,7 @@ TEST(MGU,flat_loop) {
 TEST(MGU,nonflat_loop) {
   StreamLogger _(std::cerr);
   memory::Alloc S;
-  Valuation V(S);
+  Valuation V;
   Term v0(V.allocate(Var(S,0)));
   Term v1(V.allocate(Var(S,0)));
   u64 f = 0;
@@ -32,7 +32,7 @@ TEST(MGU,nonflat_loop) {
 TEST(MGU,equal) {
   StreamLogger _(std::cerr);
   memory::Alloc S;
-  Valuation V(S);
+  Valuation V;
   u64 f = 0;
   Term x(V.allocate(Var(S,0)));
   Term y(V.allocate(Var(S,0)));
@@ -52,7 +52,7 @@ TEST(MGU,equal) {
 TEST(MGU,eval) {
   StreamLogger _(std::cerr);
   memory::Alloc S;
-  Valuation V(S);
+  Valuation V;
   Term c(Fun(S,0,{}));
   Term x(V.allocate(Var(S,0)));
   ASSERT_TRUE(V.mgu(c,x));
@@ -65,12 +65,12 @@ TEST(MGU,eval) {
   builder.derived = ca;
   builder.sources = {ca,ca,cb};
   builder.constraints = {OrderAtom::neq(S,a,b)};
-  auto before = builder.build();
+  auto before = builder.build(S);
   builder.derived = cb;
   builder.sources = {cb,cb,cb};
   builder.constraints = {OrderAtom::neq(S,b,b)};
-  auto got = V.eval(before);
-  auto want = builder.build();
+  auto got = V.eval(S,before);
+  auto want = builder.build(S);
   ASSERT_FALSE(before==got);
   ASSERT_EQ(got,want);
 }

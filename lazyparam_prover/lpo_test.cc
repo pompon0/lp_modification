@@ -15,7 +15,7 @@ TEST(LPO,reduction_ordering) {
 TEST(LPO,simple) {
   StreamLogger _(std::cerr);
   TestCtx ctx(7895374);
-  ConstrainedValuation<LPO> lpo(ctx.A);
+  ConstrainedValuation<LPO> lpo;
   Term x(lpo.allocate(Var(ctx.A,0)));
   Term y(lpo.allocate(Var(ctx.A,0)));
   auto f = ctx.new_fun<Term,Term>();
@@ -38,7 +38,7 @@ TEST(LPO,incompleteness) {
   TestCtx ctx(7589354);
   auto f = ctx.new_fun<Term,Term>();
   for(size_t cases=10; cases--;) {
-    ConstrainedValuation<LPO> lpo(ctx.A);
+    ConstrainedValuation<LPO> lpo;
     Term x(lpo.allocate(Var(ctx.A,0)));
     Term y(lpo.allocate(Var(ctx.A,0)));
     auto a = f(x,y);
@@ -51,18 +51,18 @@ TEST(LPO,incompleteness) {
       want = OrderAtom::L;
     }
     auto got = lpo.cmp(a,b);
-    ASSERT_EQ(want,got) << util::fmt("cmp(%,%) = %, want %",show(lpo.eval(a)),show(lpo.eval(b)),got,want);
+    ASSERT_EQ(want,got) << util::fmt("cmp(%,%) = %, want %",show(lpo.eval(ctx.A,a)),show(lpo.eval(ctx.A,b)),got,want);
   }
 }
 
-void assert_cmp(ConstrainedValuation<LPO> &lpo, OrderAtom::Relation want, Term a, Term b) {
+void assert_cmp(memory::Alloc &A, ConstrainedValuation<LPO> &lpo, OrderAtom::Relation want, Term a, Term b) {
   auto got = lpo.cmp(a,b);
-  ASSERT_EQ(want,got) << util::fmt("cmp(%,%) = %, want %",show(lpo.eval(a)),show(lpo.eval(b)),got,want);
+  ASSERT_EQ(want,got) << util::fmt("cmp(%,%) = %, want %",show(lpo.eval(A,a)),show(lpo.eval(A,b)),got,want);
 }
 
-void assert_less(ConstrainedValuation<LPO> &lpo, Term a, Term b) {
-  assert_cmp(lpo,OrderAtom::L,a,b);
-  assert_cmp(lpo,OrderAtom::G,b,a);
+void assert_less(memory::Alloc &A, ConstrainedValuation<LPO> &lpo, Term a, Term b) {
+  assert_cmp(A,lpo,OrderAtom::L,a,b);
+  assert_cmp(A,lpo,OrderAtom::G,b,a);
 }
 
 TEST(LPO,robinson) {
@@ -72,12 +72,12 @@ TEST(LPO,robinson) {
     auto s = ctx.new_fun<Term>();
     auto sum = ctx.new_fun<Term,Term>();
     auto prod = ctx.new_fun<Term,Term>();
-    ConstrainedValuation<LPO> lpo(ctx.A);
+    ConstrainedValuation<LPO> lpo;
     Term x(lpo.allocate(Var(ctx.A,0)));
     Term y(lpo.allocate(Var(ctx.A,0)));
-    assert_less(lpo,x,sum(x,o()));
-    assert_less(lpo,s(sum(x,y)),sum(x,s(y)));
-    assert_less(lpo,o(),prod(x,o()));
-    assert_less(lpo,sum(x,prod(x,y)),prod(x,s(y)));
-    assert_less(lpo,s(s(s(s(s(s(o())))))),prod(s(s(o())),s(s(s(o())))));
+    assert_less(ctx.A,lpo,x,sum(x,o()));
+    assert_less(ctx.A,lpo,s(sum(x,y)),sum(x,s(y)));
+    assert_less(ctx.A,lpo,o(),prod(x,o()));
+    assert_less(ctx.A,lpo,sum(x,prod(x,y)),prod(x,s(y)));
+    assert_less(ctx.A,lpo,s(s(s(s(s(s(o())))))),prod(s(s(o())),s(s(s(o())))));
   }

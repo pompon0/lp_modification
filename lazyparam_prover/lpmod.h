@@ -107,7 +107,7 @@ DerAndClause reduce_vars(memory::Alloc &A, DerAndClause cla) {
   b.derived = M.map(A,b.derived);
   for(auto &s : b.sources) s = M.map(A,s);
   for(auto &c : b.constraints) c = M.map(A,c);
-  return b.build();
+  return b.build(A);
 }
 
 struct SplitBuilder {
@@ -123,7 +123,7 @@ struct SplitBuilder {
     b.derived = db.build();
     b.sources = source;
     b.constraints = constraints;
-    return reduce_vars(A,val.eval(b.build()));
+    return reduce_vars(A,val.eval(A,b.build(A)));
   }
 
   vec<DerAndClause> extra;
@@ -188,14 +188,14 @@ struct SplitBuilder {
             c1.cost = 1;
             c1.derived = AndClause::make(A,a.neg(),red(A,false,l,r));
             c1.constraints.push_back(OrderAtom(A,OrderAtom::G,l,r));
-            extra.push_back(reduce_vars(A,c1.build()));
+            extra.push_back(reduce_vars(A,c1.build(A)));
           } {
             DerAndClause::Builder c2(A);
             c2.cost = 1;
             c2.derived = AndClause::make(A,a.neg(),red(A,false,r,l));
             c2.constraints = {OrderAtom(A,OrderAtom::G,r,l)};
             c2.sources.push_back(neg_symm_axiom(A,l,r));
-            extra.push_back(reduce_vars(A,c2.build()));
+            extra.push_back(reduce_vars(A,c2.build(A)));
           }
         } else if(r.type()==Term::VAR) {
           // f(x)!=y /\ C
@@ -215,7 +215,7 @@ struct SplitBuilder {
             c1.cost = 1;
             c1.derived = AndClause::make(A,a.neg(),red(A,false,l,r));
             c1.constraints = {OrderAtom(A,OrderAtom::G,l,r)};
-            extra.push_back(reduce_vars(A,c1.build()));
+            extra.push_back(reduce_vars(A,c1.build(A)));
           }
           {
             DerAndClause::Builder c2(A);
@@ -230,7 +230,7 @@ struct SplitBuilder {
               neg_trans_axiom(A,r,l,w),
               neg_symm_axiom(A,l,r),
             };
-            extra.push_back(reduce_vars(A,c2.build()));
+            extra.push_back(reduce_vars(A,c2.build(A)));
           }
         } else {
           // f(x)!=g(y) /\ C
@@ -255,7 +255,7 @@ struct SplitBuilder {
               OrderAtom(A,OrderAtom::LE,w,r),
             };
             c1.sources = {neg_trans_axiom(A,l,r,w)};
-            extra.push_back(reduce_vars(A,c1.build()));
+            extra.push_back(reduce_vars(A,c1.build(A)));
           } { FRAME("T(x,y) /\\ g(y)-/>w /\\ f(x)->w"); 
             DerAndClause::Builder c2(A);
             c2.cost = 1;
@@ -269,7 +269,7 @@ struct SplitBuilder {
               neg_trans_axiom(A,r,l,w),
               neg_symm_axiom(A,l,r),
             };
-            extra.push_back(reduce_vars(A,c2.build()));
+            extra.push_back(reduce_vars(A,c2.build(A)));
           }
         }
       }
@@ -297,7 +297,7 @@ OrForm conv(memory::Alloc &A, OrForm f) { FRAME("lazy::conv");
   Term x(Var(A,0));
   refl.derived = AndClause::make(A,red(A,false,x,x));
   refl.sources = {neg_refl_axiom(A,x)};
-  f2.and_clauses.push_back(refl.build());
+  f2.and_clauses.push_back(refl.build(A));
   //info("after =\n%\n",show(f2));
   return f2; 
 }

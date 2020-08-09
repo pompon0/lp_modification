@@ -14,11 +14,11 @@ namespace tableau {
 
 // rel[i][j] = cmp(terms[i],terms[j]), where all elements of terms are valuated.
 // assumes correctness of operator==(Term,Term).
-template<typename Cmp> void expect_order(Cmp &cmp, vec<Term> terms, bool total) {
+template<typename Cmp> void expect_order(memory::Alloc &A, Cmp &cmp, vec<Term> terms, bool total) {
   size_t n = terms.size();
   vec<vec<OrderAtom::Relation>> rel(terms.size(),vec<OrderAtom::Relation>(n));
   for(size_t i=n; i--;) for(size_t j=n; j--;) rel[i][j] = cmp.cmp(terms[i],terms[j]);
-  for(auto &t : terms) t = cmp.eval(t);
+  for(auto &t : terms) t = cmp.eval(A,t);
 
   // symmetry & irreflexivity
   for(size_t i=0; i<n; i++) for(size_t j=0; j<n; j++) {
@@ -42,14 +42,14 @@ template<typename Cmp> void expect_order(Cmp &cmp, vec<Term> terms, bool total) 
   }
 }
 
-template<typename Cmp> void expect_subterm_order(Cmp &cmp, Term t, Term subeq) {
+template<typename Cmp> void expect_subterm_order(memory::Alloc &A, Cmp &cmp, Term t, Term subeq) {
   subeq = cmp.shallow_eval(subeq);
   if(subeq.type()!=Term::FUN) return;
   Fun f(subeq);
   for(size_t i=f.arg_count(); i--;) {
     EXPECT_EQ(OrderAtom::L,cmp.cmp(f.arg(i),t))
-      << util::fmt("cmp(%,%) = %",show(cmp.eval(f.arg(i))),show(cmp.eval(t)));
-    expect_subterm_order(cmp,t,f.arg(i));
+      << util::fmt("cmp(%,%) = %",show(cmp.eval(A,f.arg(i))),show(cmp.eval(A,t)));
+    expect_subterm_order(A,cmp,t,f.arg(i));
   }
 }
 
@@ -92,9 +92,9 @@ template<typename V> Term make_term(TestCtx &ctx, const V &val, bool ground, siz
 template<typename V> void random_valuate(TestCtx &ctx, V &val, size_t max_depth, bool ground) { FRAME("random_valuate");
   for(size_t i=0; i<val.size(); i++) {
     auto x = Term(Var(ctx.A,i));
-    if(val.eval(x).type()==Term::VAR) {
+    if(val.eval(ctx.A,x).type()==Term::VAR) {
       if(!ground && ctx.rnd()%2==0) continue;
-      if(!val.unify(x,make_term(ctx,val,true,max_depth))) {
+      if(!val.unify(ctx.A,x,make_term(ctx,val,true,max_depth))) {
         error("val.mgu() failed");
       }
     }
@@ -120,13 +120,13 @@ template<typename Ord> void ordering_test() {
   TestCtx ctx(90830845);
   for(size_t arity=4; arity--;) ctx.new_fun(arity);
   for(size_t depth=0; depth<4; depth++) {
-    ConstrainedValuation<Ord> ord(ctx.A); for(size_t i=4; i--;) ord.allocate(Var(ctx.A,0));
+    ConstrainedValuation<Ord> ord; for(size_t i=4; i--;) ord.allocate(Var(ctx.A,0));
     random_valuate(ctx,ord,depth,false);
     vec<Term> T;
     // generate bunch of terms: both ground and non-ground
     for(size_t n=10; n--;) T.push_back(make_term(ctx,ord,false,depth)); 
     for(size_t n=10; n--;) T.push_back(make_term(ctx,ord,true,depth)); 
-    expect_order(ord,T,false);
+    expect_order(ctx.A,ord,T,false);
   }
 }
 
@@ -135,12 +135,12 @@ template<typename Ord> void ground_total_ordering_test() {
   TestCtx ctx(87539745);
   for(size_t arity=4; arity--;) ctx.new_fun(arity);
   for(size_t depth=0; depth<4; depth++) {
-    ConstrainedValuation<Ord> ord(ctx.A); for(size_t i=3; i--;) ord.allocate(Var(ctx.A,0));
+    ConstrainedValuation<Ord> ord; for(size_t i=3; i--;) ord.allocate(Var(ctx.A,0));
     random_valuate(ctx,ord,depth,true);
     vec<Term> T;
     // generate bunch of ground terms
     for(size_t n=20; n--;) T.push_back(make_term(ctx,ord,true,depth)); 
-    expect_order(ord,T,true);
+    expect_order(ctx.A,ord,T,true);
   }
 }
 
@@ -149,10 +149,10 @@ template<typename Ord> void subterm_test() {
   TestCtx ctx(19843054);
   for(size_t arity=1;arity<4;arity++) ctx.new_fun(arity);
   for(size_t cases=10; cases--;) {
-    ConstrainedValuation<Ord> ord(ctx.A); for(size_t i=10; i--;) ord.allocate(Var(ctx.A,0));
+    ConstrainedValuation<Ord> ord; for(size_t i=10; i--;) ord.allocate(Var(ctx.A,0));
     random_valuate(ctx,ord,6,false);
     auto t = make_term(ctx,ord,false,4);
-    expect_subterm_order(ord,t,t);
+    expect_subterm_order(ctx.A,ord,t,t);
   }
 }
 
@@ -160,7 +160,7 @@ template<typename Ord> void substitution_test() {
   SCOPED_TRACE("substitution_test");
   TestCtx ctx(1893443);
   for(size_t arity=1;arity<4;arity++) ctx.new_fun(arity);
-  ConstrainedValuation<Ord> ord(ctx.A); for(size_t i=15; i--;) ord.allocate(Var(ctx.A,0));
+  ConstrainedValuation<Ord> ord; for(size_t i=15; i--;) ord.allocate(Var(ctx.A,0));
   random_valuate(ctx,ord,6,false);
   for(size_t cases=20;cases;) {
     auto s = make_term(ctx,ord,false,5);
@@ -173,8 +173,8 @@ template<typename Ord> void substitution_test() {
     case OrderAtom::G: std::swap(s,t); break;
     default: error("cmp() = %",rel);
     }
-    auto es = ord.eval(s);
-    auto et = ord.eval(t);
+    auto es = ord.eval(ctx.A,s);
+    auto et = ord.eval(ctx.A,t);
     if(t==es && t==et) continue;
     cases--;
     EXPECT_EQ(OrderAtom::L,ord.cmp(es,et)) << util::fmt("cmp(%,%) = %",show(es),show(et));
@@ -185,7 +185,7 @@ template<typename Ord> void monotonicity_test() {
   SCOPED_TRACE("monotonicity_test");
   TestCtx ctx(7895374);
   for(size_t arity=1;arity<4;arity++) ctx.new_fun(arity);
-  ConstrainedValuation<Ord> ord(ctx.A); for(size_t i=5; i--;) ord.allocate(Var(ctx.A,0));
+  ConstrainedValuation<Ord> ord; for(size_t i=5; i--;) ord.allocate(Var(ctx.A,0));
   random_valuate(ctx,ord,3,false);
   for(size_t cases=20;cases;) {
     auto t = make_term(ctx,ord,false,6);

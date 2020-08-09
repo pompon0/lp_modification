@@ -18,10 +18,8 @@ struct Valuation {
 private:
   // there is NO cycles in valuation, even x -> x
   RewindArray<Term> val;
-  memory::Alloc *A = 0;
 public:
   Valuation() {}
-  Valuation(memory::Alloc &_A) : A(&_A) {}
   using Save = RewindArray<Term>::Save;
   size_t size() const { return val.size(); }
   
@@ -140,17 +138,17 @@ public:
   }
 
   // clears offset
-  inline Term eval(Term t) const { FRAME("eval(%)",show(t));
+  inline Term eval(memory::Alloc &A, Term t) const { FRAME("eval(%)",show(t));
     switch(t.type()) {
       case Term::VAR: {
         u64 id = Var(t).id();
-        if(auto mv = val[id]) return eval(mv.get()); else return Term(Var(*A,id));
+        if(auto mv = val[id]) return eval(A,mv.get()); else return Term(Var(A,id));
       }
       case Term::FUN: {
         Fun tf(t);
         size_t ac = tf.arg_count();
-        Fun::Builder b(*A,tf.fun(),ac);
-        for(size_t i=0; i<ac; ++i) b.set_arg(i,eval(tf.arg(i)));
+        Fun::Builder b(A,tf.fun(),ac);
+        for(size_t i=0; i<ac; ++i) b.set_arg(i,eval(A,tf.arg(i)));
         return Term(b.build());
       }
       default: error("unhandled t.type() = %",t.type());
@@ -158,35 +156,35 @@ public:
   }
 
   // clears offset
-  inline Atom eval(Atom a) const { FRAME("eval(%)",show(a));
+  inline Atom eval(memory::Alloc &A, Atom a) const { FRAME("eval(%)",show(a));
     size_t ac = a.arg_count();
-    Atom::Builder b(*A,a.sign(),a.pred(),ac,a.strong_only());
-    for(size_t i=ac; i--;) b.set_arg(i,eval(a.arg(i)));
+    Atom::Builder b(A,a.sign(),a.pred(),ac,a.strong_only());
+    for(size_t i=ac; i--;) b.set_arg(i,eval(A,a.arg(i)));
     return b.build();
   }
 
-  inline AndClause eval(AndClause cla) const { FRAME("eval(%)",show(cla));
-    AndClause::Builder b(*A,cla.atom_count());
-    for(size_t i=cla.atom_count(); i--;) b.set_atom(i,eval(cla.atom(i)));
+  inline AndClause eval(memory::Alloc &A, AndClause cla) const { FRAME("eval(%)",show(cla));
+    AndClause::Builder b(A,cla.atom_count());
+    for(size_t i=cla.atom_count(); i--;) b.set_atom(i,eval(A,cla.atom(i)));
     return b.build();
   }
 
-  inline OrderAtom::TermPair eval(OrderAtom::TermPair p) const {
-    return {eval(p.a),eval(p.b)};
+  inline OrderAtom::TermPair eval(memory::Alloc &A, OrderAtom::TermPair p) const {
+    return {eval(A,p.a),eval(A,p.b)};
   }
 
-  inline OrderAtom eval(OrderAtom c) const {
-    OrderAtom::Builder b(*A,c.rel(),c.pair_count());
-    for(size_t i=c.pair_count(); i--;) b.set_pair(i,eval(c.pair(i)));
+  inline OrderAtom eval(memory::Alloc &A, OrderAtom c) const {
+    OrderAtom::Builder b(A,c.rel(),c.pair_count());
+    for(size_t i=c.pair_count(); i--;) b.set_pair(i,eval(A,c.pair(i)));
     return b.build();
   }
 
-  inline DerAndClause eval(DerAndClause cla) const {
-    auto b = cla.to_builder(*A);
-    b.derived = eval(b.derived);
-    for(auto &s : b.sources) s = eval(s);
-    for(auto &c : b.constraints) c = eval(c);
-    return b.build();
+  inline DerAndClause eval(memory::Alloc &A, DerAndClause cla) const {
+    auto b = cla.to_builder(A);
+    b.derived = eval(A,b.derived);
+    for(auto &s : b.sources) s = eval(A,s);
+    for(auto &c : b.constraints) c = eval(A,c);
+    return b.build(A);
   }
 
   str DebugString() const {

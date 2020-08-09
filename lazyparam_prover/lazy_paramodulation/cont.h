@@ -16,7 +16,7 @@ struct AxiomClause : Lazy<DerAndClause>::Impl {
     DerAndClause::Builder b(A);
     b.derived = cla;
     b.sources.push_back(cla);
-    return b.build();
+    return b.build(A);
   }
 };
 
@@ -85,7 +85,7 @@ struct Cont {
     SearchState *state;
     List<Frame> frames;
   public:
-    [[nodiscard]] Builder add(Frame f){ return Builder{state,frames.add(state->A,f)}; }
+    [[nodiscard]] Builder add(memory::Alloc &A, Frame f){ return Builder{state,frames.add(A,f)}; }
     [[nodiscard]] Cont build() {
       return Cont {
         .save = state->save(),
@@ -97,22 +97,22 @@ struct Cont {
   
   [[nodiscard]] Builder builder() const { return Builder{state,frames.tail()}; }
 
-  [[nodiscard]] List<Cont> run() const { FRAME("run");
+  [[nodiscard]] List<Cont> run(memory::Alloc &A) const { FRAME("run");
     DEBUG if(frames.empty()) error("frames.empty()");
     state->restore(save);
     auto f = frames.head();
     switch(f.type()) {
-      case Frame::START: return start(StartFrame(f));
-      case Frame::STRONG: return strong(StrongFrame(f));
-      case Frame::WEAK_SET: return weak_set(WeakSetFrame(f));
-      case Frame::WEAK: return weak(WeakFrame(f));
-      case Frame::WEAK_UNIFY: return weak_unify(WeakUnifyFrame(f));
-      case Frame::MIN_COST: return min_cost(MinCostFrame(f));
-      case Frame::REDUCTION: return reduction(ReductionFrame(f));
-      case Frame::LAZY_WEAK_CONNECTION: return lazy_weak_connection(LazyWeakConnectionFrame(f));
-      case Frame::LAZY_PRE_WEAK_CONNECTION: return lazy_pre_weak_connection(LazyPreWeakConnectionFrame(f));
-      case Frame::LAZY_STRONG_CONNECTION: return lazy_strong_connection(LazyStrongConnectionFrame(f));
-      case Frame::LAZY_PRE_STRONG_CONNECTION: return lazy_pre_strong_connection(LazyPreStrongConnectionFrame(f));
+      case Frame::START: return start(A,StartFrame(f));
+      case Frame::STRONG: return strong(A,StrongFrame(f));
+      case Frame::WEAK_SET: return weak_set(A,WeakSetFrame(f));
+      case Frame::WEAK: return weak(A,WeakFrame(f));
+      case Frame::WEAK_UNIFY: return weak_unify(A,WeakUnifyFrame(f));
+      case Frame::MIN_COST: return min_cost(A,MinCostFrame(f));
+      case Frame::REDUCTION: return reduction(A,ReductionFrame(f));
+      case Frame::LAZY_WEAK_CONNECTION: return lazy_weak_connection(A,LazyWeakConnectionFrame(f));
+      case Frame::LAZY_PRE_WEAK_CONNECTION: return lazy_pre_weak_connection(A,LazyPreWeakConnectionFrame(f));
+      case Frame::LAZY_STRONG_CONNECTION: return lazy_strong_connection(A,LazyStrongConnectionFrame(f));
+      case Frame::LAZY_PRE_STRONG_CONNECTION: return lazy_pre_strong_connection(A,LazyPreStrongConnectionFrame(f));
       default: error("f.type() = %",f.type());
     }
   }

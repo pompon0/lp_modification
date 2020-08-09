@@ -138,7 +138,7 @@ struct ProtoCtx {
     derived->set_role(tptp::Input::PLAIN);
     derived->set_language(tptp::Input::CNF);
     NodeStream s;
-    proto_orClause(s,ground(A,val.eval(cla.derived())).neg());
+    proto_orClause(s,ground(A,val.eval(A,cla.derived())).neg());
     derived->mutable_formula()->Add(s.stream.begin(),s.stream.end());
     for(size_t i=0; i<cla.source_count(); ++i) {
       auto ps = d.add_sources();
@@ -147,7 +147,7 @@ struct ProtoCtx {
       pg->set_role(tptp::Input::PLAIN);
       pg->set_language(tptp::Input::CNF);
       NodeStream gs;
-      proto_orClause(gs,ground(A,val.eval(cla.source(i))).neg());
+      proto_orClause(gs,ground(A,val.eval(A,cla.source(i))).neg());
       pg->mutable_formula()->Add(gs.stream.begin(),gs.stream.end());
       auto pss = ps->mutable_source();
       NodeStream ss;

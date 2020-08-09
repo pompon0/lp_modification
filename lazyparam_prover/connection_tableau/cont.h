@@ -19,20 +19,9 @@
 
 namespace tableau::connection_tableau {
 
-struct State {
-private:
-  struct Cont { 
-    SearchState::Save save;
-    List<Frame> frames;
-  };
-  List<Cont> conts;
-  List<Frame> todo_;
-public:
-  SearchState state;
-  List<Frame> todo(){ return todo_; }
-  bool fail(){ return conts.empty(); }
-  bool success(){ return conts.head().frames.empty(); }
-
+struct Cont { 
+  using State = SearchState;
+ 
   struct _StartFrame;
   struct _StrongFrame;
   struct _WeakConnectionsFrame;
@@ -59,25 +48,42 @@ public:
     friend Variant<Frame,WEAK_UNIFY,_WeakUnifyFrame>;
     friend Variant<Frame,MIN_COST,_MinCostFrame>;
   };
+ 
+  SearchState::Save save;
+  SearchState *state;
+  List<Frame> frames;
+  bool done(){ return frames.empty(); }
+
+  struct Builder {
+    SearchState *state;
+    List<Frame> frames;
+  public:
+    [[nodiscard]] Builder add(memory::Alloc &A, Frame f){ return Builder{state,frames.add(A,f)}; }
+    [[nodiscard]] Cont build() {
+      return Cont {
+        .save = state->save(),
+        .state = state,
+        .frames = frames,
+      };
+    }
+  };
   
-  void run() { FRAME("run");
-    state->restore(conts.head().save);
-    auto f = conts.head().frames.head();
-    todo_ = conts.head().frames.tail();
+  [[nodiscard]] Builder builder() const { return Builder{state,frames}; }
+
+  [[nodiscard]] List<Cont> run(memory::Alloc &A) const { FRAME("run");
+    DEBUG if(frames.empty()) error("frames.empty()");
+    state->restore(save);
+    auto f = frames.head();
     switch(f.type()) {
-      case Frame::START: return start(StartFrame(f));
-      case Frame::STRONG: return strong(StrongFrame(f));
-      case Frame::WEAK_CONNECTIONS: return weak_connections(WeakConnectionsFrame(f));
-      case Frame::WEAK_SET: return weak_set(WeakSetFrame(f));
-      case Frame::WEAK: return weak(WeakFrame(f));
-      case Frame::WEAK_UNIFY: return weak_unify(WeakUnifyFrame(f));
-      case Frame::MIN_COST: return min_cost(MinCostFrame(f));
+      case Frame::START: return start(A,StartFrame(f));
+      case Frame::STRONG: return strong(A,StrongFrame(f));
+      case Frame::WEAK_CONNECTIONS: return weak_connections(A,WeakConnectionsFrame(f));
+      case Frame::WEAK_SET: return weak_set(A,WeakSetFrame(f));
+      case Frame::WEAK: return weak(A,WeakFrame(f));
+      case Frame::WEAK_UNIFY: return weak_unify(A,WeakUnifyFrame(f));
+      case Frame::MIN_COST: return min_cost(A,MinCostFrame(f));
       default: error("f.type() = %",f.type());
     }
-  }
-
-  void push(List<Frame> frames) {
-    conts.push(state->A,Cont{frames,state->save()});
   }
 #include "lazyparam_prover/connection_tableau/frames/start.h"
 #include "lazyparam_prover/connection_tableau/frames/strong.h"

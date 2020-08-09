@@ -32,13 +32,12 @@ struct ValuationStats {
 
 template<typename Ordering> struct ConstrainedValuation {
 private:
-  memory::Alloc *A;
   List<OrderAtom> constraints;
   Valuation val;
   Ordering ord;
 public:
-  ConstrainedValuation(memory::Alloc &_A) : A(&_A), val(_A), ord(FunOrd()) {}
-  ConstrainedValuation(memory::Alloc &_A, const FunOrd &fun_ord) : A(&_A), val(_A), ord(fun_ord) {}
+  ConstrainedValuation() : ord(FunOrd()) {}
+  ConstrainedValuation(const FunOrd &fun_ord) : ord(fun_ord) {}
   ValuationStats stats;
 
   Valuation get_valuation() const { return val; }
@@ -70,18 +69,18 @@ public:
   
   inline bool equal(Term x, Term y){ return val.equal(x,y); }
   inline bool equal_mod_sign(Atom x, Atom y) { return val.equal_mod_sign(x,y); } 
-  template<typename T> T eval(T t) const { return val.eval(t); }
+  template<typename T> T eval(memory::Alloc &A, T t) const { return val.eval(A,t); }
   Term shallow_eval(Term t) const { return val.shallow_eval(t); }
   
   // unifies values, validates constraints afterwards.
-  template<typename T> [[nodiscard]] bool unify(T x, T y) { FRAME("mgu()");
+  template<typename T> [[nodiscard]] bool unify(memory::Alloc &A, T x, T y) { FRAME("mgu()");
     stats.unifications++;
     if(!val.mgu(x,y)){
       stats.failed_unifications++;
       return 0;
     }
     auto s = save();
-    if(!check_constraints()){
+    if(!check_constraints(A)){
       stats.broken_constraints++;
       restore(s);
       return 0;
@@ -95,25 +94,25 @@ public:
   }
 
   // returning false invalidates the object 
-  [[nodiscard]] bool push_constraint(OrderAtom c) {
+  [[nodiscard]] bool push_constraint(memory::Alloc &A, OrderAtom c) {
     if(c.status()==OrderAtom::TRUE) return 1;
-    return check_and_push_constraint(constraints,c);
+    return check_and_push_constraint(A,constraints,c);
   }
 
-  [[nodiscard]] bool check_constraints() {
+  [[nodiscard]] bool check_constraints(memory::Alloc &A) {
     List<OrderAtom> c2;
     for(auto c = constraints; !c.empty(); c = c.tail()) {
-      if(!check_and_push_constraint(c2,c.head())) return false;
+      if(!check_and_push_constraint(A,c2,c.head())) return false;
     }
     constraints = c2;
     return true;
   } 
 
-  bool check_and_push_constraint(List<OrderAtom> &constraints, OrderAtom c) {
+  bool check_and_push_constraint(memory::Alloc &A, List<OrderAtom> &constraints, OrderAtom c) {
     c = c.reduce(*this);
     switch(c.status()) {
     case OrderAtom::TRUE: return true;
-    case OrderAtom::UNKNOWN: constraints.push(*A,c); return true;
+    case OrderAtom::UNKNOWN: constraints.push(A,c); return true;
     case OrderAtom::FALSE: return false;
     default: error("c.status() = %",c.status());
     }

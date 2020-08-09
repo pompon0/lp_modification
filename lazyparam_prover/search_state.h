@@ -12,12 +12,12 @@
 #include "lazyparam_prover/prover_output.h"
 
 #ifdef DEBUG_MODE
-  #define STATE_FRAME(state,args...)\
+  #define STATE_FRAME(A,state,args...)\
     auto _msg = util::fmt(args);\
     util::Frame _(VERBOSE,args);\
-    state->trace.push(state->A,_msg);
+    state->trace.push(A,_msg);
 #else
-  #define STATE_FRAME(state,args...)
+  #define STATE_FRAME(A,state,args...)
 #endif
 
 namespace tableau {
@@ -49,12 +49,10 @@ using Val = ConstrainedValuation<LPO>;
 
 struct SearchState {
   SearchState(
-    memory::Alloc &_A,
     const ClauseIndex &_cla_index,
     const FunOrd &fun_ord
-  ) : A(_A), cla_index(&_cla_index), val(A,fun_ord) {}
+  ) : cla_index(&_cla_index), val(fun_ord) {}
  
-  memory::Alloc &A;
   ClauseIndex::State cla_index;
 
   Val val;
@@ -65,12 +63,12 @@ struct SearchState {
   
   Stats stats;
 
-  Maybe<AndClause> allocate(DerAndClause dcla) { FRAME("SearchState::allocate()");
+  Maybe<AndClause> allocate(memory::Alloc &A, DerAndClause dcla) { FRAME("SearchState::allocate()");
     dcla = val.allocate(dcla);
     clauses_used.push(A,dcla);
     nodes_used += dcla.cost();
     for(size_t i=dcla.constraint_count(); i--;){
-      if(!val.push_constraint(dcla.constraint(i))) return nothing();
+      if(!val.push_constraint(A,dcla.constraint(i))) return nothing();
     }
     return just(dcla.derived());
   }
@@ -89,7 +87,6 @@ struct SearchState {
   }
 
   struct Save {
-    memory::Alloc::Save A;
     Val::Save val;
     size_t nodes_used;
     List<DerAndClause> clauses_used;
@@ -99,7 +96,6 @@ struct SearchState {
   };
 
   void restore(Save s) {
-    A.restore(s.A);
     val.restore(s.val);
     nodes_used = s.nodes_used;
     clauses_used = s.clauses_used;
@@ -110,7 +106,6 @@ struct SearchState {
 
   Save save(){
     return {
-      .A = A.save(),
       .val = val.save(),
       .nodes_used = nodes_used,
       .clauses_used = clauses_used,

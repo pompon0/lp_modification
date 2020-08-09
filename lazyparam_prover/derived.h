@@ -30,12 +30,11 @@ struct DerAndClause {
     b.cost = cost;
     b.derived = cla;
     b.sources.push_back(cla);
-    *this = b.build();
+    *this = b.build(A);
   }
 
   struct Builder {
   private:
-    memory::Alloc *alloc;
   public:
     size_t offset = 0;
     size_t id_offset = 0;
@@ -44,10 +43,10 @@ struct DerAndClause {
     vec<AndClause> sources;
     vec<OrderAtom> constraints;
 
-    Builder(memory::Alloc &a) : alloc(&a), derived(AndClause::make(a)) {}
-    DerAndClause build() {
-      auto ptr = SOURCES::alloc(*alloc,sources.size());
-      auto constraints_ptr = CONSTRAINTS::alloc(*alloc,constraints.size());
+    Builder(memory::Alloc &A) : derived(AndClause::make(A)) {}
+    DerAndClause build(memory::Alloc &A) {
+      auto ptr = SOURCES::alloc(A,sources.size());
+      auto constraints_ptr = CONSTRAINTS::alloc(A,constraints.size());
       VarRange var_range{0,0};
       var_range |= derived.var_range();
       for(auto &s : sources) var_range |= s.var_range();
@@ -61,8 +60,8 @@ struct DerAndClause {
     }
   };
 
-  Builder to_builder(memory::Alloc &a) {
-    Builder b(a);
+  Builder to_builder(memory::Alloc &A) {
+    Builder b(A);
     b.offset = offset;
     b.id_offset = id_offset;
     b.cost = cost();

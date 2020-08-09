@@ -70,6 +70,7 @@ func Tableau(ctx context.Context, cnfProblem *tpb.File, funOrd *spb.FunOrd, stre
     fmt.Sprintf("--method=%v",method),
     fmt.Sprintf("--trans_only=%v",transOnly),
   )
+  log.Printf("cmd = %v\n",cmd)
   cmd.Stdin = &inBuf
   cmd.Stdout = &outBuf
   if streamStdErr {

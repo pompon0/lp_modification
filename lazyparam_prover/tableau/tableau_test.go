@@ -22,6 +22,7 @@ func TestTransformations(t *testing.T) {
     ppb.Transformation_AXIOMATIC_EQ_RESTRICTED_TRANS,
     ppb.Transformation_LP_MODIFICATION,
   } {
+    trans := trans
     for k,v := range problems.SampleProblems {
       k,v := k,v
       testName := fmt.Sprintf("case (%v,%q)",trans,k)
@@ -56,6 +57,7 @@ func TestTableau(t *testing.T) {
     {ppb.Method_CONNECTION_TABLEAU, ppb.Transformation_LP_MODIFICATION},
     {ppb.Method_LAZY_PARAMODULATION, ppb.Transformation_SKIP},
   }{
+    p := p
     for k,v := range problems.SampleProblems {
       k,v := k,v
       testName := fmt.Sprintf("case (%v,%q)",p,k)

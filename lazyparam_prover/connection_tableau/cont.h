@@ -68,7 +68,7 @@ struct Cont {
     }
   };
   
-  [[nodiscard]] Builder builder() const { return Builder{state,frames}; }
+  [[nodiscard]] Builder builder() const { return Builder{state,frames.tail()}; }
 
   [[nodiscard]] List<Cont> run(memory::Alloc &A) const { FRAME("run");
     DEBUG if(frames.empty()) error("frames.empty()");

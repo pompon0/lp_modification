@@ -47,7 +47,7 @@ public:
   }
 };
 
-using Alloc = Stack<(1<<20)>;
+using Alloc = Stack<(1<<26)>;
 
 } // namespace memory
 

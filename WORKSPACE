@@ -18,6 +18,7 @@ http_archive(
 http_archive(
     name = "io_bazel_rules_go",
     urls = ["https://github.com/bazelbuild/rules_go/releases/download/v0.23.3/rules_go-v0.23.3.tar.gz"],
+    sha256 = "a8d6b1b354d371a646d2f7927319974e0f9e52f73a2452d2b3877118169eb6bb",
 )
 
 load("@io_bazel_rules_go//go:deps.bzl", "go_rules_dependencies", "go_register_toolchains")
@@ -74,9 +75,9 @@ http_archive(
 
 http_archive(
     name = "io_bazel_rules_docker",
-    sha256 = "df13123c44b4a4ff2c2f337b906763879d94871d16411bf82dcfeba892b58607",
-    strip_prefix = "rules_docker-0.13.0",
-    urls = ["https://github.com/bazelbuild/rules_docker/releases/download/v0.13.0/rules_docker-v0.13.0.tar.gz"],
+    sha256 = "7eff487e95d268d577f13f6e3ea49be8704504b2096367e4a2181ecbbc111bad",
+    strip_prefix = "rules_docker-9bfcd7dbf0294ed9d11a99da6363fc28df904502",
+    urls = ["https://github.com/bazelbuild/rules_docker/archive/9bfcd7dbf0294ed9d11a99da6363fc28df904502.tar.gz"],
 )
 
 load(
@@ -105,7 +106,7 @@ http_archive(
     name = "rules_haskell",
     strip_prefix = "rules_haskell-master",
     urls = ["https://github.com/pompon0/rules_haskell/archive/master.tar.gz"],
-    sha256 = "a9206c65254b9fbcda87ed2b5bcfab41aa076fac7eca53c11614810116edd065",
+    sha256 = "09a989c7b2a53cb2d63a5547b6ce46317fc0d5bc99bf8fac00a8411e18b440a6",
 )
 
 load("@rules_haskell//haskell:repositories.bzl", "rules_haskell_dependencies")
@@ -114,7 +115,14 @@ rules_haskell_dependencies()
 
 load("@rules_haskell//haskell:toolchain.bzl", "rules_haskell_toolchains")
 
-rules_haskell_toolchains()
+rules_haskell_toolchains(
+  compiler_flags = [
+   #   "-fPIC",
+   #   "-fexternal-dynamic-refs",
+   #   "-optl-static",
+   #   "-optl-pthread",
+  ],
+)
 
 load("@rules_haskell//haskell:cabal.bzl", "stack_snapshot")
 

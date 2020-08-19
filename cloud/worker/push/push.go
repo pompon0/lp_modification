@@ -2,9 +2,10 @@ package push
 
 import (
   "context"
+  "errors"
   "fmt"
   "log"
-  "strings"
+  //"strings"
 
   "google.golang.org/api/option"
   "google.golang.org/api/run/v1"
@@ -34,7 +35,8 @@ func Push(ctx context.Context, commit string) error {
   if err!=nil { return fmt.Errorf("name.NewDigest(): %v",err) }
   remoteImg, err := remote.Image(digestRef, remote.WithAuthFromKeychain(authn.DefaultKeychain))
   if err!=nil {
-    if strings.HasPrefix(err.Error(), string(transport.ManifestUnknownErrorCode)) {
+    var tErr *transport.Error
+    if errors.As(err,&tErr) && tErr.StatusCode==404 {
       remoteImg,err = nil,nil
     } else {
       return fmt.Errorf("remote.Image(): %v",err)

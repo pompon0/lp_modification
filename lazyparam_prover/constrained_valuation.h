@@ -21,7 +21,7 @@ struct ValuationStats {
   size_t failed_unifications = 0;
   size_t broken_constraints = 0;
   size_t comparisons = 0;
-  ValuationStats & operator+=(ValuationStats b) {
+  INL ValuationStats & operator+=(ValuationStats b) {
     unifications += b.unifications;
     failed_unifications += b.failed_unifications;
     broken_constraints += b.broken_constraints;
@@ -36,14 +36,14 @@ private:
   Valuation val;
   Ordering ord;
 public:
-  ConstrainedValuation() : ord(FunOrd()) {}
-  ConstrainedValuation(const FunOrd &fun_ord) : ord(fun_ord) {}
+  INL ConstrainedValuation() : ord(FunOrd()) {}
+  INL ConstrainedValuation(const FunOrd &fun_ord) : ord(fun_ord) {}
   ValuationStats stats;
 
-  Valuation get_valuation() const { return val; }
-  size_t size() const { return val.size(); }
+  INL Valuation get_valuation() const { return val; }
+  INL size_t size() const { return val.size(); }
 
-  template<typename T> T allocate(T t) {
+  template<typename T> INL T allocate(T t) {
     t = val.allocate(t);
     ord.resize(val.size());
     return t;
@@ -54,7 +54,8 @@ public:
     typename Ordering::Save ord;
     List<OrderAtom> constraints;
   };
-  Save save(){
+  
+  INL Save save(){
     return {
       val.save(),
       ord.save(),
@@ -88,18 +89,18 @@ public:
     return 1;
   }
   
-  inline OrderAtom::Relation cmp(Term l, Term r) {
+  INL OrderAtom::Relation cmp(Term l, Term r) {
     stats.comparisons++;
     return ord.cmp(val,l,r);
   }
 
   // returning false invalidates the object 
-  [[nodiscard]] bool push_constraint(memory::Alloc &A, OrderAtom c) {
+  [[nodiscard]] INL bool push_constraint(memory::Alloc &A, OrderAtom c) {
     if(c.status()==OrderAtom::TRUE) return 1;
     return check_and_push_constraint(A,constraints,c);
   }
 
-  [[nodiscard]] bool check_constraints(memory::Alloc &A) {
+  [[nodiscard]] INL bool check_constraints(memory::Alloc &A) {
     List<OrderAtom> c2;
     for(auto c = constraints; !c.empty(); c = c.tail()) {
       if(!check_and_push_constraint(A,c2,c.head())) return false;
@@ -108,7 +109,7 @@ public:
     return true;
   } 
 
-  bool check_and_push_constraint(memory::Alloc &A, List<OrderAtom> &constraints, OrderAtom c) {
+  INL bool check_and_push_constraint(memory::Alloc &A, List<OrderAtom> &constraints, OrderAtom c) {
     c = c.reduce(*this);
     switch(c.status()) {
     case OrderAtom::TRUE: return true;

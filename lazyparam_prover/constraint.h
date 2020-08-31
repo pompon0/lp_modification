@@ -11,10 +11,10 @@ struct OrderAtom {
   enum Status { TRUE, FALSE, UNKNOWN };
   struct TermPair {
     Term a,b;
-    friend bool operator==(const TermPair a, const TermPair b) {
+    INL friend bool operator==(const TermPair a, const TermPair b) {
       return a.a==b.a && a.b==b.b;
     }
-    TermPair shift(size_t offset) const {
+    INL TermPair shift(size_t offset) const {
       auto t = *this;
       t.a = t.a.shift(offset);
       t.b = t.b.shift(offset);
@@ -22,16 +22,16 @@ struct OrderAtom {
     }
   };
   
-  Status status() const { return status_; }
-  VarRange var_range() const { return VAR_RANGE::ref(ptr); }
-  OrderAtom shift(size_t _offset) const { return OrderAtom(ptr,offset+_offset,status_,done); }
+  INL Status status() const { return status_; }
+  INL VarRange var_range() const { return VAR_RANGE::ref(ptr); }
+  INL OrderAtom shift(size_t _offset) const { return OrderAtom(ptr,offset+_offset,status_,done); }
 
-  Relation rel() const { return RELATION::ref(ptr); }
-  size_t pair_count() const { return TERM_PAIRS::size(ptr); }
-  TermPair pair(size_t i) const { return TERM_PAIRS::ref(ptr,i).shift(offset); }
+  INL Relation rel() const { return RELATION::ref(ptr); }
+  INL size_t pair_count() const { return TERM_PAIRS::size(ptr); }
+  INL TermPair pair(size_t i) const { return TERM_PAIRS::ref(ptr,i).shift(offset); }
 
   // OrderAtom -> (Term -> Term -> OrderAtom::Relation) -> OrderAtom
-  template<typename CMP> OrderAtom reduce(CMP &cmp) const {
+  template<typename CMP> INL OrderAtom reduce(CMP &cmp) const {
     if(status()!=UNKNOWN) return *this;
     for(size_t _done = done, size = pair_count();; _done++) {
       auto p = pair(_done);
@@ -50,22 +50,22 @@ struct OrderAtom {
   private:
     u8 *ptr;
   public:
-    template<typename Alloc> Builder(Alloc &a, Relation rel, size_t pair_count) : ptr(TERM_PAIRS::alloc(a,pair_count)) {
+    template<typename Alloc> INL Builder(Alloc &a, Relation rel, size_t pair_count) : ptr(TERM_PAIRS::alloc(a,pair_count)) {
       VAR_RANGE::ref(ptr) = {0,0};
       RELATION::ref(ptr) = rel;
     }
-    Builder& set_pair(size_t i, TermPair p) {
+    INL Builder& set_pair(size_t i, TermPair p) {
       TERM_PAIRS::ref(ptr,i) = p;
       VAR_RANGE::ref(ptr) |= p.a.var_range() |= p.b.var_range();
       return *this;
     }
-    OrderAtom build() {
+    INL OrderAtom build() {
       return OrderAtom(ptr,0,TERM_PAIRS::size(ptr) ? UNKNOWN : RELATION::ref(ptr)&E ? TRUE : FALSE,0);
     }
   };
   
   // ignores sign
-  template<typename Alloc> static OrderAtom neq(Alloc &a, Atom l, Atom r) {
+  template<typename Alloc> INL static OrderAtom neq(Alloc &a, Atom l, Atom r) {
     if(l.pred()!=r.pred()) return OrderAtom(0,0,TRUE,0);
     DEBUG if(l.arg_count()!=r.arg_count()) error("l.arg_count() = %, r.arg_count() = %",show(l),show(r));
     Builder b(a,NE,l.arg_count());
@@ -73,9 +73,9 @@ struct OrderAtom {
     return b.build();
   }
 
-  template<typename Alloc> OrderAtom(Alloc &a, Relation rel, Term l, Term r) : OrderAtom(Builder(a,rel,1).set_pair(0,{l,r}).build()) {}
+  template<typename Alloc> INL OrderAtom(Alloc &a, Relation rel, Term l, Term r) : OrderAtom(Builder(a,rel,1).set_pair(0,{l,r}).build()) {}
 
-  friend bool operator==(const OrderAtom &a, const OrderAtom &b) {
+  INL friend bool operator==(const OrderAtom &a, const OrderAtom &b) {
     bool ok = a.rel()==b.rel();
     ok &= a.pair_count()==b.pair_count();
     if(!ok) return false;
@@ -92,9 +92,9 @@ private:
   size_t offset;
   Status status_;
   size_t done;
-  OrderAtom(u8 *_ptr, size_t _offset, Status _status, size_t _done) : ptr(_ptr), offset(_offset), status_(_status), done(_done) {}
+  INL OrderAtom(u8 *_ptr, size_t _offset, Status _status, size_t _done) : ptr(_ptr), offset(_offset), status_(_status), done(_done) {}
 
-  Relation decide(Relation rel, bool last) const {
+  INL Relation decide(Relation rel, bool last) const {
     switch(rel) {
       case L: return L;
       case G: return G;

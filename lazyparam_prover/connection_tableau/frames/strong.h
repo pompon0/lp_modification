@@ -5,7 +5,7 @@ struct _StrongFrame {
   ssize_t strong_id;
 };
 using StrongFrame = Variant<Frame,Frame::STRONG,_StrongFrame>;
-List<Cont> strong(memory::Alloc &A, StrongFrame f) const { FRAME("strong(%,%)",show(f->dcla),f->strong_id);
+INL List<Cont> strong(memory::Alloc &A, StrongFrame f) const { FRAME("strong(%,%)",show(f->dcla),f->strong_id);
   state->stats.strong_steps++;
   auto mcla = state->allocate(A,f->dcla);
   if(!mcla) return nothing();
@@ -26,7 +26,7 @@ List<Cont> strong(memory::Alloc &A, StrongFrame f) const { FRAME("strong(%,%)",s
   return List<Cont>(A,builder().add(A,Frame(b.build())).build());;
 }
 
-Maybe<List<Atom>> strong_resolution(memory::Alloc &A, size_t nodes_limit, List<Atom> todo) const { FRAME("strong_resolution()");
+INL Maybe<List<Atom>> strong_resolution(memory::Alloc &A, size_t nodes_limit, List<Atom> todo) const { FRAME("strong_resolution()");
   List<Atom> checked;
   while(!todo.empty()) {
     auto a = todo.head();

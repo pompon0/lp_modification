@@ -9,7 +9,7 @@
 
 namespace tableau {
 
-inline str show(Term t) {
+static str show(Term t) {
   switch(t.type()) {
     case Term::VAR: return util::fmt("V%",Var(t).id());
     case Term::FUN: {
@@ -38,7 +38,7 @@ inline str show_pred_name(u64 pred) {
   return util::fmt("p%",pred);
 }
 
-inline str show(Atom a) {
+static str show(Atom a) {
   vec<str> args(a.arg_count());
   for(size_t i=a.arg_count(); i--;) args[i] = show(a.arg(i));
   str sign = a.sign() ? "+" : "-";
@@ -46,13 +46,13 @@ inline str show(Atom a) {
   return util::fmt("%%(%)",sign,pred_name,util::join(",",args));
 }
 
-inline str show(const OrClause cla) {
+static str show(const OrClause cla) {
   vec<str> atoms;
   for(size_t i=0; i<cla.atom_count(); ++i) atoms.push_back(show(cla.atom(i)));
   return util::join(" \\/ ",atoms);
 }
 
-inline str show(const AndClause cla) {
+static str show(const AndClause cla) {
   vec<str> atoms;
   for(size_t i=0; i<cla.atom_count(); ++i) atoms.push_back(show(cla.atom(i)));
   return util::join(" /\\ ",atoms);

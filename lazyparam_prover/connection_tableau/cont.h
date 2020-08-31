@@ -33,12 +33,12 @@ struct Cont {
   struct Frame {
   public:
     enum Type { START, STRONG, WEAK_CONNECTIONS, WEAK_SET, WEAK, WEAK_UNIFY, MIN_COST };
-    Type type() const { return Type(*LType::at(ptr)); }
+    INL Type type() const { return Type(*LType::at(ptr)); }
   private:
     using LType = Lens<size_t,0>;
     enum { SIZE = LType::END };
     uint8_t *ptr;
-    explicit Frame(uint8_t *_ptr) : ptr(_ptr) {}
+    INL explicit Frame(uint8_t *_ptr) : ptr(_ptr) {}
 
     friend Variant<Frame,START,_StartFrame>;
     friend Variant<Frame,STRONG,_StrongFrame>;
@@ -52,14 +52,14 @@ struct Cont {
   SearchState::Save save;
   SearchState *state;
   List<Frame> frames;
-  bool done(){ return frames.empty(); }
+  INL bool done(){ return frames.empty(); }
 
   struct Builder {
     SearchState *state;
     List<Frame> frames;
   public:
-    [[nodiscard]] Builder add(memory::Alloc &A, Frame f){ return Builder{state,frames.add(A,f)}; }
-    [[nodiscard]] Cont build() {
+    INL [[nodiscard]] Builder add(memory::Alloc &A, Frame f){ return Builder{state,frames.add(A,f)}; }
+    INL [[nodiscard]] Cont build() {
       return Cont {
         .save = state->save(),
         .state = state,
@@ -68,9 +68,9 @@ struct Cont {
     }
   };
   
-  [[nodiscard]] Builder builder() const { return Builder{state,frames.tail()}; }
+  INL [[nodiscard]] Builder builder() const { return Builder{state,frames.tail()}; }
 
-  [[nodiscard]] List<Cont> run(memory::Alloc &A) const { FRAME("run");
+  INL [[nodiscard]] List<Cont> run(memory::Alloc &A) const { FRAME("run");
     DEBUG if(frames.empty()) error("frames.empty()");
     state->restore(save);
     auto f = frames.head();

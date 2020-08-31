@@ -21,7 +21,7 @@ private:
   // unifications (without losing completeness) and improves cost balancing if
   // exactly 1 unification is possible.
   bool strong_only_; 
-  Atom(u8 *_ptr, size_t _offset, bool _sign, u64 _id, bool _strong_only)
+  INL Atom(u8 *_ptr, size_t _offset, bool _sign, u64 _id, bool _strong_only)
     : ptr(_ptr), offset(_offset), sign_(_sign), id_(_id), strong_only_(_strong_only) {}
 public:
   enum Pred {
@@ -32,23 +32,23 @@ public:
     PRED_MIN = EQ_SYMM,
   };
 
-  VarRange var_range() const { return VAR_RANGE::ref(ptr)+offset; }
-  Atom shift(size_t _offset) const { return Atom(ptr,offset+_offset,sign_,id_,strong_only_); }
-  Atom neg() const { return Atom(ptr,offset,!sign_,id_,strong_only_); }
-  Atom set_id(size_t _id) const { return Atom(ptr,offset,sign_,_id,strong_only_); }
-  Atom set_strong_only() const { return Atom(ptr,offset,sign_,id_,true); }
-  template<typename Alloc> Atom replace_arg(Alloc &a, size_t i, Term t) const {
+  INL VarRange var_range() const { return VAR_RANGE::ref(ptr)+offset; }
+  INL Atom shift(size_t _offset) const { return Atom(ptr,offset+_offset,sign_,id_,strong_only_); }
+  INL Atom neg() const { return Atom(ptr,offset,!sign_,id_,strong_only_); }
+  INL Atom set_id(size_t _id) const { return Atom(ptr,offset,sign_,_id,strong_only_); }
+  INL Atom set_strong_only() const { return Atom(ptr,offset,sign_,id_,true); }
+  template<typename Alloc> INL Atom replace_arg(Alloc &a, size_t i, Term t) const {
     Builder b(a,sign(),pred(),arg_count(),strong_only());
     for(size_t i=arg_count(); i--;) b.set_arg(i,arg(i));
     b.set_arg(i,t);
     return b.build();
   }
-  inline bool sign() const { return sign_; }
-  inline u64 pred() const { return PRED::ref(ptr); }
-  inline u64 arg_count() const { return ARGS::size(ptr); }
-  inline Term arg(size_t i) const { return ARGS::ref(ptr,i).shift(offset); }
-  inline u64 id() const { return id_; } 
-  inline bool strong_only() const { return strong_only_; }
+  INL bool sign() const { return sign_; }
+  INL u64 pred() const { return PRED::ref(ptr); }
+  INL u64 arg_count() const { return ARGS::size(ptr); }
+  INL Term arg(size_t i) const { return ARGS::ref(ptr,i).shift(offset); }
+  INL u64 id() const { return id_; } 
+  INL bool strong_only() const { return strong_only_; }
 
   template<typename Alloc> Atom(Alloc &a, bool sign, u64 pred, const vec<Term> &args) {
     Builder b(a,sign,pred,args.size(),false);
@@ -56,7 +56,7 @@ public:
     *this = b.build();
   }
 
-  template<typename Alloc> static inline Atom eq(Alloc &a, bool sign, Term l, Term r) {
+  template<typename Alloc> static Atom eq(Alloc &a, bool sign, Term l, Term r) {
     return Builder(a,sign,EQ,2,false).set_arg(0,l).set_arg(1,r).build();
   }
 
@@ -73,19 +73,19 @@ public:
       PRED::ref(ptr) = _pred;
       //DEBUG for(size_t i=0; i<_arg_count; ++i) ARGS::ref(ptr,i) = 0;
     }
-    inline Builder& set_arg(size_t i, Term a){
+    INL Builder& set_arg(size_t i, Term a){
       ARGS::ref(ptr,i) = a;
       VAR_RANGE::ref(ptr) |= a.var_range();
       return *this;
     }
-    inline Atom build() {
+    INL Atom build() {
       //DEBUG for(size_t i=0; i<ARGS::size(ptr); ++i) if(!ARGS::ref(ptr,i)) error("Atom::build() arg(%) not set",i);
       return Atom(ptr,0,sign_,0,strong_only_);
     }
   };
 };
 
-inline bool operator==(Atom x, Atom y) {
+INL inline bool operator==(Atom x, Atom y) {
   if(x.pred()!=y.pred()) return 0;
   DEBUG if(x.arg_count()!=y.arg_count())
     error("x.arg_count() = %, y.arg_count() = %",x.arg_count(),y.arg_count());
@@ -94,7 +94,7 @@ inline bool operator==(Atom x, Atom y) {
   return 1;
 }
 
-inline bool operator!=(Atom x, Atom y) { return !(x==y); }
+INL inline bool operator!=(Atom x, Atom y) { return !(x==y); }
 
 }  // tableau
 

@@ -5,7 +5,7 @@ struct _WeakSetFrame {
 };
 using WeakSetFrame = Variant<Frame,Frame::WEAK_SET,_WeakSetFrame>;
 
-List<Cont> weak_set(memory::Alloc &A, WeakSetFrame f) const { FRAME("weak_set");
+INL List<Cont> weak_set(memory::Alloc &A, WeakSetFrame f) const { FRAME("weak_set");
   state->stats.weak_set_steps++;
   DEBUG if(!f->branch_count) error("f->branch_count = 0");
   if(f->branch_count==1){

@@ -21,13 +21,13 @@ private:
   };
   Stack(const Stack &) = delete;
 public:
-  Stack(){}
-  ~Stack(){ for(auto b : blocks) delete[](b); }
+  INL Stack(){}
+  INL ~Stack(){ for(auto b : blocks) delete[](b); }
   
-  Save save() { return state; }
-  void restore(Save _state){ state = _state; }
+  INL Save save() { return state; }
+  INL void restore(Save _state){ state = _state; }
 
-  inline u8* alloc_bytes(size_t s) {
+  INL u8* alloc_bytes(size_t s) {
     COUNTER("alloc_bytes");
     DEBUG if(s>BLOCK) error("% = s > BLOCK = %",s,BLOCK);
     if(state.begin+s>state.end){
@@ -41,7 +41,7 @@ public:
     auto ptr = state.begin; state.begin += s; return ptr;
   }
 
-  template<typename T> inline T* alloc_init(const T &v) {
+  template<typename T> INL T* alloc_init(const T &v) {
     COUNTER("alloc_init");
     return new(alloc_bytes(sizeof(T)))T(v);
   }

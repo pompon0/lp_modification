@@ -22,11 +22,12 @@ private:
   vec<AtomClauseId> all;
   vec<size_t> map;
 public:
+  ~ClauseIndex(){}
   //TODO: eliminate clauses with unmatchable atoms
   struct AndClauseWithAtom { size_t i; DerAndClause cla; };
 
   struct Filter {
-    Maybe<AndClauseWithAtom> next() { FRAME("ClauseIndex::Filter::next()");
+    INL Maybe<AndClauseWithAtom> next() { FRAME("ClauseIndex::Filter::next()");
       for(;next_id<atoms->size(); next_id++) {
         auto &a = (*atoms)[next_id];
         if(index->and_clauses[a.clause_id].cost()>cost_limit) return Maybe<AndClauseWithAtom>();

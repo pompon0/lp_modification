@@ -26,11 +26,9 @@ func makeCmd(ctx context.Context, strategy string, inputPath string) *exec.Cmd {
   swiplArgs := []string {
     "-t",
     "halt",
-    "-nodebug",
-    "-L120M",
-    "-G120M",
-    "-T100M",
-    "-q",
+    "--no-debug",
+    "--stack_limit=360M",
+    "--quiet",
     "-g",
     fmt.Sprintf(program,utils.Runfile(leancopMainPath),inputPath,strategy),
   }

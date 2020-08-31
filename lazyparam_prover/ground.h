@@ -9,7 +9,7 @@
 namespace tableau {
 
 // clears offset (it doesnt' matter, because result contains no vars)
-inline Term ground(memory::Alloc &A, Term t) { FRAME("ground(%)",show(t));
+static Term ground(memory::Alloc &A, Term t) { FRAME("ground(%)",show(t));
   switch(t.type()) {
     case Term::VAR: return Term(Fun::Builder(A,Fun::EXTRA_CONST,0).build());
     case Term::FUN: {
@@ -24,7 +24,7 @@ inline Term ground(memory::Alloc &A, Term t) { FRAME("ground(%)",show(t));
 }
 
 // clears offset
-inline Atom ground(memory::Alloc &A, Atom a) { FRAME("ground(%)",show(a));
+static Atom ground(memory::Alloc &A, Atom a) { FRAME("ground(%)",show(a));
   size_t ac = a.arg_count();
   Atom::Builder b(A,a.sign(),a.pred(),ac,a.strong_only());
   for(size_t i=ac; i--;) b.set_arg(i,ground(A,a.arg(i)));
@@ -32,7 +32,7 @@ inline Atom ground(memory::Alloc &A, Atom a) { FRAME("ground(%)",show(a));
 }
 
 // clears offset
-inline AndClause ground(memory::Alloc &A, AndClause cla) { FRAME("ground(%)",show(cla));
+static AndClause ground(memory::Alloc &A, AndClause cla) { FRAME("ground(%)",show(cla));
   AndClause::Builder b(A,cla.atom_count());
   for(size_t i=cla.atom_count(); i--;) b.set_atom(i,ground(A,cla.atom(i)));
   return b.build();

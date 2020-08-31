@@ -13,12 +13,12 @@
 
 namespace tableau {
 
-DerAndClause neg_refl_axiom(memory::Alloc &A) {
+static DerAndClause neg_refl_axiom(memory::Alloc &A) {
   Term x(Var(A,0));
   return DerAndClause(A,0,AndClause::make(A,Atom::eq(A,false,x,x)));
 }
 
-DerAndClause neg_symm_axiom(memory::Alloc &A) {
+static DerAndClause neg_symm_axiom(memory::Alloc &A) {
   Term x(Var(A,0));
   Term y(Var(A,1));
   return DerAndClause(A,1,AndClause::make(A,
@@ -27,7 +27,7 @@ DerAndClause neg_symm_axiom(memory::Alloc &A) {
   ));
 }
 
-DerAndClause neg_trans_axiom(memory::Alloc &A) {
+static DerAndClause neg_trans_axiom(memory::Alloc &A) {
   Term x(Var(A,0));
   Term y(Var(A,1));
   Term z(Var(A,2));
@@ -39,7 +39,7 @@ DerAndClause neg_trans_axiom(memory::Alloc &A) {
 }
 
 
-DerAndClause neg_cong_pred_axiom(memory::Alloc &A, u64 pred_name, u64 arg_count) {
+static DerAndClause neg_cong_pred_axiom(memory::Alloc &A, u64 pred_name, u64 arg_count) {
   Atom::Builder lb(A,true,pred_name,arg_count,false);
   Atom::Builder rb(A,false,pred_name,arg_count,false);
   AndClause::Builder cb(A,arg_count+2);
@@ -55,7 +55,7 @@ DerAndClause neg_cong_pred_axiom(memory::Alloc &A, u64 pred_name, u64 arg_count)
   return DerAndClause(A,3,cb.build());
 }
 
-DerAndClause neg_cong_fun_axiom(memory::Alloc &A, u64 fun_name, u64 arg_count) {
+static DerAndClause neg_cong_fun_axiom(memory::Alloc &A, u64 fun_name, u64 arg_count) {
   Fun::Builder lb(A,fun_name,arg_count);
   Fun::Builder rb(A,fun_name,arg_count);
   AndClause::Builder cb(A,arg_count+1);
@@ -72,7 +72,8 @@ DerAndClause neg_cong_fun_axiom(memory::Alloc &A, u64 fun_name, u64 arg_count) {
 
 struct ArityCtx {
   ArityCtx(){ pred_arity[Atom::EQ] = 2; }
-
+  ~ArityCtx(){}
+  
   std::map<u64,size_t> pred_count;
   std::map<u64,u64> fun_arity;
   std::map<u64,u64> pred_arity;
@@ -257,13 +258,13 @@ struct FlatClauseBuilder {
   }
 };
 
-inline OrForm flatten_OrForm(memory::Alloc &A, OrForm f) {
+static OrForm flatten_OrForm(memory::Alloc &A, OrForm f) {
   OrForm f2;
   for(auto cla : f.and_clauses) f2.and_clauses.push_back(FlatClauseBuilder(A,cla).build(A));
   return f2;
 }
 
-OrForm reduce_monotonicity_and_append_eq_axioms(memory::Alloc &A, OrForm _f) {
+static OrForm reduce_monotonicity_and_append_eq_axioms(memory::Alloc &A, OrForm _f) {
   OrForm f(flatten_OrForm(A,_f));
   f.and_clauses.push_back(neg_refl_axiom(A));
   f.and_clauses.push_back(neg_symm_axiom(A));
@@ -273,7 +274,7 @@ OrForm reduce_monotonicity_and_append_eq_axioms(memory::Alloc &A, OrForm _f) {
   return OrForm(f);
 }
 
-OrForm append_restricted_transitivity_axioms(memory::Alloc &A, OrForm f) {
+static OrForm append_restricted_transitivity_axioms(memory::Alloc &A, OrForm f) {
   Term a(Var(A,0));
   Term b(Var(A,1));
   Term c(Var(A,2));

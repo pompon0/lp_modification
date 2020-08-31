@@ -7,7 +7,8 @@
 // FunOrd represents an order on functor symbols.
 struct FunOrd {
 public:
-  FunOrd(){}
+  INL FunOrd() = default;
+  INL ~FunOrd() = default;
   FunOrd(
     const solutions::FunOrd &proto,
     const google::protobuf::RepeatedPtrField<tptp::Node> &nodes

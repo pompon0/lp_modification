@@ -11,7 +11,7 @@ namespace tableau::lazy_paramodulation {
 
 struct AxiomClause : Lazy<DerAndClause>::Impl {
   AndClause cla;
-  AxiomClause(AndClause _cla) : cla(_cla) {}
+  INL AxiomClause(AndClause _cla) : cla(_cla) {}
   DerAndClause get(memory::Alloc &A) const {
     DerAndClause::Builder b(A);
     b.derived = cla;

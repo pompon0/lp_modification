@@ -13,7 +13,7 @@ namespace tableau {
 namespace lpmod {
 
 // a = b /\ b = c /\ a != c
-inline AndClause neg_trans_axiom(memory::Alloc &A, Term a, Term b, Term c) {
+static AndClause neg_trans_axiom(memory::Alloc &A, Term a, Term b, Term c) {
   return AndClause::make(A,
     Atom::eq(A,true,a,b),
     Atom::eq(A,true,b,c),
@@ -22,7 +22,7 @@ inline AndClause neg_trans_axiom(memory::Alloc &A, Term a, Term b, Term c) {
 }
 
 // a = b /\ b != a
-inline AndClause neg_symm_axiom(memory::Alloc &A, Term a, Term b) {
+static AndClause neg_symm_axiom(memory::Alloc &A, Term a, Term b) {
   return AndClause::make(A,
     Atom::eq(A,true,a,b),
     Atom::eq(A,false,b,a)
@@ -30,11 +30,11 @@ inline AndClause neg_symm_axiom(memory::Alloc &A, Term a, Term b) {
 }
 
 // a != a
-inline AndClause neg_refl_axiom(memory::Alloc &A, Term a) {
+static AndClause neg_refl_axiom(memory::Alloc &A, Term a) {
   return AndClause::make(A,Atom::eq(A,false,a,a));
 }
 
-inline Atom red(memory::Alloc &A, bool sign, Term f, Term w) {
+static Atom red(memory::Alloc &A, bool sign, Term f, Term w) {
   Atom::Builder b(A,sign,Atom::EQ_TRANS_POS,2,false);
   b.set_arg(0,f);
   b.set_arg(1,w);

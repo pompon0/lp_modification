@@ -54,6 +54,11 @@ struct ProverOutput {
   ptr<OrForm> proof;
 
   Stats stats;
+
+  INL ProverOutput() = default;
+  INL ProverOutput(ProverOutput&&) = default;
+  INL ProverOutput& operator=(ProverOutput&&) = default;
+  ~ProverOutput(){}
 };
 
 } // namespace tableau

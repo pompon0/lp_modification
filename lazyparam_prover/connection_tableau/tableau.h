@@ -5,7 +5,7 @@
 
 namespace tableau::connection_tableau {
 
-ProverOutput prove(const Ctx &ctx, memory::Alloc &A, const ClauseIndex &cla_index, const FunOrd &fun_ord, size_t limit) { FRAME("prove()");
+static ProverOutput prove(const Ctx &ctx, memory::Alloc &A, const ClauseIndex &cla_index, const FunOrd &fun_ord, size_t limit) { FRAME("prove()");
   SCOPE("prove");
   SearchState s(cla_index,fun_ord);
   Cont::StartFrame::Builder b(A);
@@ -25,7 +25,7 @@ ProverOutput prove(const Ctx &ctx, memory::Alloc &A, const ClauseIndex &cla_inde
   };
 }
 
-ProverOutput prove_loop(const Ctx &ctx, memory::Alloc &A, OrForm form, const FunOrd &fun_ord) { FRAME("prove_loop()");
+static ProverOutput prove_loop(const Ctx &ctx, memory::Alloc &A, OrForm form, const FunOrd &fun_ord) { FRAME("prove_loop()");
   SCOPE("prove_loop"); 
   Stats stats;
   size_t cont_count = 0;

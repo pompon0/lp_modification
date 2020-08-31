@@ -88,6 +88,8 @@ private:
   }
 public:
   RevNodeIndex(){}
+  INL RevNodeIndex(const RevNodeIndex &) = default;
+  ~RevNodeIndex(){}
   RevNodeIndex(const google::protobuf::RepeatedPtrField<tptp::Node> &init) {
     for(auto n : init) {
       used.insert(n.id());

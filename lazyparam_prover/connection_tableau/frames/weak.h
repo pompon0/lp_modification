@@ -1,7 +1,7 @@
 struct _WeakFrame { size_t min_cost; size_t nodes_limit; Branch branch; };
 using WeakFrame = Variant<Frame,Frame::WEAK,_WeakFrame>;
 
-List<Cont> weak(memory::Alloc &A, WeakFrame f) const { FRAME("weak(%)",show(f->branch.false_.head())); 
+INL List<Cont> weak(memory::Alloc &A, WeakFrame f) const { FRAME("weak(%)",show(f->branch.false_.head())); 
   state->stats.weak_steps++;
   size_t budget = f->nodes_limit - state->nodes_used;
   COUNTER("expand");

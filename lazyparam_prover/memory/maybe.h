@@ -11,21 +11,21 @@ private:
   u8 data[sizeof(T)];
   bool present;
 public:
-  Maybe() : present(0) {}
-  Maybe(Nothing) : Maybe() {}
-  explicit Maybe(const T &v) : present(1) { new(data)T(v); }
-  explicit operator bool() const { return present; } 
-  const T& get() const {
+  INL Maybe() : present(0) {}
+  INL Maybe(Nothing) : Maybe() {}
+  INL explicit Maybe(const T &v) : present(1) { new(data)T(v); }
+  INL explicit operator bool() const { return present; } 
+  INL const T& get() const {
     DEBUG if(!present) error("Maybe::get(): not present");
     return *(T*)data;
   }
-  bool operator==(Maybe<T> m) const {
+  INL bool operator==(Maybe<T> m) const {
     return present == m.present && (!present || get()==m.get());
   }
 };
 
-static inline Nothing nothing(){ return {}; }
-template<typename T> static inline Maybe<T> just(const T &v) { return Maybe<T>(v); }
+INL static inline Nothing nothing(){ return {}; }
+template<typename T> INL static inline Maybe<T> just(const T &v) { return Maybe<T>(v); }
 
 }  // namespace tableau
 

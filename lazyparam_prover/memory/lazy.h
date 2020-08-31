@@ -10,13 +10,13 @@ template<typename R> struct Lazy {
     using Res = R;
     virtual Res get(memory::Alloc &A) const = 0;
   };
-  R get(memory::Alloc &A) const { return impl->get(A); }
-  explicit Lazy(const Impl *_impl) : impl(_impl) {}
+  INL R get(memory::Alloc &A) const { return impl->get(A); }
+  INL explicit Lazy(const Impl *_impl) : impl(_impl) {}
 private:
   const Impl *impl;
 };
 
-template<typename T> Lazy<typename T::Res> lazy(memory::Alloc &A, const T &t) {
+template<typename T> INL inline Lazy<typename T::Res> lazy(memory::Alloc &A, const T &t) {
   return Lazy<typename T::Res>(A.alloc_init(t));
 }
 

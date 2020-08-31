@@ -12,20 +12,20 @@ namespace tableau {
 struct DerAndClause;
 
 struct DerAndClause {
-  DerAndClause set_id_offset(u64 _id_offset) const { return DerAndClause(ptr,constraints_ptr,offset,_id_offset); }
-  DerAndClause shift(u64 _offset) const { return DerAndClause(ptr,constraints_ptr,offset+_offset,id_offset); }
-  VarRange var_range() const { return VAR_RANGE::ref(ptr); }
+  INL DerAndClause set_id_offset(u64 _id_offset) const { return DerAndClause(ptr,constraints_ptr,offset,_id_offset); }
+  INL DerAndClause shift(u64 _offset) const { return DerAndClause(ptr,constraints_ptr,offset+_offset,id_offset); }
+  INL VarRange var_range() const { return VAR_RANGE::ref(ptr); }
 
-  AndClause derived() const { return DERIVED::ref(ptr).shift(offset).set_id_offset(id_offset); }
-  size_t cost() const { return COST::ref(ptr); }
+  INL AndClause derived() const { return DERIVED::ref(ptr).shift(offset).set_id_offset(id_offset); }
+  INL size_t cost() const { return COST::ref(ptr); }
   
-  size_t source_count() const { return SOURCES::size(ptr); }
-  AndClause source(size_t i) const { return SOURCES::ref(ptr,i).shift(offset); }
+  INL size_t source_count() const { return SOURCES::size(ptr); }
+  INL AndClause source(size_t i) const { return SOURCES::ref(ptr,i).shift(offset); }
   
-  size_t constraint_count() const { return CONSTRAINTS::size(constraints_ptr); }
-  OrderAtom constraint(size_t i) const { return CONSTRAINTS::ref(constraints_ptr,i).shift(offset); }
+  INL size_t constraint_count() const { return CONSTRAINTS::size(constraints_ptr); }
+  INL OrderAtom constraint(size_t i) const { return CONSTRAINTS::ref(constraints_ptr,i).shift(offset); }
 
-  DerAndClause(memory::Alloc &A, size_t cost, AndClause cla) {
+  INL DerAndClause(memory::Alloc &A, size_t cost, AndClause cla) {
     Builder b(A);
     b.cost = cost;
     b.derived = cla;
@@ -36,6 +36,8 @@ struct DerAndClause {
   struct Builder {
   private:
   public:
+    INL ~Builder() = default;
+
     size_t offset = 0;
     size_t id_offset = 0;
     size_t cost = 0;
@@ -44,7 +46,7 @@ struct DerAndClause {
     vec<OrderAtom> constraints;
 
     Builder(memory::Alloc &A) : derived(AndClause::make(A)) {}
-    DerAndClause build(memory::Alloc &A) {
+    INL DerAndClause build(memory::Alloc &A) {
       auto ptr = SOURCES::alloc(A,sources.size());
       auto constraints_ptr = CONSTRAINTS::alloc(A,constraints.size());
       VarRange var_range{0,0};
@@ -60,7 +62,7 @@ struct DerAndClause {
     }
   };
 
-  Builder to_builder(memory::Alloc &A) {
+  INL Builder to_builder(memory::Alloc &A) {
     Builder b(A);
     b.offset = offset;
     b.id_offset = id_offset;
@@ -71,7 +73,7 @@ struct DerAndClause {
     return b;
   }
 
-  friend bool operator==(const DerAndClause &a, const DerAndClause &b) {
+  INL friend bool operator==(const DerAndClause &a, const DerAndClause &b) {
     bool ok = a.cost()==b.cost();
     ok &= a.derived()==b.derived();
     ok &= a.source_count()==b.source_count();
@@ -83,7 +85,7 @@ struct DerAndClause {
   }
 
 private:
-  DerAndClause(u8 *_ptr, u8 *_constraints_ptr, size_t _offset, size_t _id_offset) 
+  INL DerAndClause(u8 *_ptr, u8 *_constraints_ptr, size_t _offset, size_t _id_offset) 
     : ptr(_ptr), constraints_ptr(_constraints_ptr), offset(_offset), id_offset(_id_offset) {} 
 
   using COST = Field<size_t>;

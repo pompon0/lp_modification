@@ -23,6 +23,7 @@ private:
   FunOrd fun_ord;
 public:
   KBO(const FunOrd &_fun_ord) : fun_ord(_fun_ord) {}
+  ~KBO(){}
 
   struct Save { size_t var_occ_size; };
   Save save(){ return {var_occ.size()}; }

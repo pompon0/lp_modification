@@ -55,6 +55,7 @@ template<typename Cmp> void expect_subterm_order(memory::Alloc &A, Cmp &cmp, Ter
 
 struct TestCtx {
   TestCtx(const TestCtx &) = delete;
+  ~TestCtx(){}
   explicit TestCtx(uint64_t seed) : rnd(seed) { new_fun(0); }
   memory::Alloc A;
   std::minstd_rand rnd;

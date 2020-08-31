@@ -21,7 +21,7 @@ struct ValuationStats {
   size_t failed_unifications = 0;
   size_t broken_constraints = 0;
   size_t comparisons = 0;
-  ValuationStats & operator+=(ValuationStats b) {
+  INL ValuationStats & operator+=(ValuationStats b) {
     unifications += b.unifications;
     failed_unifications += b.failed_unifications;
     broken_constraints += b.broken_constraints;
@@ -36,14 +36,14 @@ private:
   Valuation val;
   Ordering ord;
 public:
-  ConstrainedValuation() : ord(FunOrd()) {}
-  ConstrainedValuation(const FunOrd &fun_ord) : ord(fun_ord) {}
+  INL ConstrainedValuation() : ord(FunOrd()) {}
+  INL ConstrainedValuation(const FunOrd &fun_ord) : ord(fun_ord) {}
   ValuationStats stats;
 
-  Valuation get_valuation() const { return val; }
-  size_t size() const { return val.size(); }
+  INL Valuation get_valuation() const { return val; }
+  INL size_t size() const { return val.size(); }
 
-  template<typename T> T allocate(T t) {
+  template<typename T> INL T allocate(T t) {
     t = val.allocate(t);
     ord.resize(val.size());
     return t;
@@ -54,26 +54,26 @@ public:
     typename Ordering::Snapshot ord;
     List<OrderAtom> constraints;
   };
-  Snapshot snapshot(){
+  INL Snapshot snapshot(){
     return {
       val.snapshot(),
       ord.snapshot(),
       constraints
     };
   }
-  void rewind(Snapshot s){
+  INL void rewind(Snapshot s){
     val.rewind(s.val);
     ord.rewind(s.ord);
     constraints = s.constraints;
   }
   
-  inline bool equal(Term x, Term y){ return val.equal(x,y); }
-  inline bool equal_mod_sign(Atom x, Atom y) { return val.equal_mod_sign(x,y); } 
-  template<typename T> T eval(T t) const { return val.eval(t); }
-  Term shallow_eval(Term t) const { return val.shallow_eval(t); }
+  INL bool equal(Term x, Term y){ return val.equal(x,y); }
+  INL bool equal_mod_sign(Atom x, Atom y) { return val.equal_mod_sign(x,y); } 
+  template<typename T> INL T eval(T t) const { return val.eval(t); }
+  INL Term shallow_eval(Term t) const { return val.shallow_eval(t); }
   
   // unifies values, validates constraints afterwards.
-  template<typename T> [[nodiscard]] bool unify(T x, T y) { FRAME("mgu()");
+  template<typename T> INL [[nodiscard]] bool unify(T x, T y) { FRAME("mgu()");
     stats.unifications++;
     if(!val.mgu(x,y)){
       stats.failed_unifications++;
@@ -88,18 +88,18 @@ public:
     return 1;
   }
   
-  inline OrderAtom::Relation cmp(Term l, Term r) {
+  INL OrderAtom::Relation cmp(Term l, Term r) {
     stats.comparisons++;
     return ord.cmp(val,l,r);
   }
 
   // returning false invalidates the object 
-  [[nodiscard]] bool push_constraint(OrderAtom c) {
+  [[nodiscard]] INL bool push_constraint(OrderAtom c) {
     if(c.status()==OrderAtom::TRUE) return 1;
     return check_and_push_constraint(constraints,c);
   }
 
-  [[nodiscard]] bool check_constraints() {
+  [[nodiscard]] INL bool check_constraints() {
     List<OrderAtom> c2;
     for(auto c = constraints; !c.empty(); c = c.tail()) {
       if(!check_and_push_constraint(c2,c.head())) return false;
@@ -108,7 +108,7 @@ public:
     return true;
   } 
 
-  bool check_and_push_constraint(List<OrderAtom> &constraints, OrderAtom c) {
+  INL bool check_and_push_constraint(List<OrderAtom> &constraints, OrderAtom c) {
     c = c.reduce(*this);
     switch(c.status()) {
     case OrderAtom::TRUE: return true;

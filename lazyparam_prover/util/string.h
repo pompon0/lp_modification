@@ -41,7 +41,7 @@ namespace util
   template<typename T> inline str to_str(const T &v)
   { std::stringstream ss; ss << v; return ss.str(); }
 
-  template<typename ...Args> inline str fmt(const str &format_str, Args ...args)
+  template<typename ...Args> str fmt(const str &format_str, Args ...args)
   {
     arr<str> vs{to_str(args)...};
     std::stringstream ss; size_t i = 0;

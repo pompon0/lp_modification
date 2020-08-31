@@ -35,7 +35,7 @@ namespace util
   }
 
   /** ERROR log */
-  template<typename ...Args> [[noreturn]] inline void error(str s, Args ...args)
+  template<typename ...Args> [[noreturn]] void error(str s, Args ...args)
   {
     auto msg = fmt(s,args...);
     for(auto *l : Logger::L()) l->log(Logger::ERROR,msg);

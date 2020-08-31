@@ -9,7 +9,7 @@
 
 namespace tableau {
 
-inline str show(Term t) {
+static str show(Term t) {
   switch(t.type()) {
     case Term::VAR: return util::fmt("V%",Var(t).id());
     case Term::FUN: {

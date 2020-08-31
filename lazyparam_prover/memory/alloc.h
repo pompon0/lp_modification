@@ -14,7 +14,7 @@ struct Snapshot {
 //TODO: zero the memory, when rewinding stack in DEBUG mode.
 extern Snapshot stack;
 
-inline u8* alloc_bytes(size_t s) {
+INL inline u8* alloc_bytes(size_t s) {
   COUNTER("alloc_bytes");
   enum { BLOCK = 1<<26 };
   DEBUG if(s>BLOCK) error("% = s > BLOCK = %",s,BLOCK);

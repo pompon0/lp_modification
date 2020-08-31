@@ -1,4 +1,5 @@
 build --cxxopt=-Wno-unused-function
 build --cxxopt=-Werror=unused-result
+build --cxxopt=-Werror=attributes
 build --cxxopt=-Winline
 build --cxxopt=--std=c++17

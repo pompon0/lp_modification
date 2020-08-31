@@ -7,6 +7,8 @@
 #include "lazyparam_prover/types.h"
 #include <map>
 
+#define INL [[gnu::always_inline]]
+
 struct Profile {
   struct Scope { size_t count = 0; double time = 0; };
   struct Visit {

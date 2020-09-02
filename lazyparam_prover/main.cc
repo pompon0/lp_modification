@@ -92,7 +92,7 @@ int main(int argc, char **argv) {
     }
 
     auto [ctx,cancel] = Ctx::with_timeout(Ctx::background(),absl::GetFlag(FLAGS_timeout));
-    Defer _cancel(cancel);
+    //Defer _cancel(cancel);
     auto method = absl::GetFlag(FLAGS_method);
     ProverOutput out;
     FunOrd fun_ord(input.fun_ord(),input.problem().nodes());

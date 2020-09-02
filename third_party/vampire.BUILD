@@ -1,5 +1,5 @@
 COPTS = [
-  "-O6",
+  # "-O6",
   "-std=c++11",
   "-Wno-return-type",
   "-Wno-terminate",
@@ -114,11 +114,11 @@ cc_binary(
   copts = COPTS,
   defines = DEFINES,
   visibility = ["//visibility:public"],
-  features = ["fully_static_link"],
-  linkopts = [
-      "-static-libstdc++",
-      "-static-libgcc",
-      "-l:libstdc++.a",
-      "-lm",
-  ],
+  # features = ["fully_static_link"],
+  # linkopts = [
+  #    "-static-libstdc++",
+  #    "-static-libgcc",
+  #    "-l:libstdc++.a",
+  #    "-lm",
+  #],
 )

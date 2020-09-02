@@ -67,10 +67,10 @@ struct OrClause {
 private:
   INL explicit OrClause(AndClause _neg_and_clause) : neg_and_clause(_neg_and_clause) {}
   AndClause neg_and_clause;
-  INL friend OrClause AndClause::neg() const;
+  friend OrClause AndClause::neg() const;
 };
 
-inline OrClause AndClause::neg() const { return OrClause(*this); }
+INL inline OrClause AndClause::neg() const { return OrClause(*this); }
 
 INL inline bool operator==(AndClause a, AndClause b) {
   if(a.atom_count()!=b.atom_count()) return 0;

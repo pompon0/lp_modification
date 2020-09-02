@@ -178,6 +178,6 @@ haskell_binary(
         "//tptp_parser/proto:tptp_haskell_proto",
         "//tptp_parser/proto:solutions_haskell_proto",
     ],
-    features = ["fully_static_link"],
+    # features = ["fully_static_link"],
     visibility = ["//visibility:public"],
 )

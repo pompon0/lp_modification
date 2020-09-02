@@ -16,7 +16,6 @@ List<Cont> lazy_strong_connection(memory::Alloc &A, LazyStrongConnectionFrame f)
   if(!state->val.push_constraint(A,OrderAtom(A,OrderAtom::G,f->l,f->r))) return nothing();
   // -L[f(v)], L[w], f(v)=w
   auto bs = f->base.branch_set;
-  Term w(f->base.w);
   if(!f->base.branch_lr) {
     if(f->l.type()==Term::VAR) {
       // L[p],z/=r | (p=z>w), L[w], r=w

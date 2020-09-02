@@ -18,11 +18,4 @@ cc_binary(
     srcs = ["limit.cc"],
     deps = ["//lazyparam_prover/util:util"],
     visibility = ["//visibility:public"],
-    features = ["fully_static_link"],
-    linkopts = [
-        "-static-libstdc++",
-        "-static-libgcc",
-        "-l:libstdc++.a",
-        "-l:libgcc.a",
-    ],
 )

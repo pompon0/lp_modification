@@ -12,6 +12,41 @@ http_archive(
     urls = ["https://github.com/bazelbuild/bazel-skylib/archive/1.0.2.tar.gz"],
 )
 
+###############################
+# LLVM
+
+local_repository(
+  name = "my_cc",
+  path = "/home/gprusak/github/my_cc",
+)
+
+# local_repository(
+#  name = "com_grail_bazel_toolchain",
+#  path = "/home/gprusak/github/bazel_toolchain",
+# )
+
+http_archive(
+  name = "com_grail_bazel_toolchain",
+  strip_prefix = "bazel-toolchain-master",
+  urls = ["https://github.com/grailbio/bazel-toolchain/archive/master.tar.gz"],
+)
+
+load("@com_grail_bazel_toolchain//toolchain:deps.bzl", "bazel_toolchain_dependencies")
+
+bazel_toolchain_dependencies()
+
+load("@com_grail_bazel_toolchain//toolchain:rules.bzl", "llvm_toolchain")
+
+llvm_toolchain(
+  name = "llvm_toolchain",
+  distribution = "clang+llvm-10.0.0-x86_64-linux-gnu-ubuntu-18.04.tar.xz",
+  llvm_version = "10.0.0",
+)
+
+load("@llvm_toolchain//:toolchains.bzl", "llvm_register_toolchains")
+
+llvm_register_toolchains()
+
 ################################
 # GOLANG
 
@@ -214,9 +249,9 @@ http_archive(
 
 http_archive(
     name = "vampire",
-    strip_prefix = "vampire-3267e536135d0a9ac0691ee43153353cb130ca8e",
-    urls = ["https://github.com/vprover/vampire/archive/3267e536135d0a9ac0691ee43153353cb130ca8e.tar.gz"],
-    sha256 = "5459de1b1db951c8522b3b2e4af607c376da7e9cf41f2841b40e8271bd2abd14",
+    strip_prefix = "vampire-b4b5b00d35335b7fb376364bc0895a470c65820b",
+    urls = ["https://github.com/pompon0/vampire/archive/b4b5b00d35335b7fb376364bc0895a470c65820b.tar.gz"],
+    sha256 = "115cddad1a36506b1f89e190c3c407f698f7d271d681ec34b98da33d13bfb263",
     build_file = "//:third_party/vampire.BUILD",
 )
 

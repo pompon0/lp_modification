@@ -40,7 +40,6 @@ private:
   }
   std::mutex mtx;
   std::promise<void> p;
-  std::future<void> extra_future;
   std::shared_future<void> f;
   std::set<Ctx*> children;
   Ptr base;
@@ -59,10 +58,10 @@ std::tuple<Ctx::Ptr,Ctx::Cancel> Ctx::with_cancel(Ctx::Ptr base) {
 
 std::tuple<Ctx::Ptr,Ctx::Cancel> Ctx::with_timeout(Ctx::Ptr base, absl::Duration timeout) {
   Ptr ctx(new Ctx(base));
-  ctx->extra_future = std::async(std::launch::async,[timeout,ctx]{
+  std::thread([timeout,ctx]{
     ctx->f.wait_for(absl::ToChronoMilliseconds(timeout));
     ctx->cancel();
-  });
+  }).detach();
   return std::make_tuple(ctx,[ctx]{ ctx->cancel(); });
 }
 #endif  // CTX_H_

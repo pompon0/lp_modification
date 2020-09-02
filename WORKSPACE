@@ -15,20 +15,12 @@ http_archive(
 ###############################
 # LLVM
 
-local_repository(
-  name = "my_cc",
-  path = "/home/gprusak/github/my_cc",
-)
-
-# local_repository(
-#  name = "com_grail_bazel_toolchain",
-#  path = "/home/gprusak/github/bazel_toolchain",
-# )
-
 http_archive(
+  # cannot change this name, because files in its workspace refer to it
   name = "com_grail_bazel_toolchain",
-  strip_prefix = "bazel-toolchain-master",
-  urls = ["https://github.com/grailbio/bazel-toolchain/archive/master.tar.gz"],
+  strip_prefix = "bazel-toolchain-ad2e19d1195fca4cfe8a4d9bad6fd34ca2000941",
+  urls = ["https://github.com/pompon0/bazel-toolchain/archive/ad2e19d1195fca4cfe8a4d9bad6fd34ca2000941.tar.gz"],
+  sha256 = "ae9203e298d976b260c7756588a77d6cbd73e2fdacf2c22b5a200fdf531d5bbc",
 )
 
 load("@com_grail_bazel_toolchain//toolchain:deps.bzl", "bazel_toolchain_dependencies")
@@ -139,9 +131,9 @@ container_pull(
 
 http_archive(
     name = "rules_haskell",
-    strip_prefix = "rules_haskell-master",
-    urls = ["https://github.com/pompon0/rules_haskell/archive/master.tar.gz"],
-    sha256 = "09a989c7b2a53cb2d63a5547b6ce46317fc0d5bc99bf8fac00a8411e18b440a6",
+    strip_prefix = "rules_haskell-fdeb7750359e622aad88eb5268fd33b7bebd24cb",
+    urls = ["https://github.com/pompon0/rules_haskell/archive/fdeb7750359e622aad88eb5268fd33b7bebd24cb.tar.gz"],
+    sha256 = "02843fc82bc6922ddb5dead3e4eee7d1aa77c18e2045cb26c5339d4dbb7e437c",
 )
 
 load("@rules_haskell//haskell:repositories.bzl", "rules_haskell_dependencies")
@@ -150,14 +142,7 @@ rules_haskell_dependencies()
 
 load("@rules_haskell//haskell:toolchain.bzl", "rules_haskell_toolchains")
 
-rules_haskell_toolchains(
-  compiler_flags = [
-   #   "-fPIC",
-   #   "-fexternal-dynamic-refs",
-   #   "-optl-static",
-   #   "-optl-pthread",
-  ],
-)
+rules_haskell_toolchains()
 
 load("@rules_haskell//haskell:cabal.bzl", "stack_snapshot")
 

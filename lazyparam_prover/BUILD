@@ -128,6 +128,7 @@ cc_binary(
         # "@abseil//absl/flags:flag",
     ],
     visibility = ["//visibility:public"],
+    features = ["fully_static_link"],
 )
 
 cc_library(
@@ -227,5 +228,6 @@ cc_binary(
         "@abseil//absl/flags:parse",
     ],
     visibility = ["//visibility:public"],
+    features = ["fully_static_link"],
     # linkopts = ["-static","--sysroot=/tmp/","-v"],
 )

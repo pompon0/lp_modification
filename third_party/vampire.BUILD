@@ -1,4 +1,5 @@
 COPTS = [
+  # Schedule.cpp takes clang 15min to compile with -O3.
   # "-O6",
   "-std=c++11",
   "-Wno-return-type",
@@ -114,7 +115,7 @@ cc_binary(
   copts = COPTS,
   defines = DEFINES,
   visibility = ["//visibility:public"],
-  # features = ["fully_static_link"],
+  features = ["fully_static_link"],
   # linkopts = [
   #    "-static-libstdc++",
   #    "-static-libgcc",

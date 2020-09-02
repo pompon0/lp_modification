@@ -17,5 +17,6 @@ cc_binary(
     name = "limit",
     srcs = ["limit.cc"],
     deps = ["//lazyparam_prover/util:util"],
+    features = ["fully_static_link"],
     visibility = ["//visibility:public"],
 )

@@ -32,9 +32,9 @@ cc_test(
     name = "stack_test",
     srcs = ["stack_test.cc"],
     deps = [
-      ":memory",
-      "//utils:utils",
-      "@gtest//:gtest_main",
+        ":memory",
+        "//utils:utils",
+        "@gtest//:gtest_main",
     ],
 )
 
@@ -42,8 +42,8 @@ cc_test(
     name = "list_test",
     srcs = ["list_test.cc"],
     deps = [
-      "//utils:utils",
-      ":memory",
-      "@gtest//:gtest_main",
+        "//utils:utils",
+        ":memory",
+        "@gtest//:gtest_main",
     ],
 )

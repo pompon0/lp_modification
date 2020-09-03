@@ -4,12 +4,12 @@ import (
   "context"
   "testing"
 
-  "github.com/pompon0/tptp_benchmark_go/problems"
+  "github.com/pompon0/tptp_benchmark_go/problems/sample"
 )
 
 func TestProve(t *testing.T) {
   ctx := context.Background()
-  for name,tptp := range problems.SampleProblems {
+  for name,tptp := range sample.SampleProblems() {
     // leancop doesn't understand the trivial example 
     if name == "trivial" { continue }
     // case not covered due to incompleteness

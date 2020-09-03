@@ -26,5 +26,5 @@ go_test(
         "prolog_test.go",
     ],
     embed = [":go_default_library"],
-    deps = ["//problems:go_default_library"],
+    deps = ["//problems/sample:go_default_library"],
 )

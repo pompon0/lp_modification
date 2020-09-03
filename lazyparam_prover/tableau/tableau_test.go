@@ -8,7 +8,7 @@ import (
   "context"
 
   "github.com/pompon0/tptp_benchmark_go/eprover"
-  "github.com/pompon0/tptp_benchmark_go/problems"
+  "github.com/pompon0/tptp_benchmark_go/problems/sample"
   "github.com/pompon0/tptp_benchmark_go/tool"
   spb "github.com/pompon0/tptp_benchmark_go/tptp_parser/proto/solutions_go_proto"
   ppb "github.com/pompon0/tptp_benchmark_go/lazyparam_prover/prover_go_proto"
@@ -23,7 +23,7 @@ func TestTransformations(t *testing.T) {
     ppb.Transformation_LP_MODIFICATION,
   } {
     trans := trans
-    for k,v := range problems.SampleProblems {
+    for k,v := range sample.SampleProblems() {
       k,v := k,v
       testName := fmt.Sprintf("case (%v,%q)",trans,k)
       t.Run(testName,func(t *testing.T) {
@@ -58,7 +58,7 @@ func TestTableau(t *testing.T) {
     {ppb.Method_LAZY_PARAMODULATION, ppb.Transformation_SKIP},
   }{
     p := p
-    for k,v := range problems.SampleProblems {
+    for k,v := range sample.SampleProblems() {
       k,v := k,v
       testName := fmt.Sprintf("case (%v,%q)",p,k)
       t.Run(testName,func(t *testing.T) {

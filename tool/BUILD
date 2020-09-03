@@ -23,7 +23,7 @@ go_test(
     embed = [":go_default_library"],
     deps = [
         "//eprover:go_default_library",
-        "//problems:go_default_library",
+        "//problems/sample:go_default_library",
         "//tptp_parser/proto:solutions_go_proto",
         "//tptp_parser/proto:tptp_go_proto",
     ],

@@ -6,9 +6,8 @@ import (
   "log"
   "bytes"
 
-  //"github.com/golang/protobuf/proto"
   "github.com/pompon0/tptp_benchmark_go/eprover"
-  "github.com/pompon0/tptp_benchmark_go/problems"
+  "github.com/pompon0/tptp_benchmark_go/problems/sample"
   tpb "github.com/pompon0/tptp_benchmark_go/tptp_parser/proto/tptp_go_proto"
   spb "github.com/pompon0/tptp_benchmark_go/tptp_parser/proto/solutions_go_proto"
 )
@@ -33,7 +32,7 @@ fof('qu(cond(conseq(axiom(3)), 3), and(holds(definiens(29), 45, 0), holds(defini
 
 func parsingTestCases() map[string][]byte {
   r := map[string][]byte{}
-  for k,v := range problems.SampleProblems { r[k] = v}
+  for k,v := range sample.SampleProblems() { r[k] = v }
   r["NUM845+2.p"] = []byte(num845_2)
   return r
 }
@@ -48,7 +47,7 @@ func TestTptpToProto(t *testing.T) {
 
 func TestProtoToTptp(t *testing.T) {
   ctx := context.Background()
-  for k,v := range problems.SampleProblems {
+  for k,v := range sample.SampleProblems() {
     fof,err := TptpToProto(ctx,FOF,v)
     if err!=nil { t.Fatalf("TptpToProto(%q[1]): %v",k,err) }
     tptp,err := ProtoToTptp(ctx,fof)
@@ -87,7 +86,7 @@ func TestProofToTptp(t *testing.T) {
 
 func TestTPTPFOFToCNF(t *testing.T) {
   ctx := context.Background()
-  for k,v := range problems.SampleProblems {
+  for k,v := range sample.SampleProblems() {
     log.Printf("%s",k)
     cnf,err := eprover.FOFToCNF(ctx,v)
     if err!=nil { t.Fatalf("FOFToCNF(%q): %v",k,err) }
@@ -110,17 +109,20 @@ func TestTPTPFOFToCNF(t *testing.T) {
 
 func TestTptpHasEquality(t *testing.T) {
   ctx := context.Background()
-  for _,c := range []struct { name string; tptp []byte; want bool } {
-    {"trivial", problems.Trivial, false},
-    {"simple", problems.Simple, false},
-    {"eqAxiom1", problems.EqAxiom1, true},
-    {"eqAxiom2", problems.EqAxiom2, true},
-    {"eqAxiom3", problems.EqAxiom3, true},
-    {"barber", problems.Barber, false},
-    {"pelletier20", problems.Pelletier20, false},
-    {"pelletier24", problems.Pelletier24, false},
+  problemSet := sample.SampleProblems()
+  for _,c := range []struct { name string; want bool } {
+    {"trivial", false},
+    {"simple", false},
+    {"eqAxiom1", true},
+    {"eqAxiom2", true},
+    {"eqAxiom3", true},
+    {"barber", false},
+    {"pelletier20", false},
+    {"pelletier24", false},
   } {
-    got,err := TptpHasEquality(ctx,c.tptp)
+    tptp,ok := problemSet[c.name]
+    if !ok { t.Error("%q not in sample.SampleProblems()",c.name) }
+    got,err := TptpHasEquality(ctx,tptp)
     if err!=nil {
       t.Errorf("TptpHasEquality(%q): %v",c.name,err)
     } else if got!=c.want {

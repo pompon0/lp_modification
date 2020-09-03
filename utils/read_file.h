@@ -8,9 +8,9 @@
 #include <cstring>
 #include <errno.h>
 #include <unistd.h>
-#include "lazyparam_prover/util/types.h"
-#include "lazyparam_prover/util/string.h"
-#include "lazyparam_prover/util/log.h"
+#include "utils/types.h"
+#include "utils/string.h"
+#include "utils/log.h"
 
 namespace util
 {

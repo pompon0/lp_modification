@@ -26,7 +26,7 @@ go_test(
     deps = [
         "//eprover:go_default_library",
         "//lazyparam_prover:prover_go_proto",
-        "//problems:go_default_library",
+        "//problems/sample:go_default_library",
         "//tool:go_default_library",
         "//tptp_parser/proto:solutions_go_proto",
     ],

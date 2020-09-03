@@ -6,7 +6,6 @@ go_library(
         "old.go",
         "problems.go",
         "proofs.go",
-        "sample.go",
     ],
     data = [
         "@tptp_problems//file",

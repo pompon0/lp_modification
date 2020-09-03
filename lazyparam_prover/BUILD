@@ -120,15 +120,13 @@ cc_library(
     ],
 )
 
-
-
 cc_library(
     name = "tool_wrapper",
     hdrs = ["tool_wrapper.h"],
     data = [":tool"],
     deps = [
-      "//tptp_parser/proto:tptp_cc_proto",
-      "//utils:utils",
+        "//tptp_parser/proto:tptp_cc_proto",
+        "//utils:utils",
     ],
 )
 
@@ -136,12 +134,11 @@ cc_test(
     name = "tool_wrapper_test",
     srcs = ["tool_wrapper_test.cc"],
     deps = [
-      ":tool_wrapper",
-      "//utils:utils",
-      "@gtest//:gtest_main",
+        ":tool_wrapper",
+        "//utils:utils",
+        "@gtest//:gtest_main",
     ],
 )
-
 
 cc_library(
     name = "prover",

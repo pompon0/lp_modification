@@ -14,7 +14,7 @@ import (
   "github.com/golang/protobuf/proto"
 )
 
-const tool_bin_path = "__main__/tptp_parser/src/tool"
+const hs_tool_bin_path = "__main__/tptp_parser/src/tool"
 const cc_tool_bin_path = "__main__/lazyparam_prover/tool"
 const tmp_prefix = "tptp_benchmark_go_"
 
@@ -37,7 +37,7 @@ func ProtoToTptp(ctx context.Context, f *tpb.File) ([]byte,error) {
   defer cleanup()
 
   var outBuf bytes.Buffer
-  cmd := exec.CommandContext(ctx,utils.Runfile(tool_bin_path),"tptp",tmp)
+  cmd := exec.CommandContext(ctx,utils.Runfile(hs_tool_bin_path),"tptp",tmp)
   cmd.Stdout = &outBuf
   cmd.Stderr = os.Stderr
   if err = cmd.Run(); err!=nil { return nil,fmt.Errorf("cmd.Run(): %v",err) }
@@ -104,7 +104,7 @@ func ValidateProof(ctx context.Context, sol *spb.CNF) (*spb.Stats,error) {
   defer cleanup()
 
   var outBuf,errBuf bytes.Buffer
-  cmd := exec.CommandContext(ctx,utils.Runfile(tool_bin_path),"validate",tmpSol)
+  cmd := exec.CommandContext(ctx,utils.Runfile(hs_tool_bin_path),"validate",tmpSol)
   cmd.Stdout = &outBuf
   cmd.Stderr = &errBuf
   if err = cmd.Run(); err!=nil {

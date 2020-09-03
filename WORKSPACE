@@ -18,9 +18,9 @@ http_archive(
 http_archive(
   # cannot change this name, because files in its workspace refer to it
   name = "com_grail_bazel_toolchain",
-  strip_prefix = "bazel-toolchain-ad2e19d1195fca4cfe8a4d9bad6fd34ca2000941",
-  urls = ["https://github.com/pompon0/bazel-toolchain/archive/ad2e19d1195fca4cfe8a4d9bad6fd34ca2000941.tar.gz"],
-  sha256 = "ae9203e298d976b260c7756588a77d6cbd73e2fdacf2c22b5a200fdf531d5bbc",
+  strip_prefix = "bazel-toolchain-e608913c0e106da931234fdd37de9ee37e0b2541",
+  urls = ["https://github.com/pompon0/bazel-toolchain/archive/e608913c0e106da931234fdd37de9ee37e0b2541.tar.gz"],
+  sha256 = "e09e8ef8a5f97078da2961561e176a5bf461962683159bcbd81674052475cdd0",
 )
 
 load("@com_grail_bazel_toolchain//toolchain:deps.bzl", "bazel_toolchain_dependencies")

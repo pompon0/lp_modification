@@ -14,8 +14,7 @@ cc_library(
         "stack.h",
     ],
     deps = [
-        "//lazyparam_prover:log",
-        "//lazyparam_prover:types",
+        "//utils:utils",
     ],
 )
 
@@ -24,7 +23,7 @@ cc_test(
     srcs = ["alloc_test.cc"],
     deps = [
         ":memory",
-        "//lazyparam_prover/util:util",
+        "//utils:utils",
         "@gtest//:gtest_main",
     ],
 )
@@ -34,7 +33,7 @@ cc_test(
     srcs = ["stack_test.cc"],
     deps = [
       ":memory",
-      "//lazyparam_prover/util:util",
+      "//utils:utils",
       "@gtest//:gtest_main",
     ],
 )
@@ -43,7 +42,7 @@ cc_test(
     name = "list_test",
     srcs = ["list_test.cc"],
     deps = [
-      "//lazyparam_prover:log",
+      "//utils:utils",
       ":memory",
       "@gtest//:gtest_main",
     ],

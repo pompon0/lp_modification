@@ -1,17 +1,17 @@
 #ifndef CONSTRAINED_VALUATION_H_
 #define CONSTRAINED_VALUATION_H_
 
-#include "lazyparam_prover/util/short.h"
-#include "lazyparam_prover/util/string.h"
+#include "utils/log.h"
+#include "utils/short.h"
+#include "utils/string.h"
+#include "utils/types.h"
 #include "lazyparam_prover/memory/list.h"
 #include "lazyparam_prover/syntax/term.h"
 #include "lazyparam_prover/syntax/atom.h"
 #include "lazyparam_prover/syntax/clause.h"
 #include "lazyparam_prover/constraint.h"
-#include "lazyparam_prover/types.h"
 #include "lazyparam_prover/mgu.h"
 #include "lazyparam_prover/fun_ord.h"
-#include "lazyparam_prover/log.h"
 #include <algorithm>
 
 namespace tableau {

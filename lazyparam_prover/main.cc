@@ -4,12 +4,12 @@
 
 #include <csignal>
 #include <iostream>
+#include "utils/ctx.h"
+#include "utils/enum_flag.h"
+#include "utils/log.h"
 #include "lazyparam_prover/lazy_paramodulation/tableau.h"
 #include "lazyparam_prover/connection_tableau/tableau.h"
 #include "lazyparam_prover/derived.h"
-#include "lazyparam_prover/ctx.h"
-#include "lazyparam_prover/log.h"
-#include "lazyparam_prover/enum_flag.h"
 #include "lazyparam_prover/prover.pb.h"
 #include "lazyparam_prover/lpmod.h"
 #include "solutions.pb.h"
@@ -91,7 +91,7 @@ int main(int argc, char **argv) {
       return 0;
     }
 
-    auto [ctx,cancel] = Ctx::with_timeout(Ctx::background(),absl::GetFlag(FLAGS_timeout));
+    auto ctx = Ctx::with_timeout(Ctx::background(),absl::GetFlag(FLAGS_timeout));
     //Defer _cancel(cancel);
     auto method = absl::GetFlag(FLAGS_method);
     ProverOutput out;

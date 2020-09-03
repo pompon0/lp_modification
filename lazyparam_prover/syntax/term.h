@@ -1,9 +1,9 @@
 #ifndef SYNTAX_TERM_H_
 #define SYNTAX_TERM_H_
 
-#include "lazyparam_prover/types.h"
+#include "utils/short.h"
+#include "utils/types.h"
 #include "lazyparam_prover/memory/layout.h"
-#include "lazyparam_prover/util/short.h"
 
 namespace tableau {
 

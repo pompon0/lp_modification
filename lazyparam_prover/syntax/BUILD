@@ -20,7 +20,7 @@ cc_test(
     srcs = ["term_test.cc"],
     deps = [
         ":syntax",
-        "//lazyparam_prover/util:util",
+        "//utils:utils",
         "@gtest//:gtest_main",
     ],
 )
@@ -30,8 +30,7 @@ cc_test(
     srcs = ["clause_test.cc"],
     deps = [
         ":syntax",
-        "//lazyparam_prover:types",
-        "//lazyparam_prover/util:util",
+        "//utils:utils",
         "@gtest//:gtest_main",
     ],
 )

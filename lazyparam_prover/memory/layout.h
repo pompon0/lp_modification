@@ -1,8 +1,8 @@
 #ifndef MEMORY_LAYOUT_H_
 #define MEMORY_LAYOUT_H_
 
-#include "lazyparam_prover/types.h"
-#include "lazyparam_prover/log.h"
+#include "utils/types.h"
+#include "utils/log.h"
 
 namespace tableau {
 

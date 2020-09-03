@@ -3,7 +3,7 @@
 #include "lazyparam_prover/syntax/term.h"
 #include "lazyparam_prover/syntax/atom.h"
 #include "lazyparam_prover/syntax/show.h"
-#include "lazyparam_prover/util/string.h"
+#include "utils/string.h"
 #include "lazyparam_prover/memory/stack.h"
 
 using namespace tableau;

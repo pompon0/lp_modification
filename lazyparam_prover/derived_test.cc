@@ -1,7 +1,7 @@
 #define DEBUG
-#include "lazyparam_prover/syntax/term.h"
 #include "lazyparam_prover/derived.h"
-#include "lazyparam_prover/log.h"
+#include "lazyparam_prover/syntax/term.h"
+#include "utils/log.h"
 #include "gtest/gtest.h"
 
 using namespace tableau;

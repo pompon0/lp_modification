@@ -2,8 +2,8 @@
 #define EQ_AXIOMS_H_
 
 #include <map>
-#include "lazyparam_prover/log.h"
-#include "lazyparam_prover/types.h"
+#include "utils/log.h"
+#include "utils/types.h"
 #include "lazyparam_prover/syntax/term.h"
 #include "lazyparam_prover/syntax/atom.h"
 #include "lazyparam_prover/syntax/clause.h"

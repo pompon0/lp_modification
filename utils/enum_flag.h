@@ -1,9 +1,9 @@
-#ifndef ENUM_FLAG_H_
-#define ENUM_FLAG_H_
+#ifndef UTILS_ENUM_FLAG_H_
+#define UTILS_ENUM_FLAG_H_
 
 #include "google/protobuf/descriptor.h"
 #include "absl/strings/string_view.h"
-#include "util/string.h"
+#include "utils/string.h"
 
 namespace tableau {
 
@@ -44,4 +44,4 @@ private:
 
 }  // namespace tableau
 
-#endif  // ENUM_FLAG_H_
+#endif  // UTILS_ENUM_FLAG_H_

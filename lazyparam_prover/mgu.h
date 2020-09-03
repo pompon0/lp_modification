@@ -1,8 +1,9 @@
 #ifndef MGU_H_
 #define MGU_H_
 
-#include "lazyparam_prover/log.h"
-#include "lazyparam_prover/types.h"
+#include "utils/log.h"
+#include "utils/string.h"
+#include "utils/types.h"
 #include "lazyparam_prover/memory/array.h"
 #include "lazyparam_prover/memory/stack.h"
 #include "lazyparam_prover/syntax/term.h"
@@ -10,7 +11,6 @@
 #include "lazyparam_prover/syntax/show.h"
 #include "lazyparam_prover/syntax/clause.h"
 #include "lazyparam_prover/derived.h"
-#include "lazyparam_prover/util/string.h"
 
 namespace tableau {
 

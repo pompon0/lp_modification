@@ -1,6 +1,6 @@
 #define DEBUG_MODE
 #include "lazyparam_prover/lpo.h"
-#include "lazyparam_prover/util/log.h"
+#include "utils/log.h"
 #include "lazyparam_prover/rewrite_test_utils.h"
 #include "lazyparam_prover/constrained_valuation.h"
 #include "gtest/gtest.h"

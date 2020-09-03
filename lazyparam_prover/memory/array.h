@@ -2,7 +2,7 @@
 #define MEMORY_ARRAY_H_
 
 #include "lazyparam_prover/memory/maybe.h"
-#include "lazyparam_prover/util/log.h"
+#include "utils/log.h"
 
 namespace tableau {
 

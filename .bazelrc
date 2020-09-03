@@ -4,4 +4,3 @@ build --cxxopt=-Werror=attributes
 build --cxxopt=-Winline
 build --cxxopt=--std=c++17
 build --crosstool_top=@llvm_toolchain//:toolchain
-build:opt -c opt --cxxopt=-O3

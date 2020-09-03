@@ -75,4 +75,5 @@ cc_binary(
 	copts = COPTS,
 	deps = [":libs"],
   visibility = ["//visibility:public"],
+  features = ["fully_static_link"],
 )

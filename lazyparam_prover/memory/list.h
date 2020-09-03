@@ -1,7 +1,7 @@
 #ifndef MEMORY_LIST_H_
 #define MEMORY_LIST_H_
 
-#include "lazyparam_prover/log.h"
+#include "utils/log.h"
 #include "lazyparam_prover/memory/maybe.h"
 #include "lazyparam_prover/memory/stack.h"
 

@@ -1,5 +1,5 @@
 #define DEBUG_MODE
-#include "lazyparam_prover/log.h"
+#include "utils/log.h"
 #include "lazyparam_prover/memory/list.h"
 #include "gtest/gtest.h"
 using namespace tableau;

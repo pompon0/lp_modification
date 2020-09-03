@@ -21,39 +21,13 @@ go_proto_library(
 )
 
 cc_library(
-    name = "enum_flag",
-    hdrs = ["enum_flag.h"],
-    deps = [
-        "@abseil//absl/strings:strings",
-        "@com_google_protobuf//:protobuf",
-        "//lazyparam_prover/util:util",
-    ],
-)
-
-cc_library(
-    name = "types",
-    hdrs = ["types.h"],
-)
-
-cc_library(
-    name = "log",
-    hdrs = ["log.h"],
-    srcs = ["log.cc"],
-    deps = [
-        ":types",
-        "//lazyparam_prover/util:util",
-    ],
-)
-
-cc_library(
     name = "derived",
     hdrs = [
         "constraint.h",
         "derived.h",
     ],
     deps = [
-        ":log",
-        ":types",
+        "//utils:utils",
         "//lazyparam_prover/memory:memory",
         "//lazyparam_prover/syntax:syntax",
     ],
@@ -67,18 +41,16 @@ cc_test(
     ],
     deps = [
         ":derived",
-        ":log",
         "@gtest//:gtest_main",
+        "//utils:utils",
     ],
 )
 
 cc_library(
     name = "node",
-    hdrs = [
-        "node.h",
-    ],
+    hdrs = ["node.h"],
     deps = [
-        ":types",
+        "//utils:utils",
         "//tptp_parser/proto:tptp_cc_proto",
         "@com_google_protobuf//:protobuf",
     ],
@@ -91,7 +63,6 @@ cc_library(
     ],
     deps = [
         ":node",
-        ":types",
         "//lazyparam_prover/syntax:syntax",
         "//tptp_parser/proto:tptp_cc_proto",
         "@com_google_protobuf//:protobuf",
@@ -105,7 +76,6 @@ cc_library(
     ],
     deps = [
         ":node",
-        ":types",
         "//lazyparam_prover/syntax:syntax",
         "//tptp_parser/proto:tptp_cc_proto",
         # vampire agressively takes over signal handling of the whole binary
@@ -123,7 +93,7 @@ cc_binary(
     deps = [
         "//tptp_parser/proto:tptp_cc_proto",
         ":parse2",
-        ":log",
+        "//utils:utils",
         "@abseil//absl/flags:parse",
         "@abseil//absl/flags:flag",
     ],
@@ -150,11 +120,33 @@ cc_library(
     ],
 )
 
+
+
+cc_library(
+    name = "tool_wrapper",
+    hdrs = ["tool_wrapper.h"],
+    data = [":tool"],
+    deps = [
+      "//tptp_parser/proto:tptp_cc_proto",
+      "//utils:utils",
+    ],
+)
+
+cc_test(
+    name = "tool_wrapper_test",
+    srcs = ["tool_wrapper_test.cc"],
+    deps = [
+      ":tool_wrapper",
+      "//utils:utils",
+      "@gtest//:gtest_main",
+    ],
+)
+
+
 cc_library(
     name = "prover",
     hdrs = [
         "search_state.h",
-        "ctx.h",
         "alt.h",
         "eq_axioms.h",
         "ground.h",
@@ -165,12 +157,10 @@ cc_library(
     deps = [
         "//tptp_parser/proto:tptp_cc_proto",
         "//tptp_parser/proto:solutions_cc_proto",
-        ":log",
         ":parse",
         "//lazyparam_prover/syntax:syntax",
-        ":types",
         ":mgu",
-        "//lazyparam_prover/util:util",
+        "//utils:utils",
         "@com_google_protobuf//:protobuf",
     ],
 )
@@ -180,7 +170,7 @@ cc_test(
     srcs = ["mgu_test.cc"],
     deps = [
         ":mgu",
-        "//lazyparam_prover/util:util",
+        "//utils:utils",
         "@gtest//:gtest_main",
     ],
 )
@@ -190,7 +180,7 @@ cc_test(
     srcs = ["kbo_test.cc"],
     deps = [
         ":mgu",
-        "//lazyparam_prover/util:util",
+        "//utils:utils",
         "@gtest//:gtest_main",
     ],
 )
@@ -200,7 +190,7 @@ cc_test(
     srcs = ["lpo_test.cc"],
     deps = [
         ":mgu",
-        "//lazyparam_prover/util:util",
+        "//utils:utils",
         "@gtest//:gtest_main",
     ],
 )
@@ -210,7 +200,7 @@ cc_test(
     srcs = ["eq_axioms_test.cc"],
     deps = [
         ":prover",
-        "//lazyparam_prover/util:util",
+        "//utils:utils",
         "@gtest//:gtest_main",
     ],
 )
@@ -219,11 +209,11 @@ cc_binary(
     name = "main",
     srcs = ["main.cc"],
     deps = [
-        ":enum_flag",
         ":prover",
         ":prover_cc_proto",
         "//lazyparam_prover/lazy_paramodulation:prover",
         "//lazyparam_prover/connection_tableau:prover",
+        "//utils:utils",
         "@abseil//absl/flags:flag",
         "@abseil//absl/flags:parse",
     ],

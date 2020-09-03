@@ -2,7 +2,7 @@
 #define UTIL_SHORT_H_
 
 #include <algorithm>
-#include "lazyparam_prover/util/types.h"
+#include "utils/types.h"
 
 namespace util
 {
@@ -19,20 +19,20 @@ namespace util
   // 3.141592653589793238462643383279502884197169399375105820974944
   // 2.718281828459045235360287471352662497757247093699959574966967
 
-  template<typename T, typename Cmp> inline arr<T> merge(
-    const arr<T> &x, const arr<T> &y, Cmp cmp)
+  template<typename T, typename Cmp> inline vec<T> merge(
+    const vec<T> &x, const vec<T> &y, Cmp cmp)
   {
-    arr<T> z(x.size()+y.size());
+    vec<T> z(x.size()+y.size());
     std::merge(x.begin(),x.end(),y.begin(),y.end(),z.begin(),cmp);
     return z;
   }
 
-  template<typename T> inline void unique(arr<T> &v)
+  template<typename T> inline void unique(vec<T> &v)
   {
     std::sort(v.begin(),v.end());
     v.erase(std::unique(v.begin(),v.end()),v.end());
   }
-  template<typename T> inline arr<T> reverse(const arr<T> &A){ return arr<T>(A.rbegin(),A.rend()); }
+  template<typename T> inline vec<T> reverse(const vec<T> &A){ return vec<T>(A.rbegin(),A.rend()); }
 }
 
 #endif  // UTIL_SHORT_H_

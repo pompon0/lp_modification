@@ -9,7 +9,7 @@
 #include "lazyparam_prover/syntax/show.h"
 #include "lazyparam_prover/memory/stack.h"
 #include "lazyparam_prover/mgu.h"
-#include "lazyparam_prover/ctx.h"
+#include "utils/ctx.h"
 
 namespace tableau {
 

@@ -8,16 +8,13 @@
 #include "Kernel/Unit.hpp"
 #include "Parse/TPTP.hpp"
 #include "Shell/TPTPPrinter.hpp"
-// Vampire defines __APPLE__ macro, which makes
-// other libraries freak out.
-#undef __APPLE__
 
-#include "lazyparam_prover/util/string.h"
+#include "utils/log.h"
+#include "utils/string.h"
 #include "lazyparam_prover/syntax/term.h"
 #include "lazyparam_prover/syntax/atom.h"
 #include "lazyparam_prover/syntax/clause.h"
 #include "lazyparam_prover/node.h"
-#include "lazyparam_prover/log.h"
 
 namespace tableau {
 

@@ -2,7 +2,7 @@
 #include "lazyparam_prover/syntax/term.h"
 #include "lazyparam_prover/memory/stack.h"
 #include "lazyparam_prover/constraint.h"
-#include "lazyparam_prover/log.h"
+#include "utils/log.h"
 #include "gtest/gtest.h"
 
 using namespace tableau;

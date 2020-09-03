@@ -1,3 +1,7 @@
+package(
+  default_visibility = ["//visibility:public"],
+)
+
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
@@ -16,7 +20,28 @@ go_library(
 cc_binary(
     name = "limit",
     srcs = ["limit.cc"],
-    deps = ["//lazyparam_prover/util:util"],
+    deps = [":utils"],
     features = ["fully_static_link"],
     visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "utils",
+    hdrs = [
+      "bazel.h",
+      "ctx.h",
+      "enum_flag.h",
+      "log.h",
+      "read_file.h",
+      "short.h",
+      "string.h",
+      "sys.h",
+      "types.h",
+    ],
+    srcs = ["log.cc"],
+    deps = [
+      "@abseil//absl/strings:strings",
+      "@abseil//absl/time:time",
+      "@com_google_protobuf//:protobuf",
+    ],
 )

@@ -1,11 +1,9 @@
-// TODO: static linking of absl doesn't work reliably right now
-// reenable once that's fixed.
 #include "absl/flags/flag.h"
 #include "absl/flags/parse.h"
 #include "lazyparam_prover/parse2.h"
 
 #include <iostream>
-#include "lazyparam_prover/log.h"
+#include "utils/log.h"
 #include "tptp.pb.h"
 
 using namespace tableau;

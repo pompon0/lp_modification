@@ -7,7 +7,7 @@
 #include "lazyparam_prover/memory/list.h"
 #include "lazyparam_prover/mgu.h"
 #include "lazyparam_prover/fun_ord.h"
-#include "lazyparam_prover/log.h"
+#include "utils/log.h"
 
 namespace tableau {
 

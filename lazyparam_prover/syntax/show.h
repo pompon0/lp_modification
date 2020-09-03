@@ -4,8 +4,8 @@
 #include "lazyparam_prover/syntax/term.h"
 #include "lazyparam_prover/syntax/atom.h"
 #include "lazyparam_prover/syntax/clause.h"
-#include "lazyparam_prover/types.h"
-#include "lazyparam_prover/util/string.h"
+#include "utils/types.h"
+#include "utils/string.h"
 
 namespace tableau {
 

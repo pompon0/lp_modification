@@ -1,7 +1,7 @@
 #ifndef SEARCH_STATE_H_
 #define SEARCH_STATE_H_
 
-#include "lazyparam_prover/util/string.h"
+#include "utils/string.h"
 #include "lazyparam_prover/syntax/show.h"
 #include "lazyparam_prover/memory/list.h"
 #include "lazyparam_prover/memory/lazy.h"
@@ -76,7 +76,7 @@ struct SearchState {
   // cannot return the proto, because parsing context is not available.
   // This means that Valuation has to be included in the ProverOutput.
   ptr<OrForm> get_proof(memory::Alloc &A) {
-    auto proof = util::make<OrForm>();
+    auto proof = make<OrForm>();
     for(auto l=clauses_used; !l.empty(); l = l.tail()) {
       proof->and_clauses.push_back(l.head());
     }

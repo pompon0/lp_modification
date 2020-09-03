@@ -1,9 +1,9 @@
-#define DEBUG if(1)
+#define DEBUG_MODE
 #include "gtest/gtest.h"
 
 #include <iostream>
+#include "utils/log.h"
 #include "lazyparam_prover/eq_axioms.h"
-#include "lazyparam_prover/util/log.h"
 #include "lazyparam_prover/memory/stack.h"
 
 using namespace util;

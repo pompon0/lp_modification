@@ -1,15 +1,10 @@
 COPTS = [
-  # Schedule.cpp takes clang 15min to compile with -O3.
-  # "-O6",
   "-std=c++11",
   "-Wno-return-type",
-  "-Wno-terminate",
-  "-Wno-maybe-uninitialized",
   "-Wno-switch",
   "-Wno-unused-result",
   "-Wno-unused-value",
   "-Wno-unused-variable",
-  "-Wno-unused-but-set-variable",
   "-Wno-uninitialized",
   "-Wno-narrowing",
   "-Wno-strict-aliasing",
@@ -101,7 +96,8 @@ cc_library(
 
 cc_library(
   name = "casc",
-  copts = COPTS,
+  # Schedule.cpp takes clang 15min to compile with -O3/-O2.
+  # TODO: do sth about it
   defines = DEFINES,
   hdrs = glob(["CASC/**/*.hpp","CASC/**/*.h"]),
   srcs = glob(["CASC/**/*.cpp","CASC/**/*.cc"]),

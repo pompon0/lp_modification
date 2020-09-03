@@ -2,7 +2,7 @@
 #define UTIL_STRING_H_
 
 #include <sstream>
-#include "lazyparam_prover/util/types.h"
+#include "utils/types.h"
 
 namespace util
 {
@@ -12,9 +12,9 @@ namespace util
   inline bool has(char c, const str &s)
   { for(char x : s) if(x==c) return 1; return 0; }
   
-  inline arr<str> split(const str &s, const str &sep = " \t\n\r\v")
+  inline vec<str> split(const str &s, const str &sep = " \t\n\r\v")
   {
-    arr<str> out;
+    vec<str> out;
     size_t i=0;
     for(size_t j=0; j<s.size(); ++j) if(has(s[j],sep))
     { out.push_back(s.substr(i,j-i)); i = j+1; }
@@ -22,7 +22,7 @@ namespace util
     return out;
   }
 
-  inline arr<str> strip(arr<str> v)
+  inline vec<str> strip(vec<str> v)
   {
     size_t i = 0;
     for(str &s : v) if(s.size()) v[i++].swap(s);
@@ -30,7 +30,7 @@ namespace util
     return v;
   }
 
-  static str join(str sep, const arr<str> &A)
+  static str join(str sep, const vec<str> &A)
   {
     if(!A.size()) return "";
     str r = A[0];
@@ -43,7 +43,7 @@ namespace util
 
   template<typename ...Args> str fmt(const str &format_str, Args ...args)
   {
-    arr<str> vs{to_str(args)...};
+    vec<str> vs{to_str(args)...};
     std::stringstream ss; size_t i = 0;
     for(char c : format_str) if(c!='%') ss << c; else {
       if(i>=vs.size()) ss << "[?]"; else ss << vs[i++];

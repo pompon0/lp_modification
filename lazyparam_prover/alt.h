@@ -1,7 +1,7 @@
 #ifndef LAZYPARAM_PROVER_ALT_H_
 #define LAZYPARAM_PROVER_ALT_H_
 
-#include "lazyparam_prover/ctx.h"
+#include "utils/ctx.h"
 
 namespace tableau {
 namespace alt {

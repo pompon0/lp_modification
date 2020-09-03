@@ -2,7 +2,7 @@
 #define SYNTAX_CLAUSE_H_
 
 #include "lazyparam_prover/syntax/atom.h"
-#include "lazyparam_prover/types.h"
+#include "utils/types.h"
 #include "lazyparam_prover/memory/layout.h"
 #include "lazyparam_prover/memory/stack.h"
 

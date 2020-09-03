@@ -2,12 +2,12 @@
 #define REWRITE_TEST_UTILS_H_
 
 #include "gtest/gtest.h"
-#include "lazyparam_prover/types.h"
+#include "utils/log.h"
+#include "utils/types.h"
 #include "lazyparam_prover/syntax/term.h"
 #include "lazyparam_prover/syntax/show.h"
 #include "lazyparam_prover/constraint.h"
 #include "lazyparam_prover/constrained_valuation.h"
-#include "lazyparam_prover/util/log.h"
 #include <random>
 
 namespace tableau {

@@ -136,6 +136,7 @@ cc_test(
     deps = [
         ":tool_wrapper",
         "//utils:utils",
+        "//problems/sample:sample_cc",
         "@gtest//:gtest_main",
     ],
 )

@@ -51,6 +51,7 @@ cc_library(
       ":sample_cc_proto",
       "@com_google_protobuf//:protobuf",
     ],
+    visibility = ["//visibility:public"],
 )
 
 cc_test(

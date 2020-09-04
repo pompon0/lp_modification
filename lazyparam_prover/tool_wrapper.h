@@ -6,6 +6,10 @@
 #include "utils/bazel.h"
 #include "tptp.pb.h"
 
+namespace tool_wrapper {
+
+namespace sys = utils::sys;
+
 template<typename Proto> inline static Proto proto_from_raw(const str &file_raw) { FRAME("proto_from_raw()");
   Proto proto;
   auto stream = new google::protobuf::io::CodedInputStream((const uint8_t*)(&file_raw[0]),file_raw.size());
@@ -22,4 +26,5 @@ static tptp::File tptp_to_proto(Ctx::Ptr ctx, const str &tptp) {
   return proto_from_raw<tptp::ToolOutput>(proto_raw).file();
 }
 
+}
 #endif  // TOOL_WRAPPER_H_

@@ -7,7 +7,7 @@
 
 #include "utils/log.h"
 
-namespace sys {
+namespace utils::sys {
 
 // TODO: consider making these shared/unique pointers, so that system resources
 // are not leaked. It has to cooperate well with fork() and pipe lifecycle.
@@ -27,7 +27,7 @@ struct pipe {
   descriptor in,out;
   
   // blocking until all is written
-  void write(const str &data) const {
+  void write(const str &data) {
     auto b = &data[0];
     auto e = b+data.size();
     ssize_t s = ::write(in.fd,b,e-b);
@@ -35,7 +35,7 @@ struct pipe {
     if(s!=e-b) error("wrote %/% bytes",s,e-b);
   }
   // blocking until some data available
-  str read() const {
+  str read() {
     vec<char> data(PIPE_BUF);
     ssize_t s = ::read(out.fd,&data[0],data.size());
     if(s==-1){
@@ -81,6 +81,7 @@ static str subprocess(Ctx::Ptr ctx, vec<str> cmd, str input) {
       args.back().push_back(0);
       argv.push_back(&args.back()[0]);
     }
+    argv.push_back(0);
     if(::execv(&argv[0][0],&argv[0])==-1) error("execv(): %",strerror(errno));
     error("execv() returned");
   }
@@ -89,27 +90,42 @@ static str subprocess(Ctx::Ptr ctx, vec<str> cmd, str input) {
   parent_child.out.close();
   child_parent.in.close();
   // write input asynchronously, until pipe is closed.
-  auto twrite = std::async(std::launch::async,[parent_child,input]{ 
+  auto twrite = std::async(std::launch::async,[parent_child,input]() mutable { 
     parent_child.write(input);
+    parent_child.close();
     info("write complete");
   }); 
   // read output asynchronously, until pipe is closed.
-  auto tread = std::async(std::launch::async,[child_parent]{
+  auto tread = std::async(std::launch::async,[child_parent]() mutable {
     str output;
     while(1) {
       auto buffer = child_parent.read();
       if(buffer.empty()) break;
+      output += buffer;
     }
-    info("read complete");
+    child_parent.close();
+    info("read complete, size = %",output.size());
     return output;
   });
   // wait for subprocess asynchronously.
   Ctx::Cancel cancel;
   std::tie(ctx,cancel) = Ctx::with_cancel(ctx);
   auto tdone = std::async(std::launch::async,[cancel,pid]{
-    if(waitpid(pid,0,0)==-1) error("waitpid(%): %",pid,strerror(errno));
+    int status;
+    if(waitpid(pid,&status,0)==-1) error("waitpid(%): %",pid,strerror(errno));
     info("subprocess terminated");
-    cancel();
+    if(WIFEXITED(status)) {
+      if(auto s = WEXITSTATUS(status); s==EXIT_SUCCESS) {  
+        cancel();
+        return;
+      } else {
+        error("WEXITSTATUS() = %",s);
+      }
+    } else if(WIFSIGNALED(status)) {
+      error("WTERMSIG() = %",WTERMSIG(status));
+    } else {
+      error("unknown termination reason");
+    }
   });
   // wait for the context to finish.
   ctx->wait();
@@ -122,11 +138,7 @@ static str subprocess(Ctx::Ptr ctx, vec<str> cmd, str input) {
   // wait for the tasks
   tdone.get(); // ends since subprocess terminated
   twrite.get(); // ends since the pipe is closed (subprocess terminanted)
-  str output = tread.get(); // ends since the pipe is closed (subprocess terminated)
-  // close the remaining file descriptors.
-  parent_child.close();
-  child_parent.close();
-  return output;
+  return tread.get(); // ends since the pipe is closed (subprocess terminated)
 }
 
 } // namespace sys

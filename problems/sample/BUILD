@@ -24,7 +24,10 @@ cc_proto_library(
 
 go_library(
     name = "go_default_library",
-    srcs = ["sample.go"],
+    srcs = [
+        "sample.go",
+        "sample.h",
+    ],
     data = [":sample_textpb"],
     importpath = "github.com/pompon0/tptp_benchmark_go/problems/sample",
     visibility = ["//visibility:public"],
@@ -47,9 +50,9 @@ cc_library(
     hdrs = ["sample.h"],
     data = [":sample_textpb"],
     deps = [
-      "//utils:utils",
-      ":sample_cc_proto",
-      "@com_google_protobuf//:protobuf",
+        "//utils:utils",
+        ":sample_cc_proto",
+        "@com_google_protobuf//:protobuf",
     ],
     visibility = ["//visibility:public"],
 )
@@ -58,9 +61,8 @@ cc_test(
     name = "sample_cc_test",
     srcs = ["sample_test.cc"],
     deps = [
-      ":sample_cc",
-      "//utils:utils",
-      "@gtest//:gtest_main",
+        ":sample_cc",
+        "//utils:utils",
+        "@gtest//:gtest_main",
     ],
 )
-

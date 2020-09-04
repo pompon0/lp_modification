@@ -13,7 +13,7 @@ using s64 = int64_t;
 template<typename T> using vec = std::vector<T>;
 template<typename T> using ptr = std::unique_ptr<T>;
 template<typename T> inline ptr<T> own(T *v){ return ptr<T>(v); }
-template<typename T, typename ...Args> inline ptr<T> make(Args&& ...args){ return own(new T(args...)); }
+template<typename T, typename ...Args> inline ptr<T> make(Args&& ...args){ return own(new T(std::move(args)...)); }
 using str = std::string;
 using std::swap;
 

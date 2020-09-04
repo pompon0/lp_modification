@@ -121,27 +121,6 @@ cc_library(
 )
 
 cc_library(
-    name = "tool_wrapper",
-    hdrs = ["tool_wrapper.h"],
-    data = [":tool"],
-    deps = [
-        "//tptp_parser/proto:tptp_cc_proto",
-        "//utils:utils",
-    ],
-)
-
-cc_test(
-    name = "tool_wrapper_test",
-    srcs = ["tool_wrapper_test.cc"],
-    deps = [
-        ":tool_wrapper",
-        "//utils:utils",
-        "//problems/sample:sample_cc",
-        "@gtest//:gtest_main",
-    ],
-)
-
-cc_library(
     name = "prover",
     hdrs = [
         "search_state.h",
@@ -160,6 +139,27 @@ cc_library(
         ":mgu",
         "//utils:utils",
         "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
+    name = "controller",
+    hdrs = ["controller.h"],
+    deps = [
+      ":parse",
+      ":prover",
+      "//tool/bin:wrapper",
+      "//utils:utils",
+    ],
+)
+
+cc_test(
+    name = "controller_test",
+    srcs = ["controller_test.cc"],
+    deps = [
+        ":controller",
+        "//utils:utils",
+        "@gtest//:gtest_main",
     ],
 )
 

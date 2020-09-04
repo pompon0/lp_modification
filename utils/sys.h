@@ -6,6 +6,7 @@
 #include <cstring>
 
 #include "utils/log.h"
+#include "utils/ctx.h"
 
 namespace utils::sys {
 

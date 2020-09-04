@@ -4,8 +4,8 @@ package problems;
 message Problem {
   string name = 1;
   string tptp = 2;
-};
+}
 
 message Set {
   repeated Problem problems = 1;
-};
+}

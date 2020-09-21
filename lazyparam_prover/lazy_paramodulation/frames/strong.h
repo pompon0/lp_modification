@@ -4,17 +4,17 @@ struct _StrongFrame {
   DerAndClause dcla;
   ssize_t strong_id;
 };
-using StrongFrame = Variant<Frame,Frame::STRONG,_StrongFrame>;
+using StrongFrame = memory::Variant<Frame,Frame::STRONG,_StrongFrame>;
 
-List<Cont> strong(memory::Alloc &A, StrongFrame f) const { 
+memory::List<Cont> strong(memory::Alloc &A, StrongFrame f) const { 
   state->stats.strong_steps++;
   auto mcla = state->allocate(A,f->dcla);
-  if(!mcla) return nothing();
+  if(!mcla) return memory::nothing();
   auto cla = mcla.get();
   STATE_FRAME(A,state,"strong(strong_id=%,cla=%)",f->strong_id,show(cla));
-  if(f->strong_id>=0) if(!state->val.unify(A,f->branch.false_.head(),cla.atom(f->strong_id))) return nothing();
+  if(f->strong_id>=0) if(!state->val.unify(A,f->branch.false_.head(),cla.atom(f->strong_id))) return memory::nothing();
 
-  List<Cont> alts;
+  memory::List<Cont> alts;
   BranchSet bs{.branch = f->branch};
   for(ssize_t i=cla.atom_count(); i--;) if(i!=f->strong_id) bs.push(A,cla.atom(i));
   if(bs.branches_size==0) { alts.push(A,builder().build()); return alts; }

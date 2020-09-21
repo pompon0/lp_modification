@@ -35,28 +35,28 @@ struct Cont {
     enum Type { START, STRONG, WEAK_CONNECTIONS, WEAK_SET, WEAK, WEAK_UNIFY, MIN_COST };
     INL Type type() const { return Type(*LType::at(ptr)); }
   private:
-    using LType = Lens<size_t,0>;
+    using LType = memory::Lens<size_t,0>;
     enum { SIZE = LType::END };
     uint8_t *ptr;
     INL explicit Frame(uint8_t *_ptr) : ptr(_ptr) {}
 
-    friend Variant<Frame,START,_StartFrame>;
-    friend Variant<Frame,STRONG,_StrongFrame>;
-    friend Variant<Frame,WEAK_CONNECTIONS,_WeakConnectionsFrame>;
-    friend Variant<Frame,WEAK_SET,_WeakSetFrame>;
-    friend Variant<Frame,WEAK,_WeakFrame>;
-    friend Variant<Frame,WEAK_UNIFY,_WeakUnifyFrame>;
-    friend Variant<Frame,MIN_COST,_MinCostFrame>;
+    friend memory::Variant<Frame,START,_StartFrame>;
+    friend memory::Variant<Frame,STRONG,_StrongFrame>;
+    friend memory::Variant<Frame,WEAK_CONNECTIONS,_WeakConnectionsFrame>;
+    friend memory::Variant<Frame,WEAK_SET,_WeakSetFrame>;
+    friend memory::Variant<Frame,WEAK,_WeakFrame>;
+    friend memory::Variant<Frame,WEAK_UNIFY,_WeakUnifyFrame>;
+    friend memory::Variant<Frame,MIN_COST,_MinCostFrame>;
   };
  
   SearchState::Save save;
   SearchState *state;
-  List<Frame> frames;
-  INL bool done(){ return frames.empty(); }
+  memory::List<Frame> frames;
+  INL bool done() const { return frames.empty(); }
 
   struct Builder {
     SearchState *state;
-    List<Frame> frames;
+    memory::List<Frame> frames;
   public:
     INL [[nodiscard]] Builder add(memory::Alloc &A, Frame f){ return Builder{state,frames.add(A,f)}; }
     INL [[nodiscard]] Cont build() {
@@ -70,7 +70,7 @@ struct Cont {
   
   INL [[nodiscard]] Builder builder() const { return Builder{state,frames.tail()}; }
 
-  INL [[nodiscard]] List<Cont> run(memory::Alloc &A) const { FRAME("run");
+  INL [[nodiscard]] memory::List<Cont> run(memory::Alloc &A) const { FRAME("run");
     DEBUG if(frames.empty()) error("frames.empty()");
     state->restore(save);
     auto f = frames.head();

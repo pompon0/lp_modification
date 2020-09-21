@@ -88,11 +88,11 @@ private:
   INL DerAndClause(u8 *_ptr, u8 *_constraints_ptr, size_t _offset, size_t _id_offset) 
     : ptr(_ptr), constraints_ptr(_constraints_ptr), offset(_offset), id_offset(_id_offset) {} 
 
-  using COST = Field<size_t>;
-  using DERIVED = Field<AndClause,COST>;
-  using VAR_RANGE = Field<VarRange,DERIVED>;
-  using SOURCES = ArrayField<AndClause,VAR_RANGE>;
-  using CONSTRAINTS = ArrayField<OrderAtom>;
+  using COST = memory::Field<size_t>;
+  using DERIVED = memory::Field<AndClause,COST>;
+  using VAR_RANGE = memory::Field<VarRange,DERIVED>;
+  using SOURCES = memory::ArrayField<AndClause,VAR_RANGE>;
+  using CONSTRAINTS = memory::ArrayField<OrderAtom>;
   u8 *ptr;
   u8 *constraints_ptr;
   size_t offset;

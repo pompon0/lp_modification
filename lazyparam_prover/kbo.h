@@ -18,7 +18,7 @@ namespace tableau {
 
 struct KBO {
 private:
-  ResetArray<int> var_occ;
+  memory::ResetArray<int> var_occ;
   using Res = OrderAtom::Relation;
   FunOrd fun_ord;
 public:

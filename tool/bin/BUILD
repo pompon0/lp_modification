@@ -59,15 +59,6 @@ cc_test(
     ],
 )
 
-cc_library(
-    name = "tool_wrapper",
-    hdrs = ["tool_wrapper.h"],
-    data = [":tool"],
-    deps = [
-        "//tptp_parser/proto:tptp_cc_proto",
-        "//utils:utils",
-    ],
-)
 go_binary(
     name = "bin",
     embed = [":go_default_library"],

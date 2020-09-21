@@ -30,7 +30,7 @@ struct Term {
   friend struct Fun;
   enum Type { VAR, FUN };
 private:
-  using TYPE = Field<Type>;
+  using TYPE = memory::Field<Type>;
   using LAST_FIELD = TYPE;
   u8 *ptr;
   size_t offset;
@@ -57,9 +57,9 @@ public:
 
 struct Fun {
 private:
-  using VAR_RANGE = Field<VarRange,Term::LAST_FIELD>;
-  using FUN = Field<u64,VAR_RANGE>;
-  using ARGS = ArrayField<Term,FUN>;
+  using VAR_RANGE = memory::Field<VarRange,Term::LAST_FIELD>;
+  using FUN = memory::Field<u64,VAR_RANGE>;
+  using ARGS = memory::ArrayField<Term,FUN>;
   Term term;
   template<typename Alloc> INL static Term _Fun(Alloc &a, u64 fun, const vec<Term> &args) { FRAME("_Fun(%)",fun);
     Builder b(a,fun,args.size());

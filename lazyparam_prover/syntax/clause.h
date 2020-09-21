@@ -12,8 +12,8 @@ struct OrClause;
 
 struct AndClause {
 private:
-  using VAR_RANGE = Field<VarRange>;
-  using ATOMS = ArrayField<Atom,VAR_RANGE>;
+  using VAR_RANGE = memory::Field<VarRange>;
+  using ATOMS = memory::ArrayField<Atom,VAR_RANGE>;
   u8 *ptr;
   size_t offset;
   size_t id_offset;

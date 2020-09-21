@@ -17,12 +17,12 @@ namespace tableau {
 struct Valuation {
 private:
   // there is NO cycles in valuation, even x -> x
-  RewindArray<Term> val;
+  memory::RewindArray<Term> val;
 public:
   INL Valuation(){}
   INL Valuation(const Valuation &) = default;
   ~Valuation(){}
-  using Save = RewindArray<Term>::Save;
+  using Save = memory::RewindArray<Term>::Save;
   INL size_t size() const { return val.size(); }
   
   template<typename T> INL T allocate(T t) {
@@ -37,7 +37,7 @@ public:
     FRAME("Valuation::restore(): %",DebugString());
     val.restore(s);
   }
-  INL Maybe<Term> operator[](size_t i){ return val[i]; }
+  INL memory::Maybe<Term> operator[](size_t i){ return val[i]; }
 
   bool has_var(Term t, u64 v) const { FRAME("has_var(%,%)",show(t),v);
     switch(t.type()) {
@@ -57,7 +57,7 @@ public:
   INL bool assign(u64 v, Term t) { FRAME("MGU.assign(%,%)",v,show(t));
     DEBUG if(val[v]) error("val[%] is already set",v);
     // traverse TVar assignments
-    for(Maybe<Term> mtv; t.type()==Term::VAR && (mtv = val[Var(t).id()]); ) t = mtv.get();
+    for(memory::Maybe<Term> mtv; t.type()==Term::VAR && (mtv = val[Var(t).id()]); ) t = mtv.get();
     switch(t.type()) {
       case Term::VAR: {
         Var tv(t);
@@ -77,8 +77,8 @@ public:
   }
 
   bool equal(Term x, Term y) const {
-    for(Maybe<Term> mxv; x.type()==Term::VAR && (mxv = val[Var(x).id()]);) x = mxv.get();
-    for(Maybe<Term> myv; y.type()==Term::VAR && (myv = val[Var(y).id()]);) y = myv.get();
+    for(memory::Maybe<Term> mxv; x.type()==Term::VAR && (mxv = val[Var(x).id()]);) x = mxv.get();
+    for(memory::Maybe<Term> myv; y.type()==Term::VAR && (myv = val[Var(y).id()]);) y = myv.get();
     if(x.type()!=y.type()) return 0;
     switch(x.type()) {
       case Term::VAR: return Var(x).id()==Var(y).id();

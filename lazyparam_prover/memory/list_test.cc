@@ -2,7 +2,7 @@
 #include "utils/log.h"
 #include "lazyparam_prover/memory/list.h"
 #include "gtest/gtest.h"
-using namespace tableau;
+using namespace memory;
 
 TEST(list,simple) {
   memory::Alloc A;

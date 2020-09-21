@@ -10,10 +10,10 @@ struct _LazyStrongConnectionFrame {
   Base base;
   Term l,r;
 };
-using LazyStrongConnectionFrame = Variant<Frame,Frame::LAZY_STRONG_CONNECTION,_LazyStrongConnectionFrame>;
+using LazyStrongConnectionFrame = memory::Variant<Frame,Frame::LAZY_STRONG_CONNECTION,_LazyStrongConnectionFrame>;
 
-List<Cont> lazy_strong_connection(memory::Alloc &A, LazyStrongConnectionFrame f) const { STATE_FRAME(A,state,"lazy_strong_connection(branch_lr=%,L=%,p=%,l=%,r=%)",f->base.branch_lr,show(f->base.L.A),show(f->base.L.get()),show(f->l),show(f->r));
-  if(!state->val.push_constraint(A,OrderAtom(A,OrderAtom::G,f->l,f->r))) return nothing();
+memory::List<Cont> lazy_strong_connection(memory::Alloc &A, LazyStrongConnectionFrame f) const { STATE_FRAME(A,state,"lazy_strong_connection(branch_lr=%,L=%,p=%,l=%,r=%)",f->base.branch_lr,show(f->base.L.A),show(f->base.L.get()),show(f->l),show(f->r));
+  if(!state->val.push_constraint(A,OrderAtom(A,OrderAtom::G,f->l,f->r))) return memory::nothing();
   // -L[f(v)], L[w], f(v)=w
   auto bs = f->base.branch_set;
   if(!f->base.branch_lr) {
@@ -27,8 +27,8 @@ List<Cont> lazy_strong_connection(memory::Alloc &A, LazyStrongConnectionFrame f)
       Term p = L.get();
       Term r = f->r;
       // unify
-      if(!state->val.push_constraint(A,OrderAtom(A,OrderAtom::G,z,w))) return nothing();
-      if(!state->val.unify(A,p,z)) return nothing();
+      if(!state->val.push_constraint(A,OrderAtom(A,OrderAtom::G,z,w))) return memory::nothing();
+      if(!state->val.unify(A,p,z)) return memory::nothing();
       Atom r_w = Atom::eq(A,true,r,w);
       Atom z_r = Atom::eq(A,true,z,r);
       Atom z_w = Atom::eq(A,true,z,w);
@@ -60,8 +60,8 @@ List<Cont> lazy_strong_connection(memory::Alloc &A, LazyStrongConnectionFrame f)
       }
       Term fv(fvb.build());
       // unify
-      if(!state->val.push_constraint(A,OrderAtom(A,OrderAtom::G,fv,w))) return nothing();
-      if(!state->val.unify(A,p,fv)) return nothing();
+      if(!state->val.push_constraint(A,OrderAtom(A,OrderAtom::G,fv,w))) return memory::nothing();
+      if(!state->val.unify(A,p,fv)) return memory::nothing();
       Atom fv_fs = Atom::eq(A,true,fv,fs);
       Atom fs_r = Atom::eq(A,true,fs,r);
       Atom fv_r = Atom::eq(A,true,fv,r);
@@ -98,9 +98,9 @@ List<Cont> lazy_strong_connection(memory::Alloc &A, LazyStrongConnectionFrame f)
     }
     Term fv(fvb.build());
     // unify
-    if(!state->val.push_constraint(A,OrderAtom(A,OrderAtom::G,l,r))) return nothing();
-    if(!state->val.unify(A,fv,l)) return nothing();
-    if(!state->val.unify(A,r,w)) return nothing();
+    if(!state->val.push_constraint(A,OrderAtom(A,OrderAtom::G,l,r))) return memory::nothing();
+    if(!state->val.unify(A,fv,l)) return memory::nothing();
+    if(!state->val.unify(A,r,w)) return memory::nothing();
     Atom fs_fv = Atom::eq(A,true,fs,fv);
     Atom l_r = Atom::eq(A,true,l,r);
     Atom fs_w = Atom::eq(A,true,fs,w);
@@ -114,5 +114,5 @@ List<Cont> lazy_strong_connection(memory::Alloc &A, LazyStrongConnectionFrame f)
   b->nodes_limit = f->base.nodes_limit;
   b->branches = bs.branches;
   b->branch_count = bs.branches_size;
-  return List<Cont>(A,builder().add(A,Frame(b.build())).build());
+  return memory::List<Cont>(A,builder().add(A,Frame(b.build())).build());
 }

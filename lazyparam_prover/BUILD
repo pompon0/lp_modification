@@ -150,6 +150,7 @@ cc_library(
       ":prover",
       "//tool/bin:wrapper",
       "//utils:utils",
+      "//lazyparam_prover/connection_tableau:prover",
     ],
 )
 

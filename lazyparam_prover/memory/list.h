@@ -5,7 +5,7 @@
 #include "lazyparam_prover/memory/maybe.h"
 #include "lazyparam_prover/memory/stack.h"
 
-namespace tableau {
+namespace memory {
 
 template<typename E> struct List {
 private:
@@ -33,6 +33,6 @@ public:
   size_t size() const { return empty() ? 0 : tail().size()+1; }
 };
 
-}  // namespace tableau
+}  // namespace memory
 
 #endif  // MEMORY_LIST_H_ 

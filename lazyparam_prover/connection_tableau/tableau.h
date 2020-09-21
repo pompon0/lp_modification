@@ -5,16 +5,20 @@
 
 namespace tableau::connection_tableau {
 
+static Cont start_cont(memory::Alloc &A, SearchState &state, size_t limit) {
+  Cont::StartFrame::Builder b(A);
+  b->nodes_limit = limit;
+  return Cont{
+    .save = state.save(),
+    .state = &state,
+    .frames = memory::List<Cont::Frame>(A,Cont::Frame(b.build())),
+  };
+}
+
 static ProverOutput prove(const Ctx &ctx, memory::Alloc &A, const ClauseIndex &cla_index, const FunOrd &fun_ord, size_t limit) { FRAME("prove()");
   SCOPE("prove");
   SearchState s(cla_index,fun_ord);
-  Cont::StartFrame::Builder b(A);
-  b->nodes_limit = limit;
-  auto res = alt::search(ctx,A,Cont{
-    .save = s.save(),
-    .state = &s,
-    .frames = List<Cont::Frame>(A,Cont::Frame(b.build())),
-  });
+  auto res = alt::search(ctx,A,start_cont(A,s,limit));
   s.stats.val = s.val.stats;
   return {
     res.cont_count,

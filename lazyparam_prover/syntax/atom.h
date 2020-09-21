@@ -8,9 +8,9 @@ namespace tableau {
 
 struct Atom {
 private:
-  using VAR_RANGE = Field<VarRange>;
-  using PRED = Field<u64,VAR_RANGE>;
-  using ARGS = ArrayField<Term,PRED>;
+  using VAR_RANGE = memory::Field<VarRange>;
+  using PRED = memory::Field<u64,VAR_RANGE>;
+  using ARGS = memory::ArrayField<Term,PRED>;
   u8 *ptr;
   size_t offset;
   bool sign_;

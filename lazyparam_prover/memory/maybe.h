@@ -3,7 +3,7 @@
 
 #include "utils/log.h"
 
-namespace tableau {
+namespace memory {
 
 struct Nothing {};
 template<typename T> struct Maybe {
@@ -27,6 +27,6 @@ public:
 INL static inline Nothing nothing(){ return {}; }
 template<typename T> INL static inline Maybe<T> just(const T &v) { return Maybe<T>(v); }
 
-}  // namespace tableau
+}  // namespace memory
 
 #endif  // MEMORY_MAYBE_H_

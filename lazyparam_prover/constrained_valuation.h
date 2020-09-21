@@ -32,7 +32,7 @@ struct ValuationStats {
 
 template<typename Ordering> struct ConstrainedValuation {
 private:
-  List<OrderAtom> constraints;
+  memory::List<OrderAtom> constraints;
   Valuation val;
   Ordering ord;
 public:
@@ -52,7 +52,7 @@ public:
   struct Save {
     Valuation::Save val;
     typename Ordering::Save ord;
-    List<OrderAtom> constraints;
+    memory::List<OrderAtom> constraints;
   };
   
   INL Save save(){
@@ -101,7 +101,7 @@ public:
   }
 
   [[nodiscard]] INL bool check_constraints(memory::Alloc &A) {
-    List<OrderAtom> c2;
+    memory::List<OrderAtom> c2;
     for(auto c = constraints; !c.empty(); c = c.tail()) {
       if(!check_and_push_constraint(A,c2,c.head())) return false;
     }
@@ -109,7 +109,7 @@ public:
     return true;
   } 
 
-  INL bool check_and_push_constraint(memory::Alloc &A, List<OrderAtom> &constraints, OrderAtom c) {
+  INL bool check_and_push_constraint(memory::Alloc &A, memory::List<OrderAtom> &constraints, OrderAtom c) {
     c = c.reduce(*this);
     switch(c.status()) {
     case OrderAtom::TRUE: return true;

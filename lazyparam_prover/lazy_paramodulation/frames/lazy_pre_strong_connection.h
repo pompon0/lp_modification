@@ -5,15 +5,15 @@ struct _LazyPreStrongConnectionFrame {
   size_t strong_id;
   bool branch_lr;
 };
-using LazyPreStrongConnectionFrame = Variant<Frame,Frame::LAZY_PRE_STRONG_CONNECTION,_LazyPreStrongConnectionFrame>;
+using LazyPreStrongConnectionFrame = memory::Variant<Frame,Frame::LAZY_PRE_STRONG_CONNECTION,_LazyPreStrongConnectionFrame>;
 
-List<Cont> lazy_pre_strong_connection(memory::Alloc &A, LazyPreStrongConnectionFrame f) const { 
+memory::List<Cont> lazy_pre_strong_connection(memory::Alloc &A, LazyPreStrongConnectionFrame f) const { 
   auto mcla = state->allocate(A,f->dcla);
-  if(!mcla) return nothing();
+  if(!mcla) return memory::nothing();
   auto cla = mcla.get();
   STATE_FRAME(A,state,"lazy_pre_strong_connection(strong_id=%,cla=%)",f->strong_id,show(cla));
   if(f->dcla.cost()==0) state->nodes_used++; // this implementation doesn't check regularity, so it doesn't have halting property with free clauses .
-  if(state->nodes_used>f->nodes_limit) return nothing();
+  if(state->nodes_used>f->nodes_limit) return memory::nothing();
 
   BranchSet bs{.branch = f->branch};
   for(size_t i=cla.atom_count(); i--;) if(i!=f->strong_id) bs.push(A,cla.atom(i));
@@ -29,7 +29,7 @@ List<Cont> lazy_pre_strong_connection(memory::Alloc &A, LazyPreStrongConnectionF
     Atom::eq(A,lr.sign(),r,l)
   )}));
 
-  List<Cont> alts;
+  memory::List<Cont> alts;
   Var w = state->val.allocate(Var(A,0));
   for(auto apl = paths(A,L); !apl.empty(); apl = apl.tail()) {
     _LazyStrongConnectionFrame::Base base {

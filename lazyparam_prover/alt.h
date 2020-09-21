@@ -8,7 +8,7 @@ namespace alt {
 
 struct ExampleCont {
   bool done() const { return 1; }
-  List<ExampleCont> run() const { return nothing(); }
+  memory::List<ExampleCont> run(memory::Alloc&) const { return memory::nothing(); }
 };
 
 struct SearchResult {
@@ -19,10 +19,10 @@ struct SearchResult {
 template<typename Cont> SearchResult search(const Ctx &ctx, memory::Alloc &A, Cont c) { FRAME("search()");
   SCOPE("alt::search");
   struct Save {
-    List<Cont> conts; 
+    memory::List<Cont> conts; 
     memory::Alloc::Save A;
   };
-  List<Cont> start(A,c);
+  memory::List<Cont> start(A,c);
   vec<Save> saves{Save{start,A.save()}};
   size_t steps = 0;
   for(; saves.size(); steps++) {

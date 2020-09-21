@@ -1,8 +1,8 @@
 struct _StartFrame { size_t nodes_limit; };
-using StartFrame = Variant<Frame,Frame::START,_StartFrame>;
+using StartFrame = memory::Variant<Frame,Frame::START,_StartFrame>;
 
-List<Cont> start(memory::Alloc &A, StartFrame f) const { STATE_FRAME(A,state,"start");
-  List<Cont> alts;
+memory::List<Cont> start(memory::Alloc &A, StartFrame f) const { STATE_FRAME(A,state,"start");
+  memory::List<Cont> alts;
   while(auto dcla = state->cla_index.next_starting_clause()) {
     StrongFrame::Builder b(A);
     b->nodes_limit = f->nodes_limit;

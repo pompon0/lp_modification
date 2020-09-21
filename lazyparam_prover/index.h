@@ -27,15 +27,15 @@ public:
   struct AndClauseWithAtom { size_t i; DerAndClause cla; };
 
   struct Filter {
-    INL Maybe<AndClauseWithAtom> next() { FRAME("ClauseIndex::Filter::next()");
+    INL memory::Maybe<AndClauseWithAtom> next() { FRAME("ClauseIndex::Filter::next()");
       for(;next_id<atoms->size(); next_id++) {
         auto &a = (*atoms)[next_id];
-        if(index->and_clauses[a.clause_id].cost()>cost_limit) return Maybe<AndClauseWithAtom>();
+        if(index->and_clauses[a.clause_id].cost()>cost_limit) return memory::Maybe<AndClauseWithAtom>();
         if(starting_clause_id>a.clause_id && index->is_starting_clause[a.clause_id]) continue;
         next_id++;
-        return Maybe<AndClauseWithAtom>({a.atom_id,index->and_clauses[a.clause_id]});
+        return memory::Maybe<AndClauseWithAtom>({a.atom_id,index->and_clauses[a.clause_id]});
       }
-      return Maybe<AndClauseWithAtom>(); 
+      return memory::Maybe<AndClauseWithAtom>(); 
     }
 
     Filter(
@@ -59,12 +59,12 @@ public:
   struct State {
     explicit State(const ClauseIndex *_index) : index(_index), next_starting_clause_id(0) {}
 
-    Maybe<DerAndClause> next_starting_clause() {
+    memory::Maybe<DerAndClause> next_starting_clause() {
       for(auto &i = next_starting_clause_id; i<index->and_clauses.size(); i++) {
         if(index->is_starting_clause[i])
-          return just(index->and_clauses[i++]);
+          return memory::just(index->and_clauses[i++]);
       }
-      return nothing();
+      return memory::nothing();
     }
     // gets all atoms which are matchable with atom.neg().
     // WARNING: Use only if atom comes from the fixed initial set.

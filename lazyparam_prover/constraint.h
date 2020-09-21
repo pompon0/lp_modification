@@ -84,9 +84,9 @@ struct OrderAtom {
   }
 
 private:
-  using VAR_RANGE = Field<VarRange>;
-  using RELATION = Field<Relation,VAR_RANGE>;
-  using TERM_PAIRS = ArrayField<TermPair,RELATION>;
+  using VAR_RANGE = memory::Field<VarRange>;
+  using RELATION = memory::Field<Relation,VAR_RANGE>;
+  using TERM_PAIRS = memory::ArrayField<TermPair,RELATION>;
 
   u8 *ptr;
   size_t offset;

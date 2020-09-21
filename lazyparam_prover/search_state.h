@@ -23,13 +23,13 @@
 namespace tableau {
 
 struct Branch {
-  List<Atom> false_;
-  List<Atom> true_;
+  memory::List<Atom> false_;
+  memory::List<Atom> true_;
 };
 
 struct BranchSet {
   Branch branch;
-  List<Branch> branches;
+  memory::List<Branch> branches;
   size_t branches_size;
 
   void push(memory::Alloc &A, Atom a) { FRAME("BranchSet::push(%)",show(a));
@@ -57,20 +57,20 @@ struct SearchState {
 
   Val val;
   size_t nodes_used = 0;
-  List<DerAndClause> clauses_used;
-  List<Lazy<DerAndClause>> lazy_clauses_used;
-  DEBUG_ONLY(List<str> trace;)
+  memory::List<DerAndClause> clauses_used;
+  memory::List<memory::Lazy<DerAndClause>> lazy_clauses_used;
+  DEBUG_ONLY(memory::List<str> trace;)
   
   Stats stats;
 
-  Maybe<AndClause> allocate(memory::Alloc &A, DerAndClause dcla) { FRAME("SearchState::allocate()");
+  memory::Maybe<AndClause> allocate(memory::Alloc &A, DerAndClause dcla) { FRAME("SearchState::allocate()");
     dcla = val.allocate(dcla);
     clauses_used.push(A,dcla);
     nodes_used += dcla.cost();
     for(size_t i=dcla.constraint_count(); i--;){
-      if(!val.push_constraint(A,dcla.constraint(i))) return nothing();
+      if(!val.push_constraint(A,dcla.constraint(i))) return memory::nothing();
     }
-    return just(dcla.derived());
+    return memory::just(dcla.derived());
   }
 
   // cannot return the proto, because parsing context is not available.
@@ -89,10 +89,10 @@ struct SearchState {
   struct Save {
     Val::Save val;
     size_t nodes_used;
-    List<DerAndClause> clauses_used;
-    List<Lazy<DerAndClause>> lazy_clauses_used;
+    memory::List<DerAndClause> clauses_used;
+    memory::List<memory::Lazy<DerAndClause>> lazy_clauses_used;
     ClauseIndex::State cla_index;
-    DEBUG_ONLY(List<str> trace;)
+    DEBUG_ONLY(memory::List<str> trace;)
   };
 
   void restore(Save s) {

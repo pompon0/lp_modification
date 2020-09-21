@@ -4,21 +4,21 @@ struct _LazyPreWeakConnectionFrame {
   Atom L;
   Atom lr;
 };
-using LazyPreWeakConnectionFrame = Variant<Frame,Frame::LAZY_PRE_WEAK_CONNECTION,_LazyPreWeakConnectionFrame>;
+using LazyPreWeakConnectionFrame = memory::Variant<Frame,Frame::LAZY_PRE_WEAK_CONNECTION,_LazyPreWeakConnectionFrame>;
 
-List<Cont> lazy_pre_weak_connection(memory::Alloc &A, LazyPreWeakConnectionFrame f) const { STATE_FRAME(A,state,"lazy_pre_weak_connection(L=%,lr=%)",show(f->L),show(f->lr));
-  if(++state->nodes_used>f->nodes_limit) return nothing();
+memory::List<Cont> lazy_pre_weak_connection(memory::Alloc &A, LazyPreWeakConnectionFrame f) const { STATE_FRAME(A,state,"lazy_pre_weak_connection(L=%,lr=%)",show(f->L),show(f->lr));
+  if(++state->nodes_used>f->nodes_limit) return memory::nothing();
   auto lr = f->lr;
   DEBUG if(lr.pred()!=Atom::EQ || lr.sign()) error("lr = %",show(lr));
   auto l = lr.arg(0);
   auto r = lr.arg(1);
-  if(!state->val.push_constraint(A,OrderAtom(A,OrderAtom::G,l,r))) return nothing();
+  if(!state->val.push_constraint(A,OrderAtom(A,OrderAtom::G,l,r))) return memory::nothing();
   state->lazy_clauses_used.push(A,lazy(A,AxiomClause{AndClause::make(A,
     lr.neg(),
     Atom::eq(A,lr.sign(),r,l)
   )}));
 
-  List<Cont> alts;
+  memory::List<Cont> alts;
   Var w = state->val.allocate(Var(A,0));
   for(auto apl = paths(A,f->L); !apl.empty(); apl = apl.tail()) {
     _LazyWeakConnectionFrame::Base base {

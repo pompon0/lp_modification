@@ -4,7 +4,7 @@
 #include "lazyparam_prover/memory/maybe.h"
 #include "utils/log.h"
 
-namespace tableau {
+namespace memory {
 
 template<typename E> struct Array {
 private:
@@ -78,6 +78,6 @@ public:
   }
 };
 
-}  // namespace tableau
+}  // namespace memory
 
 #endif  // MEMORY_ARRAY_H_

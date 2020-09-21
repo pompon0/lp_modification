@@ -4,7 +4,7 @@
 #include "utils/types.h"
 #include "utils/log.h"
 
-namespace tableau {
+namespace memory {
 
 struct Empty { enum { SIZE = 0 }; };
 

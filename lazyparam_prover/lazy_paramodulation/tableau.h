@@ -30,7 +30,7 @@ ProverOutput prove(const Ctx &ctx, memory::Alloc &A, const ClauseIndex &cla_inde
   auto res = alt::search(ctx,A,Cont{
     .save = s.save(),
     .state = &s,
-    .frames = List<Cont::Frame>(A,Cont::Frame(b.build()))
+    .frames = memory::List<Cont::Frame>(A,Cont::Frame(b.build()))
   });
   s.stats.val = s.val.stats;
   DEBUG_ONLY(

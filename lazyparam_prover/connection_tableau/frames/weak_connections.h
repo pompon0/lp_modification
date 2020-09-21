@@ -1,14 +1,14 @@
 struct _WeakConnectionsFrame {
   size_t nodes_limit;
-  List<Atom> atoms;
-  List<Branch> branches;
+  memory::List<Atom> atoms;
+  memory::List<Branch> branches;
   size_t branch_count;
   Branch next;
 };
-using WeakConnectionsFrame = Variant<Frame,Frame::WEAK_CONNECTIONS,_WeakConnectionsFrame>;
-INL List<Cont> weak_connections(memory::Alloc &A, WeakConnectionsFrame f) const { FRAME("weak_connections :: len(atoms)==% branch_count==%",f->atoms.size(),f->branch_count);
+using WeakConnectionsFrame = memory::Variant<Frame,Frame::WEAK_CONNECTIONS,_WeakConnectionsFrame>;
+INL memory::List<Cont> weak_connections(memory::Alloc &A, WeakConnectionsFrame f) const { FRAME("weak_connections :: len(atoms)==% branch_count==%",f->atoms.size(),f->branch_count);
   state->stats.weak_connections_steps++;
-  List<Cont> alts;
+  memory::List<Cont> alts;
   if(!f->atoms.empty()) {
     Atom a = f->atoms.head(); 
 

@@ -3,7 +3,7 @@
 
 #include "lazyparam_prover/memory/stack.h"
 
-namespace tableau {
+namespace memory {
 
 template<typename R> struct Lazy {
   struct Impl {

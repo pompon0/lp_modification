@@ -3,7 +3,7 @@ struct _WeakFrame {
   size_t nodes_limit;
   Branch branch;
 };
-using WeakFrame = Variant<Frame,Frame::WEAK,_WeakFrame>;
+using WeakFrame = memory::Variant<Frame,Frame::WEAK,_WeakFrame>;
 
 static bool matches_lemma(State &state, Branch branch) {
   auto a = branch.false_.head();
@@ -16,7 +16,7 @@ static bool matches_lemma(State &state, Branch branch) {
 }
 
 // l/=r,...,a = L[p]
-List<Cont> try_weak_param(memory::Alloc &A, WeakFrame f, List<Cont> alts,
+memory::List<Cont> try_weak_param(memory::Alloc &A, WeakFrame f, memory::List<Cont> alts,
     Atom lr, Atom L, Builder tail) const {
   if(lr.pred()!=Atom::EQ || lr.sign()) return alts;
   LazyPreWeakConnectionFrame::Builder pb(A);
@@ -28,7 +28,7 @@ List<Cont> try_weak_param(memory::Alloc &A, WeakFrame f, List<Cont> alts,
 }
 
 // weak connection: -P(r), ..., a = P(s)
-List<Cont> try_weak_match(memory::Alloc &A, WeakFrame f, List<Cont> alts,
+memory::List<Cont> try_weak_match(memory::Alloc &A, WeakFrame f, memory::List<Cont> alts,
     Atom x, Atom y, Builder tail) const {
   if(x.pred()==Atom::EQ) return alts;
   if(Index::atom_hash(x)!=(Index::atom_hash(y)^1)) return alts;
@@ -38,13 +38,13 @@ List<Cont> try_weak_match(memory::Alloc &A, WeakFrame f, List<Cont> alts,
   return alts.add(A,tail.add(A,Frame(ub.build())).build());
 }
 
-List<Cont> weak(memory::Alloc &A, WeakFrame f) const { STATE_FRAME(A,state,"weak(%)",show(f->branch.false_.head())); 
+memory::List<Cont> weak(memory::Alloc &A, WeakFrame f) const { STATE_FRAME(A,state,"weak(%)",show(f->branch.false_.head())); 
   state->stats.weak_steps++;
   size_t budget = f->nodes_limit - state->nodes_used;
   COUNTER("expand");
-  if(budget<f->min_cost) return nothing();
+  if(budget<f->min_cost) return memory::nothing();
   Builder tail = builder();
-  List<Cont> alts;
+  memory::List<Cont> alts;
   // match lemma
   if(matches_lemma(*state,f->branch)){ 
     STATE_FRAME(A,state,"matches_lemma");

@@ -1,7 +1,7 @@
 #ifndef MEMORY_VARIANT_H_
 #define MEMORY_VARIANT_H_
 
-namespace tableau {
+namespace memory {
 
 template<typename T, size_t OFFSET> struct Lens {
   enum { BEGIN = OFFSET, END = BEGIN+sizeof(T) };

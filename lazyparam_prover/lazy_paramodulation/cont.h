@@ -9,7 +9,7 @@
 
 namespace tableau::lazy_paramodulation {
 
-struct AxiomClause : Lazy<DerAndClause>::Impl {
+struct AxiomClause : memory::Lazy<DerAndClause>::Impl {
   AndClause cla;
   INL AxiomClause(AndClause _cla) : cla(_cla) {}
   DerAndClause get(memory::Alloc &A) const {
@@ -54,28 +54,28 @@ struct Cont {
     };
     Type type() const { return Type(*LType::at(ptr)); }
   private:
-    using LType = Lens<size_t,0>;
+    using LType = memory::Lens<size_t,0>;
     enum { SIZE = LType::END };
     uint8_t *ptr;
     explicit Frame(uint8_t *_ptr) : ptr(_ptr) {}
 
-    friend Variant<Frame,START,_StartFrame>;
-    friend Variant<Frame,STRONG,_StrongFrame>;
-    friend Variant<Frame,WEAK_SET,_WeakSetFrame>;
-    friend Variant<Frame,WEAK,_WeakFrame>;
-    friend Variant<Frame,WEAK_UNIFY,_WeakUnifyFrame>;
-    friend Variant<Frame,MIN_COST,_MinCostFrame>;
+    friend memory::Variant<Frame,START,_StartFrame>;
+    friend memory::Variant<Frame,STRONG,_StrongFrame>;
+    friend memory::Variant<Frame,WEAK_SET,_WeakSetFrame>;
+    friend memory::Variant<Frame,WEAK,_WeakFrame>;
+    friend memory::Variant<Frame,WEAK_UNIFY,_WeakUnifyFrame>;
+    friend memory::Variant<Frame,MIN_COST,_MinCostFrame>;
     ////////////////////////////////////
-    friend Variant<Frame,REDUCTION,_ReductionFrame>;
-    friend Variant<Frame,LAZY_WEAK_CONNECTION,_LazyWeakConnectionFrame>;
-    friend Variant<Frame,LAZY_PRE_WEAK_CONNECTION,_LazyPreWeakConnectionFrame>;
-    friend Variant<Frame,LAZY_STRONG_CONNECTION,_LazyStrongConnectionFrame>;
-    friend Variant<Frame,LAZY_PRE_STRONG_CONNECTION,_LazyPreStrongConnectionFrame>;
+    friend memory::Variant<Frame,REDUCTION,_ReductionFrame>;
+    friend memory::Variant<Frame,LAZY_WEAK_CONNECTION,_LazyWeakConnectionFrame>;
+    friend memory::Variant<Frame,LAZY_PRE_WEAK_CONNECTION,_LazyPreWeakConnectionFrame>;
+    friend memory::Variant<Frame,LAZY_STRONG_CONNECTION,_LazyStrongConnectionFrame>;
+    friend memory::Variant<Frame,LAZY_PRE_STRONG_CONNECTION,_LazyPreStrongConnectionFrame>;
   };
 
   SearchState::Save save;
   SearchState *state;
-  List<Frame> frames;
+  memory::List<Frame> frames;
   bool done(){ 
     FRAME("done() :: %, frames.size() = %",frames.empty(),frames.size());
     return frames.empty();
@@ -83,7 +83,7 @@ struct Cont {
 
   struct Builder {
     SearchState *state;
-    List<Frame> frames;
+    memory::List<Frame> frames;
   public:
     [[nodiscard]] Builder add(memory::Alloc &A, Frame f){ return Builder{state,frames.add(A,f)}; }
     [[nodiscard]] Cont build() {
@@ -97,7 +97,7 @@ struct Cont {
   
   [[nodiscard]] Builder builder() const { return Builder{state,frames.tail()}; }
 
-  [[nodiscard]] List<Cont> run(memory::Alloc &A) const { FRAME("run");
+  [[nodiscard]] memory::List<Cont> run(memory::Alloc &A) const { FRAME("run");
     DEBUG if(frames.empty()) error("frames.empty()");
     state->restore(save);
     auto f = frames.head();

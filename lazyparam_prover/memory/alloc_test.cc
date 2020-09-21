@@ -5,7 +5,7 @@
 #include "utils/log.h"
 #include "lazyparam_prover/memory/stack.h"
 
-using namespace tableau;
+using namespace memory;
 
 TEST(RewindArray,simple) {
   StreamLogger _(std::cerr);

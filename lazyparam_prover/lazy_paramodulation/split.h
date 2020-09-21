@@ -10,7 +10,7 @@
 
 namespace tableau::lazy_paramodulation {
 
-using Path = List<size_t>;
+using Path = memory::List<size_t>;
 struct AtomPath {
   Atom A;
   size_t i; Path path;
@@ -30,19 +30,19 @@ private:
   }
 };
 
-List<Path> paths(memory::Alloc &A, Term t) {
-  if(t.type()==Term::VAR) return nothing();
+memory::List<Path> paths(memory::Alloc &A, Term t) {
+  if(t.type()==Term::VAR) return memory::nothing();
   Fun f(t);
-  List<Path> res;
-  res.push(A,nothing());
+  memory::List<Path> res;
+  res.push(A,memory::nothing());
   for(size_t i=f.arg_count(); i--;)
     for(auto l=paths(A,f.arg(i)); !l.empty(); l = l.tail())
       res.push(A,l.head().add(A,i));
   return res;
 };
 
-List<AtomPath> paths(memory::Alloc &A, Atom a) {
-  List<AtomPath> res;
+memory::List<AtomPath> paths(memory::Alloc &A, Atom a) {
+  memory::List<AtomPath> res;
   for(size_t i=a.arg_count(); i--;)
     for(auto l=paths(A,a.arg(i)); !l.empty(); l = l.tail())
       res.push(A,AtomPath{a,i,l.head()});
@@ -51,7 +51,7 @@ List<AtomPath> paths(memory::Alloc &A, Atom a) {
 
 //////////////////////////////////////
 
-struct ApClause : Lazy<DerAndClause>::Impl {
+struct ApClause : memory::Lazy<DerAndClause>::Impl {
   ApClause(AtomPath _ap, Term _r) : ap(_ap), r(_r) {}
   AtomPath ap;
   Term r;

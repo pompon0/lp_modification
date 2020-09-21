@@ -1,11 +1,11 @@
 struct _WeakSetFrame {
   size_t nodes_limit;
   size_t branch_count;
-  List<Branch> branches;
+  memory::List<Branch> branches;
 };
-using WeakSetFrame = Variant<Frame,Frame::WEAK_SET,_WeakSetFrame>;
+using WeakSetFrame = memory::Variant<Frame,Frame::WEAK_SET,_WeakSetFrame>;
 
-List<Cont> weak_set(memory::Alloc &A, WeakSetFrame f) const { STATE_FRAME(A,state,"weak_set");
+memory::List<Cont> weak_set(memory::Alloc &A, WeakSetFrame f) const { STATE_FRAME(A,state,"weak_set");
   state->stats.weak_set_steps++;
   DEBUG if(!f->branch_count) error("f->branch_count = 0");
   if(f->branch_count==1){
@@ -16,7 +16,7 @@ List<Cont> weak_set(memory::Alloc &A, WeakSetFrame f) const { STATE_FRAME(A,stat
     return weak(A,b.build());
   }
   
-  List<Cont> alts;
+  memory::List<Cont> alts;
   size_t per_bud = (f->nodes_limit-state->nodes_used)/f->branch_count;
   if(f->nodes_limit>state->nodes_used) { // if there is budget to allocate.
     WeakSetFrame::Builder wsb(A);

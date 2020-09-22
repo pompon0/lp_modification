@@ -59,6 +59,7 @@ public:
 
   Action reset() { return *start; }
 
+  // TODO: you cannot return to arbitrary action, try sth else.
   vec<Action> run(Action a) {
     A->restore(a.A);
     memory::List<Cont> cs = a.cont.run(*A);

@@ -17,82 +17,44 @@
 #include "lazyparam_prover/index.h"
 #include "lazyparam_prover/prover_output.h"
 
+#include "lazyparam_prover/connection_tableau/frames/start.h"
+#include "lazyparam_prover/connection_tableau/frames/weak.h"
+
 namespace tableau::connection_tableau {
 
-struct Cont { 
-  using State = SearchState;
- 
-  struct _StartFrame;
-  struct _StrongFrame;
-  struct _WeakConnectionsFrame;
-  struct _WeakSetFrame;
-  struct _WeakFrame;
-  struct _WeakUnifyFrame;
-  struct _MinCostFrame;
-
-  struct Frame {
-  public:
-    enum Type { START, STRONG, WEAK_CONNECTIONS, WEAK_SET, WEAK, WEAK_UNIFY, MIN_COST };
-    INL Type type() const { return Type(*LType::at(ptr)); }
-  private:
-    using LType = memory::Lens<size_t,0>;
-    enum { SIZE = LType::END };
-    uint8_t *ptr;
-    INL explicit Frame(uint8_t *_ptr) : ptr(_ptr) {}
-
-    friend memory::Variant<Frame,START,_StartFrame>;
-    friend memory::Variant<Frame,STRONG,_StrongFrame>;
-    friend memory::Variant<Frame,WEAK_CONNECTIONS,_WeakConnectionsFrame>;
-    friend memory::Variant<Frame,WEAK_SET,_WeakSetFrame>;
-    friend memory::Variant<Frame,WEAK,_WeakFrame>;
-    friend memory::Variant<Frame,WEAK_UNIFY,_WeakUnifyFrame>;
-    friend memory::Variant<Frame,MIN_COST,_MinCostFrame>;
-  };
- 
-  SearchState::Save save;
-  SearchState *state;
-  memory::List<Frame> frames;
-  INL bool done() const { return frames.empty(); }
-
-  struct Builder {
-    SearchState *state;
-    memory::List<Frame> frames;
-  public:
-    INL [[nodiscard]] Builder add(memory::Alloc &A, Frame f){ return Builder{state,frames.add(A,f)}; }
-    INL [[nodiscard]] Cont build() {
-      return Cont {
-        .save = state->save(),
-        .state = state,
-        .frames = frames,
-      };
-    }
-  };
-  
-  INL [[nodiscard]] Builder builder() const { return Builder{state,frames.tail()}; }
-
-  INL [[nodiscard]] memory::List<Cont> run(memory::Alloc &A) const { FRAME("run");
-    DEBUG if(frames.empty()) error("frames.empty()");
-    state->restore(save);
-    auto f = frames.head();
-    switch(f.type()) {
-      case Frame::START: return start(A,StartFrame(f));
-      case Frame::STRONG: return strong(A,StrongFrame(f));
-      case Frame::WEAK_CONNECTIONS: return weak_connections(A,WeakConnectionsFrame(f));
-      case Frame::WEAK_SET: return weak_set(A,WeakSetFrame(f));
-      case Frame::WEAK: return weak(A,WeakFrame(f));
-      case Frame::WEAK_UNIFY: return weak_unify(A,WeakUnifyFrame(f));
-      case Frame::MIN_COST: return min_cost(A,MinCostFrame(f));
-      default: error("f.type() = %",f.type());
+// TODO: redefine Continuations to be task sets:
+//   task.run() produces an alternative of task sets, which replace the original task
+//   we have to ensure an invariant that for every task choice strategy, there exists alternative selection strategy, which gets us to a proof.
+// TODO: task.normalize() produces a Maybe<Alt{task set}>
+//   it can progress as long as there is no choice to be made
+//   it is supposed to allow for checking early exit conditions independently from what is currently done.
+// TODO: every frame/task carries an early success constraint (to catch lemmas matching after unifications).
+struct Frame {
+public:
+  template<typename DState> INL void run(memory::Alloc &A, DState *d) const { FRAME("run");
+    switch(frame.type()) {
+      case Frame::START: StartFrame(frame)->run(A,d); return;
+      case Frame::WEAK: WeakFrame(frame)->run(A,d); return;
+      default: error("frame.type() = %",frame.type());
     }
   }
-#include "lazyparam_prover/connection_tableau/frames/start.h"
-#include "lazyparam_prover/connection_tableau/frames/strong.h"
-#include "lazyparam_prover/connection_tableau/frames/weak_connections.h"
-#include "lazyparam_prover/connection_tableau/frames/weak_set.h"
-#include "lazyparam_prover/connection_tableau/frames/weak.h"
-#include "lazyparam_prover/connection_tableau/frames/weak_unify.h"
-#include "lazyparam_prover/connection_tableau/frames/min_cost.h"
+private:
+  enum Type { START, WEAK };
+  INL Type type() const { return Type(*LType::at(ptr)); }
+  using Start = memory::Variant<Frame,START,StartFrame>;
+  using Weak = memory::Variant<Frame,WEAK,WeakFrame>;
+  
+  using LType = memory::Lens<size_t,0>;
+  enum { SIZE = LType::END };
+  uint8_t *ptr;
+  INL explicit Frame(uint8_t *_ptr) : ptr(_ptr) {}
+
+  friend Start;
+  friend Weak;
 };
+
+using Task = Frame;
+using TaskSet = memory::List<Task>;
 
 }  // namespace tableau::connection_tableau
 

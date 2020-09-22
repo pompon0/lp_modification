@@ -1,11 +1,8 @@
-struct _StrongFrame {
-  size_t nodes_limit;
-  Branch branch;
-  DerAndClause dcla;
-  ssize_t strong_id;
-};
-using StrongFrame = memory::Variant<Frame,Frame::STRONG,_StrongFrame>;
-INL memory::List<Cont> strong(memory::Alloc &A, StrongFrame f) const { FRAME("strong(%,%)",show(f->dcla),f->strong_id);
+#ifndef CONNECTION_TABLEAU_FRAMES_STRONG_H_
+#define CONNECTION_TABLEAU_FRAMES_STRONG_H_
+
+INL static inline memory::Maybe<TaskSet> strong(
+    memory::Alloc &A, SearchState *state, Branch branch, DerAndClause dcla, ssize_t strong_id) const { FRAME("strong(%,%)",show(f->dcla),f->strong_id);
   state->stats.strong_steps++;
   auto mcla = state->allocate(A,f->dcla);
   if(!mcla) return memory::nothing();
@@ -16,14 +13,16 @@ INL memory::List<Cont> strong(memory::Alloc &A, StrongFrame f) const { FRAME("st
   for(ssize_t i=cla.atom_count(); i--;) if(i!=f->strong_id) todo.push(A,cla.atom(i));
   auto matoms = strong_resolution(A,f->nodes_limit,todo);
   if(!matoms) return memory::nothing();
-  
-  WeakConnectionsFrame::Builder b(A);
-  b->nodes_limit = f->nodes_limit;
-  b->atoms = matoms.get();
-  b->branches = memory::nothing();
-  b->branch_count = 0;
-  b->next = f->branch;
-  return memory::List<Cont>(A,builder().add(A,Frame(b.build())).build());;
+ 
+  TaskSet ts;
+  for(auto atoms = matoms.get(); !atoms.empty(); atoms = atoms.tail()) {
+    WeakFrame::Builder b(A);
+    b->branch = branch;
+    b->branch.false_.push(A,atoms.head());
+    branch.true_.push(A,atoms.head());
+    ts.push(A,Task(b.build()));
+  }
+  return just(ts);
 }
 
 INL memory::Maybe<memory::List<Atom>> strong_resolution(memory::Alloc &A, size_t nodes_limit, memory::List<Atom> todo) const { FRAME("strong_resolution()");
@@ -50,3 +49,5 @@ INL memory::Maybe<memory::List<Atom>> strong_resolution(memory::Alloc &A, size_t
   }
   return just(checked);
 }
+
+#endif  // CONNECTION_TABLEAU_FRAMES_STRONG_H_

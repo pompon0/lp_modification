@@ -30,7 +30,7 @@ public:
     INL memory::Maybe<AndClauseWithAtom> next() { FRAME("ClauseIndex::Filter::next()");
       for(;next_id<atoms->size(); next_id++) {
         auto &a = (*atoms)[next_id];
-        if(index->and_clauses[a.clause_id].cost()>cost_limit) return memory::Maybe<AndClauseWithAtom>();
+        if(cost_limit && index->and_clauses[a.clause_id].cost()>cost_limit.get()) return memory::Maybe<AndClauseWithAtom>();
         if(starting_clause_id>a.clause_id && index->is_starting_clause[a.clause_id]) continue;
         next_id++;
         return memory::Maybe<AndClauseWithAtom>({a.atom_id,index->and_clauses[a.clause_id]});
@@ -39,7 +39,7 @@ public:
     }
 
     Filter(
-        size_t _cost_limit,
+        memory::Maybe<size_t> _cost_limit,
         const vec<AtomClauseId> *_atoms,
         size_t _starting_clause_id,
         const ClauseIndex *_index) :
@@ -49,7 +49,7 @@ public:
       starting_clause_id(_starting_clause_id),
       index(_index) {}
   private:
-    size_t cost_limit;
+    memory::Maybe<size_t> cost_limit;
     size_t next_id;
     const vec<AtomClauseId> *atoms;
     size_t starting_clause_id;
@@ -69,7 +69,7 @@ public:
     // gets all atoms which are matchable with atom.neg().
     // WARNING: Use only if atom comes from the fixed initial set.
     // TODO: mark the atoms, so that upon change, this function raises an exception.
-    Filter get_matches(Atom atom, size_t cost_limit) {
+    Filter get_matches(Atom atom, memory::Maybe<size_t> cost_limit) {
       DEBUG if(next_starting_clause_id==0) error("next_starting_clause == 0");
       return Filter(
         cost_limit,
@@ -81,7 +81,7 @@ public:
     Filter get_matches(size_t pred, bool sign, size_t cost_limit) {
       DEBUG if(next_starting_clause_id==0) error("next_starting_clause == 0");
       return Filter(
-        cost_limit,
+        memory::just(cost_limit),
         &index->sets[Index::atom_hash(pred,sign)],
         next_starting_clause_id-1,
         index);
@@ -90,7 +90,7 @@ public:
     Filter get_all(size_t cost_limit) {
       DEBUG if(next_starting_clause_id==0) error("next_starting_clause == 0");
       return Filter(
-        cost_limit,
+        memory::just(cost_limit),
         &index->all,
         next_starting_clause_id-1,
         index);

@@ -1,39 +1,40 @@
 #ifndef CONNECTION_TABLEAU_FRAMES_STRONG_H_
 #define CONNECTION_TABLEAU_FRAMES_STRONG_H_
 
-INL static inline memory::Maybe<TaskSet> strong(
-    memory::Alloc &A, SearchState *state, Branch branch, DerAndClause dcla, ssize_t strong_id) const { FRAME("strong(%,%)",show(f->dcla),f->strong_id);
+INL static memory::Maybe<TaskSet> strong(
+    memory::Alloc &A, SearchState *state, Branch branch, DerAndClause dcla, ssize_t strong_id) {
+  STATE_FRAME(A,state,"strong(%,%)",show(dcla),strong_id);
   state->stats.strong_steps++;
-  auto mcla = state->allocate(A,f->dcla);
+  auto mcla = state->allocate(A,dcla);
   if(!mcla) return memory::nothing();
   auto cla = mcla.get();
-  if(f->strong_id>=0) if(!state->val.unify(A,f->branch.false_.head(),cla.atom(f->strong_id))) return memory::nothing();
+  if(strong_id>=0) if(!state->val.unify(A,branch.false_.head(),cla.atom(strong_id))) return memory::nothing();
 
   memory::List<Atom> todo;
-  for(ssize_t i=cla.atom_count(); i--;) if(i!=f->strong_id) todo.push(A,cla.atom(i));
-  auto matoms = strong_resolution(A,f->nodes_limit,todo);
+  for(ssize_t i=cla.atom_count(); i--;) if(i!=strong_id) todo.push(A,cla.atom(i));
+  auto matoms = strong_resolution(A,state,todo);
   if(!matoms) return memory::nothing();
  
   TaskSet ts;
   for(auto atoms = matoms.get(); !atoms.empty(); atoms = atoms.tail()) {
-    WeakFrame::Builder b(A);
+    Frame::Weak::Builder b(A);
     b->branch = branch;
     b->branch.false_.push(A,atoms.head());
     branch.true_.push(A,atoms.head());
     ts.push(A,Task(b.build()));
   }
+  STATE_LOG(A,state,"ts.size() = %",ts.size());
   return just(ts);
 }
 
-INL memory::Maybe<memory::List<Atom>> strong_resolution(memory::Alloc &A, size_t nodes_limit, memory::List<Atom> todo) const { FRAME("strong_resolution()");
+INL static memory::Maybe<memory::List<Atom>> strong_resolution(memory::Alloc &A, SearchState *state, memory::List<Atom> todo) { FRAME("strong_resolution()");
   memory::List<Atom> checked;
   while(!todo.empty()) {
     auto a = todo.head();
     todo = todo.tail();
     // Look for strong only atoms.
     if(!a.strong_only()) { checked.push(A,a); continue; }
-    size_t budget = nodes_limit - state->nodes_used;
-    auto filter = state->cla_index.get_matches(a,budget);
+    auto filter = state->cla_index.get_matches(a,memory::nothing());
     auto mca = filter.next();
     if(!mca) return memory::nothing();
     // Filter out those which have more that 1 possible unification.

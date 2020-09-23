@@ -2,38 +2,54 @@
 #define CONNECTION_TABLEAU_TABLEAU_H_
 
 #include "lazyparam_prover/connection_tableau/cont.h"
+#include "lazyparam_prover/memory/function.h"
 
 namespace tableau::connection_tableau {
 
-struct Features {};
+DEBUG_ONLY(
+struct Mutex {
+  struct Locked {
+    ~Locked(){ m->locked = false; }
+    Mutex *m;
+  };
+  [[nodiscard]] Locked lock(){
+    if(locked) error("already locked");
+    locked = true;
+    return {this};
+  }
+private:
+  bool locked = false;
+};)
 
 struct ActionCollector {
-  ActionCollector(SearchState *_state) : state(_state), diverging(false) {}
+  ActionCollector(SearchState *_state) : state(_state) {}
   SearchState *state;
-  [[nodiscard]] INL bool diverge(memory::Alloc &A, std::function<TaskSet(void)> f) {
-    DEBUG if(diverging) error("nested diverge() not supported");
+  // std::function uses heap allocation, we should avoid it.
+  template<typename F> [[nodiscard]] INL bool diverge(memory::Alloc &A, F f) { FRAME("ActionCollector::diverge");
+    static_assert(memory::has_sig<F,memory::Maybe<TaskSet>(void)>());
+    DEBUG_ONLY(auto l = diverging.lock();)
     auto s = state->save();
-    if(f()) {
-      //TODO: collect features
-    }
-    // push a tombstone anyway, so that we have a correct count in actionexecutor
-    actions.push(A,{});
+    actions.push(A,f());
     state->restore(s);
     return false;
   }
-  size_t count() { return actions.size(); }
+  memory::List<memory::Maybe<TaskSet>> actions;
 private:
-  bool diverging;
-  List<Features> actions;
+  DEBUG_ONLY(Mutex diverging;)
 };
 
 struct ActionExecutor {
   ActionExecutor(SearchState *_state, int _skip_count) : state(_state), skip_count(_skip_count) {}
   SearchState *state;
-  [[nodiscard]] INL bool diverge(memory::Alloc &A, std::function<TaskSet(void)> f) {
-    DEBUG if(diverging) error("nested diverge() not supported");
+  template<typename F> [[nodiscard]] INL bool diverge(memory::Alloc &A, F f) { FRAME("ActionExecutor::diverge");
+    static_assert(memory::has_sig<F,memory::Maybe<TaskSet>(void)>());
+    DEBUG_ONLY(auto l = diverging.lock();)
     if(skip_count--) return false;
-    task_set = f();
+    if(auto mts = f()) {
+      task_set = mts.get();
+    } else {
+      error("task set not found");
+    }
     return true;
   }
   TaskSet get() {
@@ -41,6 +57,7 @@ struct ActionExecutor {
     return task_set;
   }
 private:
+  DEBUG_ONLY(Mutex diverging;)
   int skip_count;
   TaskSet task_set;
 };
@@ -50,43 +67,53 @@ static Task start_task(memory::Alloc &A) {
 }
 
 // Search takes alloc as an argument to be able to return result in its memory.
-alt::SearchResult search(const Ctx &ctx, memory::Alloc &A, SearchState &state) { FRAME("connection_tableau::search()");
+alt::SearchResult search(const Ctx &ctx, memory::Alloc &A, SearchState &state, size_t depth_limit) { FRAME("connection_tableau::search()");
   SCOPE("connection_tableau::search");
   struct Save {
     TaskSet cont; // always execute the last
-    memory::State::Save ss;
+    SearchState::Save ss;
     memory::Alloc::Save As;
-    size_t action_count; // actions left
+    memory::List<memory::Maybe<TaskSet>> actions; // actions left
   };
   auto task = start_task(A);
-  TaskSet cont(A,t);
-  ActionCollector ac(state);
+  auto ss = state.save();
+  TaskSet cont(A,task);
+  ActionCollector ac(&state);
   task.run(A,&ac);
-  vec<Save> saves{Save{cont,state.save(),A.save(),ac.count()}};
+  vec<Save> saves{Save{cont,ss,A.save(),ac.actions}};
   
   size_t steps = 0;
   for(; saves.size(); steps++) {
     // select action
+    if(saves.back().actions.empty()){ saves.pop_back(); continue; }
     auto s = saves.back();
-    if(!saves.back().action_count--){ saves.pop_back(); continue; }
+    saves.back().actions = saves.back().actions.tail();
+    if(!s.actions.head()) continue;
     if(steps%100==0 && ctx.done()) return {0,steps};
     DEBUG if(steps%1000==0) info("steps = %",steps);
     
     // execute action
     A.restore(s.As);
     state.restore(s.ss);
-    ActionExecutor ae(&state,s.action_count-1);
-    ae.cont.back().run(A,&ae);
+    ActionExecutor ae(&state,s.actions.size()-1);
+    s.cont.head().run(A,&ae);
+    auto ss = state.save();
     
     // push back new tasks
     TaskSet ts = s.cont.tail();
-    for(auto nt = ae.get(); !nt.empty(); nt = nt.tail()) ts.push(A,nt.head());
+    bool ok = true;
+    for(auto nt = ae.get(); !nt.empty(); nt = nt.tail()) {
+      // skip action if proof tree depth has been exceeded
+      if(nt.head().features().depth>depth_limit) ok = false;
+      ts.push(A,nt.head());
+    }
     if(ts.empty()) { return {1,steps}; }
+    if(!ok) continue;
 
     // determine next actions
     ActionCollector ac(&state);
-    ts.back().run(A,&ac);
-    saves.push_back(Save{ts,state.save(),A.save(),ac.count()});
+    ts.head().run(A,&ac);
+    saves.push_back(Save{ts,ss,A.save(),ac.actions});
   }
   DEBUG info("steps = %",steps);
   return {0,steps};
@@ -95,8 +122,18 @@ alt::SearchResult search(const Ctx &ctx, memory::Alloc &A, SearchState &state) {
 static ProverOutput prove(const Ctx &ctx, memory::Alloc &A, const ClauseIndex &cla_index, const FunOrd &fun_ord, size_t limit) { FRAME("prove()");
   SCOPE("prove");
   SearchState s(cla_index,fun_ord);
-  auto res = search(ctx,A,s);
+  auto res = search(ctx,A,s,limit);
   s.stats.val = s.val.stats;
+  DEBUG_ONLY(
+    if(res.found) {
+      str trace;
+      size_t i = 0;
+      for(auto l=s.trace; !l.empty(); l=l.tail()) {
+        trace = util::fmt("[%] %\n",i++,l.head()) + trace;
+      }
+      info("TRACE = \n%",trace);
+    }
+  )
   return {
     res.cont_count,
     limit,

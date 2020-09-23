@@ -45,9 +45,24 @@ public:
     COUNTER("alloc_init");
     return new(alloc_bytes(sizeof(T)))T(v);
   }
+  
+  // it is not that easy.
+  // TODO: carefully analyze the lifecycle of objects created
+  // with this allocator.
+  /*
+  template<typename T> struct StdAllocator {
+    // implicit coercion
+    StdAllocator(Stack &_s) : s(&_s) {}
+    using value_type = T;
+    T *allocate(size_t n){ return (T*)(s->alloc_bytes(n*sizeof(T))); }
+    void deallocate(T*,size_t){}
+  private:
+    Stack *s;
+  };*/
 };
 
 using Alloc = Stack<(1<<26)>;
+
 
 } // namespace memory
 

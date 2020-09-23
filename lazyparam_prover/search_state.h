@@ -16,8 +16,11 @@
     auto _msg = util::fmt(args);\
     util::Frame _(VERBOSE,args);\
     state->trace.push(A,_msg);
+  #define STATE_LOG(A,state,args...)\
+    state->trace.push(A,util::fmt(args));
 #else
   #define STATE_FRAME(A,state,args...)
+  #define STATE_LOG(A,state,args...)
 #endif
 
 namespace tableau {
@@ -59,6 +62,10 @@ struct SearchState {
   size_t nodes_used = 0;
   memory::List<DerAndClause> clauses_used;
   memory::List<memory::Lazy<DerAndClause>> lazy_clauses_used;
+  // TODO: having str which uses heap allocation
+  // causes memory leaks, when restoring Alloc.
+  // Just using custom allocator makes it worse.
+  // Some custom logic in std::string is fucking up the state.
   DEBUG_ONLY(memory::List<str> trace;)
   
   Stats stats;

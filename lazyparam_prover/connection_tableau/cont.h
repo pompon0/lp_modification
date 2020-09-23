@@ -17,44 +17,57 @@
 #include "lazyparam_prover/index.h"
 #include "lazyparam_prover/prover_output.h"
 
-#include "lazyparam_prover/connection_tableau/frames/start.h"
-#include "lazyparam_prover/connection_tableau/frames/weak.h"
-
 namespace tableau::connection_tableau {
 
-// TODO: redefine Continuations to be task sets:
-//   task.run() produces an alternative of task sets, which replace the original task
-//   we have to ensure an invariant that for every task choice strategy, there exists alternative selection strategy, which gets us to a proof.
-// TODO: task.normalize() produces a Maybe<Alt{task set}>
-//   it can progress as long as there is no choice to be made
-//   it is supposed to allow for checking early exit conditions independently from what is currently done.
+struct Features {
+  size_t depth;
+};
+
+struct _ {
+
+struct Frame;
+using Task = Frame;
+using TaskSet = memory::List<Task>;
+
+#include "lazyparam_prover/connection_tableau/frames/start.h"
+#include "lazyparam_prover/connection_tableau/frames/strong.h"
+#include "lazyparam_prover/connection_tableau/frames/weak.h"
+
 // TODO: every frame/task carries an early success constraint (to catch lemmas matching after unifications).
 struct Frame {
-public:
-  template<typename DState> INL void run(memory::Alloc &A, DState *d) const { FRAME("run");
-    switch(frame.type()) {
-      case Frame::START: StartFrame(frame)->run(A,d); return;
-      case Frame::WEAK: WeakFrame(frame)->run(A,d); return;
-      default: error("frame.type() = %",frame.type());
-    }
-  }
 private:
   enum Type { START, WEAK };
   INL Type type() const { return Type(*LType::at(ptr)); }
-  using Start = memory::Variant<Frame,START,StartFrame>;
-  using Weak = memory::Variant<Frame,WEAK,WeakFrame>;
   
   using LType = memory::Lens<size_t,0>;
   enum { SIZE = LType::END };
   uint8_t *ptr;
   INL explicit Frame(uint8_t *_ptr) : ptr(_ptr) {}
-
+public:
+  using Start = memory::Variant<Frame,START,StartFrame>;
+  using Weak = memory::Variant<Frame,WEAK,WeakFrame>;
   friend Start;
   friend Weak;
+  template<typename DState> INL void run(memory::Alloc &A, DState *d) const { FRAME("run");
+    switch(type()) {
+      case Frame::START: Start(*this)->run(A,d); return;
+      case Frame::WEAK: Weak(*this)->run(A,d); return;
+      default: error("frame.type() = %",type());
+    }
+  }
+  Features features() const {
+    switch(type()) {
+      case Frame::START: return Start(*this)->features();
+      case Frame::WEAK: return Weak(*this)->features();
+      default: error("frame.type() = %",type());
+    }
+  }
 };
 
-using Task = Frame;
-using TaskSet = memory::List<Task>;
+};
+
+using Task = _::Task;
+using TaskSet = _::TaskSet;
 
 }  // namespace tableau::connection_tableau
 

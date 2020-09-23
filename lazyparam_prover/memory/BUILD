@@ -6,6 +6,7 @@ cc_library(
     name = "memory",
     hdrs = [
         "array.h",
+        "function.h",
         "layout.h",
         "lazy.h",
         "list.h",

@@ -19,11 +19,11 @@ public:
   INL List(memory::Alloc &A, E h) : List(A,h,List()) {}
   
   INL bool empty() const { return !ptr; }
-  INL const E head() const { FRAME("head()");
+  INL const E head() const {
     DEBUG if(empty()) error("<0>.head()");
     return ptr->head;
   }
-  INL const List<E> tail() const { FRAME("tail");
+  INL const List<E> tail() const {
     DEBUG if(empty()) error("<0>.tail()");
     return List(ptr->tail);
   }

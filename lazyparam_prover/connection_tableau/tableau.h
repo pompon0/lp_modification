@@ -2,69 +2,8 @@
 #define CONNECTION_TABLEAU_TABLEAU_H_
 
 #include "lazyparam_prover/connection_tableau/cont.h"
-#include "lazyparam_prover/memory/function.h"
 
 namespace tableau::connection_tableau {
-
-DEBUG_ONLY(
-struct Mutex {
-  struct Locked {
-    ~Locked(){ m->locked = false; }
-    Mutex *m;
-  };
-  [[nodiscard]] Locked lock(){
-    if(locked) error("already locked");
-    locked = true;
-    return {this};
-  }
-private:
-  bool locked = false;
-};)
-
-struct ActionCollector {
-  ActionCollector(SearchState *_state) : state(_state) {}
-  SearchState *state;
-  // std::function uses heap allocation, we should avoid it.
-  template<typename F> [[nodiscard]] INL bool diverge(memory::Alloc &A, F f) { FRAME("ActionCollector::diverge");
-    static_assert(memory::has_sig<F,memory::Maybe<TaskSet>(void)>());
-    DEBUG_ONLY(auto l = diverging.lock();)
-    auto s = state->save();
-    actions.push(A,f());
-    state->restore(s);
-    return false;
-  }
-  memory::List<memory::Maybe<TaskSet>> actions;
-private:
-  DEBUG_ONLY(Mutex diverging;)
-};
-
-struct ActionExecutor {
-  ActionExecutor(SearchState *_state, int _skip_count) : state(_state), skip_count(_skip_count) {}
-  SearchState *state;
-  template<typename F> [[nodiscard]] INL bool diverge(memory::Alloc &A, F f) { FRAME("ActionExecutor::diverge");
-    static_assert(memory::has_sig<F,memory::Maybe<TaskSet>(void)>());
-    DEBUG_ONLY(auto l = diverging.lock();)
-    if(skip_count--) return false;
-    if(auto mts = f()) {
-      task_set = mts.get();
-    } else {
-      error("task set not found");
-    }
-    return true;
-  }
-  TaskSet get() {
-    DEBUG if(skip_count!=-1) error("action not found");
-    return task_set;
-  }
-private:
-  DEBUG_ONLY(Mutex diverging;)
-  int skip_count;
-  TaskSet task_set;
-};
-
-static Task start_task(memory::Alloc &A) {
-  return Task(Task::Start::Builder(A).build());
-}
 
 // Search takes alloc as an argument to be able to return result in its memory.
 alt::SearchResult search(const Ctx &ctx, memory::Alloc &A, SearchState &state, size_t depth_limit) { FRAME("connection_tableau::search()");

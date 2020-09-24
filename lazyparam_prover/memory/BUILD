@@ -48,3 +48,13 @@ cc_test(
         "@gtest//:gtest_main",
     ],
 )
+
+cc_test(
+    name = "layout_test",
+    srcs = ["layout_test.cc"],
+    deps = [
+        "//utils:utils",
+        ":memory",
+        "@gtest//:gtest_main",
+    ],
+)

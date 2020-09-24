@@ -1,15 +1,14 @@
 struct _StartFrame { size_t nodes_limit; };
-using StartFrame = memory::Variant<Frame,Frame::START,_StartFrame>;
 
 memory::List<Cont> start(memory::Alloc &A, StartFrame f) const { STATE_FRAME(A,state,"start");
   memory::List<Cont> alts;
   while(auto dcla = state->cla_index.next_starting_clause()) {
-    StrongFrame::Builder b(A);
+    auto b = StrongFrame::alloc(A);
     b->nodes_limit = f->nodes_limit;
     b->branch = Branch();
     b->dcla = dcla.get();
     b->strong_id = -1;
-    alts.push(A,builder().add(A,Frame(b.build())).build());
+    alts.push(A,builder().add(A,Frame(b)).build());
   }
   return alts;
 }

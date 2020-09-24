@@ -89,7 +89,6 @@ cc_library(
 cc_binary(
     name = "tool",
     srcs = ["tool.cc"],
-    copts = ["-std=c++11"],
     deps = [
         "//tptp_parser/proto:tptp_cc_proto",
         ":parse2",

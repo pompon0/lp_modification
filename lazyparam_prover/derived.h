@@ -14,16 +14,16 @@ struct DerAndClause;
 struct DerAndClause {
   INL DerAndClause set_id_offset(u64 _id_offset) const { return DerAndClause(ptr,constraints_ptr,offset,_id_offset); }
   INL DerAndClause shift(u64 _offset) const { return DerAndClause(ptr,constraints_ptr,offset+_offset,id_offset); }
-  INL VarRange var_range() const { return VAR_RANGE::ref(ptr); }
+  INL VarRange var_range() const { return ptr.VAR_RANGE::ref(); }
 
-  INL AndClause derived() const { return DERIVED::ref(ptr).shift(offset).set_id_offset(id_offset); }
-  INL size_t cost() const { return COST::ref(ptr); }
+  INL AndClause derived() const { return ptr.DERIVED::ref().shift(offset).set_id_offset(id_offset); }
+  INL size_t cost() const { return ptr.COST::ref(); }
   
-  INL size_t source_count() const { return SOURCES::size(ptr); }
-  INL AndClause source(size_t i) const { return SOURCES::ref(ptr,i).shift(offset); }
+  INL size_t source_count() const { return ptr.SOURCES::size(); }
+  INL AndClause source(size_t i) const { return ptr.SOURCES::ref(i).shift(offset); }
   
-  INL size_t constraint_count() const { return CONSTRAINTS::size(constraints_ptr); }
-  INL OrderAtom constraint(size_t i) const { return CONSTRAINTS::ref(constraints_ptr,i).shift(offset); }
+  INL size_t constraint_count() const { return constraints_ptr.CONSTRAINTS::size(); }
+  INL OrderAtom constraint(size_t i) const { return constraints_ptr.CONSTRAINTS::ref(i).shift(offset); }
 
   INL DerAndClause(memory::Alloc &A, size_t cost, AndClause cla) {
     Builder b(A);
@@ -34,8 +34,6 @@ struct DerAndClause {
   }
 
   struct Builder {
-  private:
-  public:
     INL ~Builder() = default;
 
     size_t offset = 0;
@@ -53,11 +51,11 @@ struct DerAndClause {
       var_range |= derived.var_range();
       for(auto &s : sources) var_range |= s.var_range();
       for(auto &c : constraints) var_range |= c.var_range();
-      VAR_RANGE::ref(ptr) = var_range;
-      COST::ref(ptr) = cost;
-      DERIVED::ref(ptr) = derived;
-      for(size_t i=0; i<sources.size(); i++) SOURCES::ref(ptr,i) = sources[i];
-      for(size_t i=0; i<constraints.size(); i++) CONSTRAINTS::ref(constraints_ptr,i) = constraints[i];
+      ptr.VAR_RANGE::ref() = var_range;
+      ptr.COST::ref() = cost;
+      ptr.DERIVED::ref() = derived;
+      for(size_t i=0; i<sources.size(); i++) ptr.SOURCES::ref(i) = sources[i];
+      for(size_t i=0; i<constraints.size(); i++) constraints_ptr.CONSTRAINTS::ref(i) = constraints[i];
       return DerAndClause(ptr,constraints_ptr,offset,id_offset);
     }
   };
@@ -85,18 +83,18 @@ struct DerAndClause {
   }
 
 private:
-  INL DerAndClause(u8 *_ptr, u8 *_constraints_ptr, size_t _offset, size_t _id_offset) 
-    : ptr(_ptr), constraints_ptr(_constraints_ptr), offset(_offset), id_offset(_id_offset) {} 
-
   using COST = memory::Field<size_t>;
   using DERIVED = memory::Field<AndClause,COST>;
   using VAR_RANGE = memory::Field<VarRange,DERIVED>;
   using SOURCES = memory::ArrayField<AndClause,VAR_RANGE>;
   using CONSTRAINTS = memory::ArrayField<OrderAtom>;
-  u8 *ptr;
-  u8 *constraints_ptr;
+  SOURCES ptr;
+  CONSTRAINTS constraints_ptr;
   size_t offset;
   size_t id_offset;
+
+  INL DerAndClause(SOURCES _ptr, CONSTRAINTS _constraints_ptr, size_t _offset, size_t _id_offset) 
+    : ptr(_ptr), constraints_ptr(_constraints_ptr), offset(_offset), id_offset(_id_offset) {} 
 };
 
 struct OrForm {

@@ -9,7 +9,6 @@
 #include "lazyparam_prover/syntax/atom.h"
 #include "lazyparam_prover/syntax/clause.h"
 #include "lazyparam_prover/syntax/show.h"
-#include "lazyparam_prover/memory/variant.h"
 #include "lazyparam_prover/ground.h"
 #include "lazyparam_prover/kbo.h"
 #include "lazyparam_prover/lpo.h"
@@ -25,12 +24,12 @@ namespace tableau::lazy_paramodulation {
 ProverOutput prove(const Ctx &ctx, memory::Alloc &A, const ClauseIndex &cla_index, const FunOrd &fun_ord, size_t limit) { FRAME("prove()");
   SCOPE("prove");
   SearchState s(cla_index,fun_ord);
-  Cont::StartFrame::Builder b(A);
+  auto b = Cont::StartFrame::alloc(A);
   b->nodes_limit = limit;
   auto res = alt::search(ctx,A,Cont{
     .save = s.save(),
     .state = &s,
-    .frames = memory::List<Cont::Frame>(A,Cont::Frame(b.build()))
+    .frames = memory::List<Cont::Frame>(A,Cont::Frame(b))
   });
   s.stats.val = s.val.stats;
   DEBUG_ONLY(

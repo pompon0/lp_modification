@@ -10,7 +10,6 @@ struct _LazyStrongConnectionFrame {
   Base base;
   Term l,r;
 };
-using LazyStrongConnectionFrame = memory::Variant<Frame,Frame::LAZY_STRONG_CONNECTION,_LazyStrongConnectionFrame>;
 
 memory::List<Cont> lazy_strong_connection(memory::Alloc &A, LazyStrongConnectionFrame f) const { STATE_FRAME(A,state,"lazy_strong_connection(branch_lr=%,L=%,p=%,l=%,r=%)",f->base.branch_lr,show(f->base.L.A),show(f->base.L.get()),show(f->l),show(f->r));
   if(!state->val.push_constraint(A,OrderAtom(A,OrderAtom::G,f->l,f->r))) return memory::nothing();
@@ -110,9 +109,9 @@ memory::List<Cont> lazy_strong_connection(memory::Alloc &A, LazyStrongConnection
     state->lazy_clauses_used.push(A,lazy(A,AxiomClause{mb.build()}));
     state->lazy_clauses_used.push(A,lazy(A,AxiomClause{AndClause::make(A,fs_fv,l_r,fs_w.neg())}));
   }
-  WeakSetFrame::Builder b(A);
+  auto b = WeakSetFrame::alloc(A);
   b->nodes_limit = f->base.nodes_limit;
   b->branches = bs.branches;
   b->branch_count = bs.branches_size;
-  return memory::List<Cont>(A,builder().add(A,Frame(b.build())).build());
+  return memory::List<Cont>(A,builder().add(A,Frame(b)).build());
 }

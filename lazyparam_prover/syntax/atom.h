@@ -11,7 +11,8 @@ private:
   using VAR_RANGE = memory::Field<VarRange>;
   using PRED = memory::Field<u64,VAR_RANGE>;
   using ARGS = memory::ArrayField<Term,PRED>;
-  u8 *ptr;
+  using PTR = ARGS;
+  PTR ptr;
   size_t offset;
   bool sign_;
   u64 id_; // used to identify atom (for indexing)
@@ -21,7 +22,7 @@ private:
   // unifications (without losing completeness) and improves cost balancing if
   // exactly 1 unification is possible.
   bool strong_only_; 
-  INL Atom(u8 *_ptr, size_t _offset, bool _sign, u64 _id, bool _strong_only)
+  INL Atom(PTR _ptr, size_t _offset, bool _sign, u64 _id, bool _strong_only)
     : ptr(_ptr), offset(_offset), sign_(_sign), id_(_id), strong_only_(_strong_only) {}
 public:
   enum Pred {
@@ -32,7 +33,7 @@ public:
     PRED_MIN = EQ_SYMM,
   };
 
-  INL VarRange var_range() const { return VAR_RANGE::ref(ptr)+offset; }
+  INL VarRange var_range() const { return ptr.VAR_RANGE::ref()+offset; }
   INL Atom shift(size_t _offset) const { return Atom(ptr,offset+_offset,sign_,id_,strong_only_); }
   INL Atom neg() const { return Atom(ptr,offset,!sign_,id_,strong_only_); }
   INL Atom set_id(size_t _id) const { return Atom(ptr,offset,sign_,_id,strong_only_); }
@@ -44,9 +45,9 @@ public:
     return b.build();
   }
   INL bool sign() const { return sign_; }
-  INL u64 pred() const { return PRED::ref(ptr); }
-  INL u64 arg_count() const { return ARGS::size(ptr); }
-  INL Term arg(size_t i) const { return ARGS::ref(ptr,i).shift(offset); }
+  INL u64 pred() const { return ptr.PRED::ref(); }
+  INL u64 arg_count() const { return ptr.ARGS::size(); }
+  INL Term arg(size_t i) const { return ptr.ARGS::ref(i).shift(offset); }
   INL u64 id() const { return id_; } 
   INL bool strong_only() const { return strong_only_; }
 
@@ -63,19 +64,19 @@ public:
   struct Builder {
   private:
     bool sign_;
-    u8 *ptr;
+    PTR ptr;
     bool strong_only_;
   public:
     template<typename Alloc> Builder(Alloc &a, bool _sign, u64 _pred, u64 _arg_count, bool _strong_only)
-        : sign_(_sign), ptr(ARGS::alloc(a,_arg_count)), strong_only_(_strong_only) {
+        : sign_(_sign), ptr(PTR::alloc(a,_arg_count)), strong_only_(_strong_only) {
       COUNTER("Atom::Builder");
-      VAR_RANGE::ref(ptr) = {0,0};
-      PRED::ref(ptr) = _pred;
+      ptr.VAR_RANGE::ref() = {0,0};
+      ptr.PRED::ref() = _pred;
       //DEBUG for(size_t i=0; i<_arg_count; ++i) ARGS::ref(ptr,i) = 0;
     }
     INL Builder& set_arg(size_t i, Term a){
-      ARGS::ref(ptr,i) = a;
-      VAR_RANGE::ref(ptr) |= a.var_range();
+      ptr.ARGS::ref(i) = a;
+      ptr.VAR_RANGE::ref() |= a.var_range();
       return *this;
     }
     INL Atom build() {

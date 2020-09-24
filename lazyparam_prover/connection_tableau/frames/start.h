@@ -3,7 +3,7 @@
 
 #include "lazyparam_prover/connection_tableau/frames/strong.h"
 
-struct StartFrame {
+struct _StartFrame {
   Features features() const {
     return {
       .depth = 0,

@@ -17,12 +17,15 @@ protected:
 
 template<typename T, typename Prev = Empty> struct Field : Prev {
   INL Field(u8 *_ptr = 0) : Prev(_ptr) {}
-  INL T& ref(){ return *(T*)(Prev::ptr+Prev::SIZE); }
+  INL T& ref() const { return *(T*)(Prev::ptr+Prev::SIZE); }
   template<typename Alloc> INL static Field alloc(Alloc &a){
     Field p(a.alloc_bytes(SIZE));
     p.init();
     return p;
   }
+  //TODO: this is for compatibility with old Variant implementation.
+  // Perhaps make Variant an opaque type instead and put it there.
+  T* operator->() const { return &ref(); }
 protected:
   enum { SIZE = Prev::SIZE+sizeof(T) };
 };
@@ -36,12 +39,12 @@ template<typename T, typename Prev = Empty> struct ArrayField : Prev {
     SizeField(p.ptr).ref() = n;
     return p;
   }
-  INL T& ref(size_t i) {
+  INL T& ref(size_t i) const {
     DEBUG if(i>=size()) error("<size=%>.ref(%)",size(),i);
     return ((T*)(Prev::ptr+SizeField::SIZE))[i];
   }
-protected:
   INL explicit ArrayField(u8 *_ptr) : Prev(_ptr) {}
+protected:
   struct SizeField : Field<size_t,Prev> {
     INL explicit SizeField(u8 *_ptr) : Field<size_t,Prev>(_ptr) {}
     friend struct ArrayField;
@@ -52,7 +55,7 @@ protected:
 
 template<typename T, typename Prev = Empty> struct ConstField : Prev {
   INL explicit ConstField(u8 *_ptr = 0) : Prev(_ptr) {}
-  INL T ref(){ return BaseField(Prev::ptr).ref(); }
+  INL T ref() const { return BaseField(Prev::ptr).ref(); }
 protected:
   struct BaseField : Field<T,Prev> { using Field<T,Prev>::Field; friend struct ConstField; };
   enum { SIZE = BaseField::SIZE };
@@ -62,8 +65,10 @@ protected:
   }
 };
 template<typename T, T Val, typename Prev = Empty> struct FixedField : ConstField<T,Prev> {
+  // TODO either replace with static constexpr, or narrow down T to size_t only
+  enum { ID = Val };
   INL explicit FixedField(u8 *_ptr = 0) : ConstField<T,Prev>(_ptr) {}
-  INL constexpr T ref(){ return Val; }
+  INL constexpr T ref() const { return Val; }
 protected:
   INL void init(){ ConstField<T,Prev>::init(Val); }
 };
@@ -109,11 +114,12 @@ template<typename H, typename Prev = EmptyVariants> struct Variants : Prev {
 
 
 template<typename ...Variants> struct Coprod  {
-  template<typename X> INL explicit Coprod(X x) : type(VariantSet<Variants...>::from(x)) {}
+  size_t type() const { return type_.ref(); }
+  template<typename X> INL explicit Coprod(X x) : type_(VariantSet<Variants...>::from(x)) {}
   // TODO: this can be inherited to get rid of variable x 
-  template<typename X> INL operator X(){ X x; VariantSet<Variants...>::to(x,type); return x; }
+  template<typename X> INL explicit operator X(){ X x; VariantSet<Variants...>::to(x,type_); return x; }
 private:
-  ConstField<size_t> type;
+  ConstField<size_t> type_;
 };
 
 

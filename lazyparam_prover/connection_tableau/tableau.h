@@ -18,7 +18,7 @@ alt::SearchResult search(const Ctx &ctx, memory::Alloc &A, SearchState &state, s
   auto ss = state.save();
   TaskSet cont(A,task);
   ActionCollector ac(&state);
-  task.run(A,&ac);
+  run(A,task,&ac);
   vec<Save> saves{Save{cont,ss,A.save(),ac.actions}};
   
   size_t steps = 0;
@@ -35,7 +35,7 @@ alt::SearchResult search(const Ctx &ctx, memory::Alloc &A, SearchState &state, s
     A.restore(s.As);
     state.restore(s.ss);
     ActionExecutor ae(&state,s.actions.size()-1);
-    s.cont.head().run(A,&ae);
+    run(A,s.cont.head(),&ae);
     auto ss = state.save();
     
     // push back new tasks
@@ -43,7 +43,7 @@ alt::SearchResult search(const Ctx &ctx, memory::Alloc &A, SearchState &state, s
     bool ok = true;
     for(auto nt = ae.get(); !nt.empty(); nt = nt.tail()) {
       // skip action if proof tree depth has been exceeded
-      if(nt.head().features().depth>depth_limit) ok = false;
+      if(features(nt.head()).depth>depth_limit) ok = false;
       ts.push(A,nt.head());
     }
     if(ts.empty()) { return {1,steps}; }
@@ -51,7 +51,7 @@ alt::SearchResult search(const Ctx &ctx, memory::Alloc &A, SearchState &state, s
 
     // determine next actions
     ActionCollector ac(&state);
-    ts.head().run(A,&ac);
+    run(A,ts.head(),&ac);
     saves.push_back(Save{ts,ss,A.save(),ac.actions});
   }
   DEBUG info("steps = %",steps);

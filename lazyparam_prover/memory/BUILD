@@ -11,7 +11,6 @@ cc_library(
         "lazy.h",
         "list.h",
         "maybe.h",
-        "variant.h",
         "stack.h",
     ],
     deps = [

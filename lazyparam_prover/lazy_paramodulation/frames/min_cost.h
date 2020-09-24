@@ -1,5 +1,4 @@
 struct _MinCostFrame { size_t min_cost; };
-using MinCostFrame = memory::Variant<Frame,Frame::MIN_COST,_MinCostFrame>;
 
 memory::List<Cont> min_cost(memory::Alloc &A, MinCostFrame f) const { STATE_FRAME(A,state,"min_cost");
   state->stats.min_cost_steps++;

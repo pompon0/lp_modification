@@ -5,7 +5,6 @@ struct _LazyPreStrongConnectionFrame {
   size_t strong_id;
   bool branch_lr;
 };
-using LazyPreStrongConnectionFrame = memory::Variant<Frame,Frame::LAZY_PRE_STRONG_CONNECTION,_LazyPreStrongConnectionFrame>;
 
 memory::List<Cont> lazy_pre_strong_connection(memory::Alloc &A, LazyPreStrongConnectionFrame f) const { 
   auto mcla = state->allocate(A,f->dcla);
@@ -39,11 +38,12 @@ memory::List<Cont> lazy_pre_strong_connection(memory::Alloc &A, LazyPreStrongCon
       .L = apl.head(),
       .branch_lr = f->branch_lr,
     };
-    LazyStrongConnectionFrame::Builder b1(A),b2(A);
+    auto b1 = LazyStrongConnectionFrame::alloc(A);
+    auto b2 = LazyStrongConnectionFrame::alloc(A);
     b1->base = base; b1->l = l; b1->r = r;
     b2->base = base; b2->l = r; b2->r = l;
-    alts.push(A,builder().add(A,Frame(b1.build())).build());
-    alts.push(A,builder().add(A,Frame(b2.build())).build());
+    alts.push(A,builder().add(A,Frame(b1)).build());
+    alts.push(A,builder().add(A,Frame(b2)).build());
   }
   return alts;
 }

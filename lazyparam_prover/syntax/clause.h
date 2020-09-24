@@ -14,10 +14,11 @@ struct AndClause {
 private:
   using VAR_RANGE = memory::Field<VarRange>;
   using ATOMS = memory::ArrayField<Atom,VAR_RANGE>;
-  u8 *ptr;
+  using PTR = ATOMS;
+  PTR ptr;
   size_t offset;
   size_t id_offset;
-  INL AndClause(u8 *_ptr, size_t _offset, size_t _id_offset) : ptr(_ptr), offset(_offset), id_offset(_id_offset) {}
+  INL AndClause(PTR _ptr, size_t _offset, size_t _id_offset) : ptr(_ptr), offset(_offset), id_offset(_id_offset) {}
 public:
   template<typename ...Atoms> INL static AndClause make(memory::Alloc &a, Atoms... atoms) {
     Builder b(a,sizeof...(Atoms));
@@ -25,23 +26,23 @@ public:
     return b.build();
   }
 
-  INL VarRange var_range() const { return VAR_RANGE::ref(ptr)+offset; }
-  INL size_t atom_count() const { return ATOMS::size(ptr); } 
-  INL Atom atom(size_t i) const { return ATOMS::ref(ptr,i).shift(offset).set_id(id_offset+i); }
+  INL VarRange var_range() const { return ptr.VAR_RANGE::ref()+offset; }
+  INL size_t atom_count() const { return ptr.ATOMS::size(); } 
+  INL Atom atom(size_t i) const { return ptr.ATOMS::ref(i).shift(offset).set_id(id_offset+i); }
   INL AndClause shift(size_t _offset) const { return AndClause(ptr,offset+_offset,id_offset); }
   INL AndClause set_id_offset(size_t _id_offset) const { return AndClause(ptr,offset,_id_offset); }
   INL OrClause neg() const;
 
   struct Builder {
   private:
-    u8 *ptr;
+    PTR ptr;
   public:
-    INL Builder(memory::Alloc &A, size_t _atom_count) : ptr(ATOMS::alloc(A,_atom_count)) {
-      VAR_RANGE::ref(ptr) = {0,0};
+    INL Builder(memory::Alloc &A, size_t _atom_count) : ptr(PTR::alloc(A,_atom_count)) {
+      ptr.VAR_RANGE::ref() = {0,0};
     }
     INL void set_atom(size_t i, Atom a) { FRAME("AndClause0.Builder.set_atom()");
-      ATOMS::ref(ptr,i) = a;
-      VAR_RANGE::ref(ptr) |= a.var_range();
+      ptr.ATOMS::ref(i) = a;
+      ptr.VAR_RANGE::ref() |= a.var_range();
     }
     INL AndClause build(){ return AndClause(ptr,0,0); }
   }; 

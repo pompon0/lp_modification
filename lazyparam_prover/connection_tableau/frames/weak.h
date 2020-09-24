@@ -3,7 +3,7 @@
 
 #include "lazyparam_prover/connection_tableau/frames/strong.h"
 
-struct WeakFrame {
+struct _WeakFrame {
   Branch branch;
 
   Features features() const {

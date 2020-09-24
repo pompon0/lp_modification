@@ -3,7 +3,6 @@ struct _WeakFrame {
   size_t nodes_limit;
   Branch branch;
 };
-using WeakFrame = memory::Variant<Frame,Frame::WEAK,_WeakFrame>;
 
 static bool matches_lemma(State &state, Branch branch) {
   auto a = branch.false_.head();
@@ -19,12 +18,12 @@ static bool matches_lemma(State &state, Branch branch) {
 memory::List<Cont> try_weak_param(memory::Alloc &A, WeakFrame f, memory::List<Cont> alts,
     Atom lr, Atom L, Builder tail) const {
   if(lr.pred()!=Atom::EQ || lr.sign()) return alts;
-  LazyPreWeakConnectionFrame::Builder pb(A);
+  auto pb = LazyPreWeakConnectionFrame::alloc(A);
   pb->branch = f->branch;
   pb->nodes_limit = f->nodes_limit;
   pb->L = L;
   pb->lr = lr;
-  return alts.add(A,tail.add(A,Frame(pb.build())).build());
+  return alts.add(A,tail.add(A,Frame(pb)).build());
 }
 
 // weak connection: -P(r), ..., a = P(s)
@@ -32,10 +31,10 @@ memory::List<Cont> try_weak_match(memory::Alloc &A, WeakFrame f, memory::List<Co
     Atom x, Atom y, Builder tail) const {
   if(x.pred()==Atom::EQ) return alts;
   if(Index::atom_hash(x)!=(Index::atom_hash(y)^1)) return alts;
-  WeakUnifyFrame::Builder ub(A);
+  auto ub = WeakUnifyFrame::alloc(A);
   ub->a1 = x;
   ub->a2 = y;
-  return alts.add(A,tail.add(A,Frame(ub.build())).build());
+  return alts.add(A,tail.add(A,Frame(ub)).build());
 }
 
 memory::List<Cont> weak(memory::Alloc &A, WeakFrame f) const { STATE_FRAME(A,state,"weak(%)",show(f->branch.false_.head())); 
@@ -53,15 +52,15 @@ memory::List<Cont> weak(memory::Alloc &A, WeakFrame f) const { STATE_FRAME(A,sta
   auto a = f->branch.false_.head();
   // reduce:
   if(a.pred()==Atom::EQ && a.sign()) {
-    ReductionFrame::Builder b(A);
+    auto b = ReductionFrame::alloc(A);
     b->a = a;
-    alts.push(A,tail.add(A,Frame(b.build())).build());
+    alts.push(A,tail.add(A,Frame(b)).build());
   }
   // restrict min cost
   if(f->min_cost) {
-    MinCostFrame::Builder b(A);
+    auto b = MinCostFrame::alloc(A);
     b->min_cost = state->nodes_used + f->min_cost;
-    tail = tail.add(A,Frame(b.build()));
+    tail = tail.add(A,Frame(b));
   }
   // weak connections
   for(auto b = f->branch.false_.tail(); !b.empty(); b = b.tail()) {
@@ -79,12 +78,12 @@ memory::List<Cont> weak(memory::Alloc &A, WeakFrame f) const { STATE_FRAME(A,sta
     while(auto mca = matches.next()) {
       auto ca = mca.get();
       DEBUG if(ca.cla.cost()>budget) error("ca.cla.cost()>budget");
-      StrongFrame::Builder b(A);
+      auto b = StrongFrame::alloc(A);
       b->nodes_limit = f->nodes_limit;
       b->branch = f->branch;
       b->dcla = ca.cla;
       b->strong_id = ca.i;
-      alts.push(A,builder().add(A,Frame(b.build())).build());
+      alts.push(A,builder().add(A,Frame(b)).build());
     }
   }
   // L[p],l/=r
@@ -92,13 +91,13 @@ memory::List<Cont> weak(memory::Alloc &A, WeakFrame f) const { STATE_FRAME(A,sta
   while(auto mca = matches.next()) {
     auto ca = mca.get();
     DEBUG if(ca.cla.cost()>budget) error("ca.cla.cost()>budget");
-    LazyPreStrongConnectionFrame::Builder b(A);
+    auto b = LazyPreStrongConnectionFrame::alloc(A);
     b->nodes_limit = f->nodes_limit;
     b->branch = f->branch;
     b->dcla = ca.cla;
     b->strong_id = ca.i;
     b->branch_lr = false;
-    alts.push(A,builder().add(A,Frame(b.build())).build());
+    alts.push(A,builder().add(A,Frame(b)).build());
   }
   if(a.pred()==Atom::EQ && !a.sign()) {
     // l/=r,L[p]
@@ -106,13 +105,13 @@ memory::List<Cont> weak(memory::Alloc &A, WeakFrame f) const { STATE_FRAME(A,sta
     while(auto mca = matches.next()) {
       auto ca = mca.get();
       DEBUG if(ca.cla.cost()>budget) error("ca.cla.cost()>budget");
-      LazyPreStrongConnectionFrame::Builder b(A);
+      auto b = LazyPreStrongConnectionFrame::alloc(A);
       b->nodes_limit = f->nodes_limit;
       b->branch = f->branch;
       b->dcla = ca.cla;
       b->strong_id = ca.i;
       b->branch_lr = true;
-      alts.push(A,builder().add(A,Frame(b.build())).build());
+      alts.push(A,builder().add(A,Frame(b)).build());
     }
   }
   return alts;

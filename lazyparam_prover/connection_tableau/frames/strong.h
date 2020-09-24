@@ -17,11 +17,11 @@ INL static memory::Maybe<TaskSet> strong(
  
   TaskSet ts;
   for(auto atoms = matoms.get(); !atoms.empty(); atoms = atoms.tail()) {
-    Frame::Weak::Builder b(A);
+    auto b = WeakFrame::alloc(A);
     b->branch = branch;
     b->branch.false_.push(A,atoms.head());
     branch.true_.push(A,atoms.head());
-    ts.push(A,Task(b.build()));
+    ts.push(A,Task(b));
   }
   STATE_LOG(A,state,"ts.size() = %",ts.size());
   return just(ts);

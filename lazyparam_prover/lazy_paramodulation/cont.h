@@ -3,7 +3,6 @@
 
 #include "lazyparam_prover/lazy_paramodulation/split.h"
 #include "lazyparam_prover/search_state.h"
-#include "lazyparam_prover/memory/variant.h"
 #include "lazyparam_prover/memory/lazy.h"
 #include "lazyparam_prover/alt.h"
 
@@ -36,42 +35,31 @@ struct Cont {
   struct _LazyStrongConnectionFrame;
   struct _LazyPreStrongConnectionFrame;
 
-  struct Frame {
-  public:
-    enum Type {
-      START,
-      STRONG,
-      WEAK_SET,
-      WEAK,
-      WEAK_UNIFY,
-      MIN_COST,
-      //////////
-      REDUCTION,
-      LAZY_WEAK_CONNECTION,
-      LAZY_PRE_WEAK_CONNECTION,
-      LAZY_STRONG_CONNECTION,
-      LAZY_PRE_STRONG_CONNECTION,
-    };
-    Type type() const { return Type(*LType::at(ptr)); }
-  private:
-    using LType = memory::Lens<size_t,0>;
-    enum { SIZE = LType::END };
-    uint8_t *ptr;
-    explicit Frame(uint8_t *_ptr) : ptr(_ptr) {}
-
-    friend memory::Variant<Frame,START,_StartFrame>;
-    friend memory::Variant<Frame,STRONG,_StrongFrame>;
-    friend memory::Variant<Frame,WEAK_SET,_WeakSetFrame>;
-    friend memory::Variant<Frame,WEAK,_WeakFrame>;
-    friend memory::Variant<Frame,WEAK_UNIFY,_WeakUnifyFrame>;
-    friend memory::Variant<Frame,MIN_COST,_MinCostFrame>;
-    ////////////////////////////////////
-    friend memory::Variant<Frame,REDUCTION,_ReductionFrame>;
-    friend memory::Variant<Frame,LAZY_WEAK_CONNECTION,_LazyWeakConnectionFrame>;
-    friend memory::Variant<Frame,LAZY_PRE_WEAK_CONNECTION,_LazyPreWeakConnectionFrame>;
-    friend memory::Variant<Frame,LAZY_STRONG_CONNECTION,_LazyStrongConnectionFrame>;
-    friend memory::Variant<Frame,LAZY_PRE_STRONG_CONNECTION,_LazyPreStrongConnectionFrame>;
-  };
+  using StartFrame = memory::Variant<0,_StartFrame>;
+  using StrongFrame = memory::Variant<1,_StrongFrame>;
+  using WeakSetFrame = memory::Variant<2,_WeakSetFrame>;
+  using WeakFrame = memory::Variant<3,_WeakFrame>;
+  using WeakUnifyFrame = memory::Variant<4,_WeakUnifyFrame>;
+  using MinCostFrame = memory::Variant<5,_MinCostFrame>;
+  ////////////////////////////////////
+  using ReductionFrame = memory::Variant<6,_ReductionFrame>;
+  using LazyWeakConnectionFrame = memory::Variant<7,_LazyWeakConnectionFrame>;
+  using LazyPreWeakConnectionFrame = memory::Variant<8,_LazyPreWeakConnectionFrame>;
+  using LazyStrongConnectionFrame = memory::Variant<9,_LazyStrongConnectionFrame>;
+  using LazyPreStrongConnectionFrame = memory::Variant<10,_LazyPreStrongConnectionFrame>;
+  using Frame = memory::Coprod<
+    StartFrame,
+    StrongFrame,
+    WeakSetFrame,
+    WeakFrame,
+    WeakUnifyFrame,
+    MinCostFrame,
+    ReductionFrame,
+    LazyWeakConnectionFrame,
+    LazyPreWeakConnectionFrame,
+    LazyStrongConnectionFrame,
+    LazyPreStrongConnectionFrame
+  >;
 
   SearchState::Save save;
   SearchState *state;
@@ -102,17 +90,17 @@ struct Cont {
     state->restore(save);
     auto f = frames.head();
     switch(f.type()) {
-      case Frame::START: return start(A,StartFrame(f));
-      case Frame::STRONG: return strong(A,StrongFrame(f));
-      case Frame::WEAK_SET: return weak_set(A,WeakSetFrame(f));
-      case Frame::WEAK: return weak(A,WeakFrame(f));
-      case Frame::WEAK_UNIFY: return weak_unify(A,WeakUnifyFrame(f));
-      case Frame::MIN_COST: return min_cost(A,MinCostFrame(f));
-      case Frame::REDUCTION: return reduction(A,ReductionFrame(f));
-      case Frame::LAZY_WEAK_CONNECTION: return lazy_weak_connection(A,LazyWeakConnectionFrame(f));
-      case Frame::LAZY_PRE_WEAK_CONNECTION: return lazy_pre_weak_connection(A,LazyPreWeakConnectionFrame(f));
-      case Frame::LAZY_STRONG_CONNECTION: return lazy_strong_connection(A,LazyStrongConnectionFrame(f));
-      case Frame::LAZY_PRE_STRONG_CONNECTION: return lazy_pre_strong_connection(A,LazyPreStrongConnectionFrame(f));
+      case StartFrame::ID: return start(A,StartFrame(f));
+      case StrongFrame::ID: return strong(A,StrongFrame(f));
+      case WeakSetFrame::ID: return weak_set(A,WeakSetFrame(f));
+      case WeakFrame::ID: return weak(A,WeakFrame(f));
+      case WeakUnifyFrame::ID: return weak_unify(A,WeakUnifyFrame(f));
+      case MinCostFrame::ID: return min_cost(A,MinCostFrame(f));
+      case ReductionFrame::ID: return reduction(A,ReductionFrame(f));
+      case LazyWeakConnectionFrame::ID: return lazy_weak_connection(A,LazyWeakConnectionFrame(f));
+      case LazyPreWeakConnectionFrame::ID: return lazy_pre_weak_connection(A,LazyPreWeakConnectionFrame(f));
+      case LazyStrongConnectionFrame::ID: return lazy_strong_connection(A,LazyStrongConnectionFrame(f));
+      case LazyPreStrongConnectionFrame::ID: return lazy_pre_strong_connection(A,LazyPreStrongConnectionFrame(f));
       default: error("f.type() = %",f.type());
     }
   }

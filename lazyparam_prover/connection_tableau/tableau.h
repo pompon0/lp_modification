@@ -5,54 +5,64 @@
 
 namespace tableau::connection_tableau {
 
+struct _SpecAction { Task task; Action action; };
+using SpecTask = memory::Variant<0,Task>;
+using SpecAction = memory::Variant<1,_SpecAction>;
+using Spec = memory::Coprod<SpecTask,SpecAction>;
+template<typename FTask, typename FAction> INL auto spec_switch(Spec spec, FTask ftask, FAction faction) {
+  switch(spec.type()) {
+  case SpecTask::ID: return ftask(SpecTask(spec));
+  case SpecAction::ID: return faction(SpecAction(spec));
+  default: error("unmatched case");
+  }
+}
+
 // Search takes alloc as an argument to be able to return result in its memory.
-alt::SearchResult search(const Ctx &ctx, memory::Alloc &A, SearchState &state, size_t depth_limit) { FRAME("connection_tableau::search()");
+INL alt::SearchResult search(const Ctx &ctx, memory::Alloc &A, SearchState &state, size_t depth_limit) { FRAME("connection_tableau::search()");
   SCOPE("connection_tableau::search");
+
+  using Cont = memory::List<Spec>;
   struct Save {
-    TaskSet cont; // always execute the last
+    Cont cont;
     SearchState::Save ss;
     memory::Alloc::Save As;
-    memory::List<memory::Maybe<TaskSet>> actions; // actions left
   };
-  auto task = start_task(A);
-  auto ss = state.save();
-  TaskSet cont(A,task);
-  ActionCollector ac(&state);
-  run(A,task,&ac);
-  vec<Save> saves{Save{cont,ss,A.save(),ac.actions}};
+  vec<Save> saves;
+  auto div = [&](SearchState::Save ss, Cont cont)INLL{ saves.push_back(Save{
+    .cont = cont,
+    .ss = ss,
+    .As = A.save(),
+  }); };
+
+  div(state.save(),Cont(A,Spec(SpecTask::alloc(A,[&](Task &t)INLL { t = start_task(A); }))));
   
   size_t steps = 0;
   for(; saves.size(); steps++) {
-    // select action
-    if(saves.back().actions.empty()){ saves.pop_back(); continue; }
-    auto s = saves.back();
-    saves.back().actions = saves.back().actions.tail();
-    if(!s.actions.head()) continue;
+    auto s = saves.back(); saves.pop_back();
+    A.restore(s.As);
+    state.restore(s.ss);
+    if(s.cont.empty()) return {1,steps};
     if(steps%100==0 && ctx.done()) return {0,steps};
     DEBUG if(steps%1000==0) info("steps = %",steps);
     
-    // execute action
-    A.restore(s.As);
-    state.restore(s.ss);
-    ActionExecutor ae(&state,s.actions.size()-1);
-    run(A,s.cont.head(),&ae);
-    auto ss = state.save();
-    
-    // push back new tasks
-    TaskSet ts = s.cont.tail();
-    bool ok = true;
-    for(auto nt = ae.get(); !nt.empty(); nt = nt.tail()) {
-      // skip action if proof tree depth has been exceeded
-      if(features(nt.head()).depth>depth_limit) ok = false;
-      ts.push(A,nt.head());
-    }
-    if(ts.empty()) { return {1,steps}; }
-    if(!ok) continue;
-
-    // determine next actions
-    ActionCollector ac(&state);
-    run(A,ts.head(),&ac);
-    saves.push_back(Save{ts,ss,A.save(),ac.actions});
+    spec_switch(s.cont.head(),
+      [&](SpecTask st)INLL{
+        if(task_features(*st).depth>depth_limit) return;
+        task_iterate_actions(A,state,*st,[&](Action a)INLL{
+          div(s.ss,s.cont.tail().add(A,Spec(SpecAction::alloc(A,[&](_SpecAction &sa)INLL {
+            sa.task = *st;
+            sa.action = a;
+          }))));
+        });
+      },
+      [&](SpecAction sa)INLL{
+        auto cont = s.cont.tail();
+        for(auto ts = task_execute_action(A,state,sa->task,sa->action); !ts.empty(); ts = ts.tail()) {
+          cont.push(A,Spec(SpecTask::alloc(A,[&](Task &t)INLL{ t = ts.head(); })));
+        }
+        div(state.save(),cont);
+      }
+    );
   }
   DEBUG info("steps = %",steps);
   return {0,steps};

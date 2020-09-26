@@ -4,11 +4,6 @@
 #include "lazyparam_prover/connection_tableau/frames/strong.h"
 
 struct _StartFrame {
-  Features features() const {
-    return {
-      .depth = 0,
-    };
-  }
   template<typename DState> INL void run(memory::Alloc &A, DState *d) const {
     STATE_FRAME(A,d->state,"start");
     while(auto dcla = d->state->cla_index.next_starting_clause()) {

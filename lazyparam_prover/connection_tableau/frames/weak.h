@@ -6,12 +6,6 @@
 struct _WeakFrame {
   Branch branch;
 
-  Features features() const {
-    return {
-      .depth = branch.false_.size(),
-    };
-  }
-
   template<typename DState> INL void run(memory::Alloc &A, DState *d) const {
     STATE_FRAME(A,d->state,"weak(%)",show(branch.false_.head()));
     d->state->stats.weak_steps++;

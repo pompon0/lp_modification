@@ -16,7 +16,7 @@
 #include <map>
 
 #define INL [[gnu::always_inline]]
-
+#define INLL __attribute__((always_inline))
 namespace util {
 
 struct Logger {

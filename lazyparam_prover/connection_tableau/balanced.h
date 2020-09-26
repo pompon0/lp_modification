@@ -25,6 +25,7 @@ template<typename FCheckMin, typename FTask, typename FAction, typename FTaskSet
   case SpecTask::ID: return ftask(SpecTask(spec));
   case SpecAction::ID: return faction(SpecAction(spec));
   case SpecTaskSet::ID: return ftaskset(SpecTaskSet(spec));
+  default: error("unmatched case");
   }
 }
 
@@ -41,7 +42,7 @@ template<typename Div> void spec_run(memory::Alloc &A, SearchState &state, Spec 
       cont.push(Spec(SpecCheckMin::alloc(A,[&](_SpecCheckMin &scm){
         scm.min = state.nodes_used+st->min;
       })));
-      iterate_actions(A,st->task,&state,[&](Action a){
+      iterate_actions(A,state,st->task,[&](Action a){
         diverge(cont.add(SpecAction::alloc(A,[&](_SpecAction &sa){
           sa.task = st->task;
           sa.action = a;
@@ -50,7 +51,7 @@ template<typename Div> void spec_run(memory::Alloc &A, SearchState &state, Spec 
       });
     },
     [&](SpecAction sa){
-      TaskSet ts = execute_action(A,state,sa->task,sa->action);
+      TaskSet ts = task_execute_action(A,state,sa->task,sa->action);
       if(state.nodes_used>sa->max) return;
       diverge(cont.add(Spec(SpecTaskSet::alloc(A,[&](_SpecTaskSet &sts){
         sts.task_set = ts;

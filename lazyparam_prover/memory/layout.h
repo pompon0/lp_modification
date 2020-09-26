@@ -77,8 +77,8 @@ public:
   Variant(){}
   enum { ID = I };
   INL const T* operator->() const { return &ptr.ref(); }
-  INL const T& operator*() const { return &ptr.ref(); }
-  template<typename Alloc, typename F> INL Variant alloc(Alloc &A, F f) {
+  INL const T& operator*() const { return ptr.ref(); }
+  template<typename Alloc, typename F> INL static Variant alloc(Alloc &A, F f) {
     static_assert(has_sig<F,void(T&)>());
     auto ptr = PTR::alloc(A);
     f(ptr.ref());

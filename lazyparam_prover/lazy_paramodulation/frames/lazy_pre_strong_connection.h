@@ -38,12 +38,12 @@ memory::List<Cont> lazy_pre_strong_connection(memory::Alloc &A, LazyPreStrongCon
       .L = apl.head(),
       .branch_lr = f->branch_lr,
     };
-    auto b1 = LazyStrongConnectionFrame::alloc(A);
-    auto b2 = LazyStrongConnectionFrame::alloc(A);
+    auto b1 = LazyStrongConnectionFrame::Builder(A);
+    auto b2 = LazyStrongConnectionFrame::Builder(A);
     b1->base = base; b1->l = l; b1->r = r;
     b2->base = base; b2->l = r; b2->r = l;
-    alts.push(A,builder().add(A,Frame(b1)).build());
-    alts.push(A,builder().add(A,Frame(b2)).build());
+    alts.push(A,builder().add(A,Frame(b1.build())).build());
+    alts.push(A,builder().add(A,Frame(b2.build())).build());
   }
   return alts;
 }

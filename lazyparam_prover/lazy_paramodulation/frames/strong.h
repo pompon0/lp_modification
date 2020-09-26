@@ -17,10 +17,10 @@ memory::List<Cont> strong(memory::Alloc &A, StrongFrame f) const {
   BranchSet bs{.branch = f->branch};
   for(ssize_t i=cla.atom_count(); i--;) if(i!=f->strong_id) bs.push(A,cla.atom(i));
   if(bs.branches_size==0) { alts.push(A,builder().build()); return alts; }
-  auto b = WeakSetFrame::alloc(A);
+  auto b = WeakSetFrame::Builder(A);
   b->nodes_limit = f->nodes_limit;
   b->branches = bs.branches;
   b->branch_count = bs.branches_size; 
-  alts.push(A,builder().add(A,Frame(b)).build());
+  alts.push(A,builder().add(A,Frame(b.build())).build());
   return alts;
 }

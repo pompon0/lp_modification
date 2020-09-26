@@ -120,7 +120,7 @@ private:
 };
 
 INL static inline Task start_task(memory::Alloc &A) {
-  return Task(_::StartFrame::alloc(A));
+  return Task(_::StartFrame::Builder(A).build());
 }
 
 }  // namespace tableau::connection_tableau

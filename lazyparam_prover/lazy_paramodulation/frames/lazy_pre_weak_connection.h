@@ -26,12 +26,12 @@ memory::List<Cont> lazy_pre_weak_connection(memory::Alloc &A, LazyPreWeakConnect
       .w = w,
       .L = apl.head(),
     };
-    auto b1 = LazyWeakConnectionFrame::alloc(A);
-    auto b2 = LazyWeakConnectionFrame::alloc(A);
+    auto b1 = LazyWeakConnectionFrame::Builder(A);
+    auto b2 = LazyWeakConnectionFrame::Builder(A);
     b1->base = base; b1->l = l; b1->r = r;
     b2->base = base; b2->l = r; b2->r = l;
-    alts.push(A,builder().add(A,Frame(b1)).build());
-    alts.push(A,builder().add(A,Frame(b2)).build());
+    alts.push(A,builder().add(A,Frame(b1.build())).build());
+    alts.push(A,builder().add(A,Frame(b2.build())).build());
   }
   return alts;
 }

@@ -3,7 +3,7 @@
 
 #include "utils/types.h"
 #include "utils/log.h"
-#include <algorithm>
+#include "lazyparam_prover/memory/function.h"
 
 namespace memory {
 
@@ -23,9 +23,6 @@ template<typename T, typename Prev = Empty> struct Field : Prev {
     p.init();
     return p;
   }
-  //TODO: this is for compatibility with old Variant implementation.
-  // Perhaps make Variant an opaque type instead and put it there.
-  T* operator->() const { return &ref(); }
 protected:
   enum { SIZE = Prev::SIZE+sizeof(T) };
 };
@@ -65,24 +62,43 @@ protected:
   }
 };
 template<typename T, T Val, typename Prev = Empty> struct FixedField : ConstField<T,Prev> {
-  // TODO either replace with static constexpr, or narrow down T to size_t only
-  enum { ID = Val };
   INL explicit FixedField(u8 *_ptr = 0) : ConstField<T,Prev>(_ptr) {}
   INL constexpr T ref() const { return Val; }
 protected:
   INL void init(){ ConstField<T,Prev>::init(Val); }
 };
 
-template<size_t I, typename T> using Variant = Field<T,FixedField<size_t,I>>;
-
-template<typename V> struct VariantWrap;
-template<size_t I, typename T> struct VariantWrap<Variant<I,T>> {
+template<size_t I, typename T> struct Variant {
+private:
+  using PTR = Field<T,FixedField<size_t,I>>;
+  PTR ptr;
+  explicit Variant(PTR _ptr) : ptr(_ptr) {}
+public:
+  Variant(){}
   enum { ID = I };
-  INL static void to(Variant<I,T> &v, ConstField<size_t> f) {
-    if(f.ref()!=I) error("cast failed");
-    v = Variant<I,T>(f.ptr);
+  INL const T* operator->() const { return &ptr.ref(); }
+  INL const T& operator*() const { return &ptr.ref(); }
+  template<typename Alloc, typename F> INL Variant alloc(Alloc &A, F f) {
+    static_assert(has_sig<F,void(T&)>());
+    auto ptr = PTR::alloc(A);
+    f(ptr.ref());
+    return Variant(ptr);
   }
-  INL static ConstField<size_t> from(Variant<I,T> v){ return v; }
+  struct Builder {
+    template<typename Alloc> INL explicit Builder(Alloc &A) : ptr(PTR::alloc(A)) {}
+    INL T* operator->() const { return &ptr.ref(); }
+    INL T& operator*() const { return ptr.ref(); }
+    INL Variant build() const { return Variant(ptr); }
+  private:
+    PTR ptr;
+  };
+  struct Wrap {
+    INL static ConstField<size_t> from(Variant<I,T> v){ return v.ptr; }
+    INL static void to(Variant &v, ConstField<size_t> f) {
+      if(f.ref()!=I) error("cast failed");
+      v = Variant<I,T>(f.ptr);
+    }
+  };
 };
 
 template<size_t ...I> constexpr bool ascending() {
@@ -93,30 +109,16 @@ template<size_t ...I> constexpr bool ascending() {
   return true;
 }
 
-template<typename ...Variants> struct VariantSet : VariantWrap<Variants>... {
-  static_assert(ascending<VariantWrap<Variants>::ID...>());
-  using VariantWrap<Variants>::from...;
-  using VariantWrap<Variants>::to...;
-};
-
-
-struct EmptyVariants { enum { SIZE = 0 }; void from(){} void to(){} };
-template<typename H, typename Prev = EmptyVariants> struct Variants : Prev {
-  enum { SIZE = Prev::SIZE+1 };
-  using Prev::from;
-  using Prev::to;
-  
-  using X = Field<H,FixedField<size_t,SIZE-1>>;
-  INL static void to(X &v, ConstField<size_t> f){
-    }
-  INL static ConstField<size_t> from(X v){ return v; }
+template<typename ...Variants> struct VariantSet : Variants::Wrap... {
+  static_assert(ascending<Variants::ID...>());
+  using Variants::Wrap::from...;
+  using Variants::Wrap::to...;
 };
 
 
 template<typename ...Variants> struct Coprod  {
   size_t type() const { return type_.ref(); }
   template<typename X> INL explicit Coprod(X x) : type_(VariantSet<Variants...>::from(x)) {}
-  // TODO: this can be inherited to get rid of variable x 
   template<typename X> INL explicit operator X(){ X x; VariantSet<Variants...>::to(x,type_); return x; }
 private:
   ConstField<size_t> type_;

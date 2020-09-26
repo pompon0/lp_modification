@@ -22,7 +22,7 @@ TEST(layout,simple) {
   using Y = Variant<1,float>;
   using Z = Variant<2,double>;
   using Any = Coprod<X,Y,Z>;
-  auto x = X::alloc(M);
-  x.ref() = 5;
-  auto z = X(Any(x));
+  auto x = X::Builder(M);
+  *x = 5;
+  auto z = X(Any(x.build()));
 }

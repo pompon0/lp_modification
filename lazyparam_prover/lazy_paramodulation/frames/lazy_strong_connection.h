@@ -109,9 +109,9 @@ memory::List<Cont> lazy_strong_connection(memory::Alloc &A, LazyStrongConnection
     state->lazy_clauses_used.push(A,lazy(A,AxiomClause{mb.build()}));
     state->lazy_clauses_used.push(A,lazy(A,AxiomClause{AndClause::make(A,fs_fv,l_r,fs_w.neg())}));
   }
-  auto b = WeakSetFrame::alloc(A);
+  auto b = WeakSetFrame::Builder(A);
   b->nodes_limit = f->base.nodes_limit;
   b->branches = bs.branches;
   b->branch_count = bs.branches_size;
-  return memory::List<Cont>(A,builder().add(A,Frame(b)).build());
+  return memory::List<Cont>(A,builder().add(A,Frame(b.build())).build());
 }

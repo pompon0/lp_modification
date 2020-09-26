@@ -24,12 +24,12 @@ namespace tableau::lazy_paramodulation {
 ProverOutput prove(const Ctx &ctx, memory::Alloc &A, const ClauseIndex &cla_index, const FunOrd &fun_ord, size_t limit) { FRAME("prove()");
   SCOPE("prove");
   SearchState s(cla_index,fun_ord);
-  auto b = Cont::StartFrame::alloc(A);
+  auto b = Cont::StartFrame::Builder(A);
   b->nodes_limit = limit;
   auto res = alt::search(ctx,A,Cont{
     .save = s.save(),
     .state = &s,
-    .frames = memory::List<Cont::Frame>(A,Cont::Frame(b))
+    .frames = memory::List<Cont::Frame>(A,Cont::Frame(b.build()))
   });
   s.stats.val = s.val.stats;
   DEBUG_ONLY(

@@ -73,7 +73,7 @@ func TestTableau(t *testing.T) {
         if out.Proof==nil {
           t.Fatalf("out = %+v",out)
         }
-        log.Printf("out.Proof = %v",out.Proof)
+        log.Printf("out = %+v",out)
         proofTptp,err := tool.ProofToTptp(ctx,out.Proof)
         if err!=nil { t.Fatalf("tool.ProofTPTP(%q): %v",k,err) }
         t.Logf("proof = %s",proofTptp)

@@ -2,6 +2,7 @@
 #define CONNECTION_TABLEAU_TABLEAU_H_
 
 #include "lazyparam_prover/connection_tableau/cont.h"
+#include "lazyparam_prover/connection_tableau/balanced.h"
 
 namespace tableau::connection_tableau {
 
@@ -71,7 +72,7 @@ INL alt::SearchResult search(const Ctx &ctx, memory::Alloc &A, SearchState &stat
 static ProverOutput prove(const Ctx &ctx, memory::Alloc &A, const ClauseIndex &cla_index, const FunOrd &fun_ord, size_t limit) { FRAME("prove()");
   SCOPE("prove");
   SearchState s(cla_index,fun_ord);
-  auto res = search(ctx,A,s,limit);
+  auto res = balanced::search(ctx,A,s,limit);
   s.stats.val = s.val.stats;
   DEBUG_ONLY(
     if(res.found) {

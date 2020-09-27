@@ -28,7 +28,7 @@ private:
 public:
   INL ~ResetArray() = default;
   INL E operator[](size_t i) const { DEBUG validate_idx(i); return data[i]; }
-  INL void resize(size_t n, E e){ FRAME("resize(%,_)",n);
+  INL void resize(size_t n, E e){
     DEBUG if(dirty.size()>0) error("ResetArray::resize, while dirty");
     data.resize(n,e);
   }
@@ -39,7 +39,7 @@ public:
     dirty.push_back(i);
   }
 
-  INL void reset(E e){ FRAME("reset()");
+  INL void reset(E e){
     for(auto i : dirty) data[i] = e;
     dirty.clear();
   }
@@ -55,7 +55,7 @@ public:
   INL RewindArray(const RewindArray&) = default;
   ~RewindArray(){}
   INL const Maybe<E> operator[](size_t i) const { DEBUG validate_idx(i); return data[i]; }
-  INL void resize(size_t n){ FRAME("resize(%)",n);
+  INL void resize(size_t n){
     DEBUG if(n<data.size()) error("only expanding the array is supported");
     // downsizing can be supported if we use non-downsizable non-relocable storage.
     data.resize(n);
@@ -70,7 +70,7 @@ public:
 
   struct Save { size_t data_size, diffs_size; };
   INL Save save(){ return {data.size(),diffs.size()}; }
-  INL void restore(Save s){ FRAME("rewind(diffs_size = %, data_size = %)",s.diffs_size,s.data_size);
+  INL void restore(Save s){
     DEBUG if(s.diffs_size>diffs.size()) error("s.diffs_size = % > diffs.size() = %",s.diffs_size,diffs.size());
     DEBUG if(s.data_size>data.size()) error("s.data_size = % > data.size() = %",s.data_size,data.size());
     while(diffs.size()>s.diffs_size){ data[diffs.back()] = Maybe<E>(); diffs.pop_back(); }

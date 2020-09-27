@@ -5,6 +5,7 @@ package(
 cc_library(
     name = "prover",
     hdrs = [
+        "balanced.h",
         "cont.h",
         "tableau.h",
     ],

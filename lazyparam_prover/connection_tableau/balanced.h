@@ -1,9 +1,10 @@
-#ifndef CONNECTION_TABLEAU_TABLEAU_H_
-#define CONNECTION_TABLEAU_TABLEAU_H_
+#ifndef CONNECTION_TABLEAU_BALANCED_H_
+#define CONNECTION_TABLEAU_BALANCED_H_
 
 #include "lazyparam_prover/connection_tableau/cont.h"
+#include "lazyparam_prover/memory/layout.h"
 
-namespace tableau::connection_tableau {
+namespace tableau::connection_tableau::balanced {
 
 // [a] Task,min,max -> {[c,d]}
 // [b] TaskSet,max -> [a(max),b],[b(max),a(min)]
@@ -13,10 +14,10 @@ struct _SpecCheckMin { size_t min; };
 struct _SpecTask { Task task; size_t min,max; };
 struct _SpecAction { Task task; Action action; size_t max; };
 struct _SpecTaskSet { TaskSet task_set; size_t max; };
-using SpecCheckMin = memotry::Variant<0,_SpecCheckMin>;
-using SpecTask = memory::Variant<1,SpecTask>;
+using SpecCheckMin = memory::Variant<0,_SpecCheckMin>;
+using SpecTask = memory::Variant<1,_SpecTask>;
 using SpecAction = memory::Variant<2,_SpecAction>;
-using SpecTaskSet = memory::Variant<3,SpecTaskSet>;
+using SpecTaskSet = memory::Variant<3,_SpecTaskSet>;
 using Spec = memory::Coprod<SpecCheckMin,SpecTask,SpecAction,SpecTaskSet>;
 template<typename FCheckMin, typename FTask, typename FAction, typename FTaskSet> auto spec_switch(
     Spec spec, FCheckMin fcheckmin, FTask ftask, FAction faction, FTaskSet ftaskset){
@@ -30,59 +31,62 @@ template<typename FCheckMin, typename FTask, typename FAction, typename FTaskSet
 }
 
 using Cont = memory::List<Spec>;
-template<typename Div> void spec_run(memory::Alloc &A, SearchState &state, Spec spec, Div diverge, Cont cont) {
-  static_assert(memory::has_sig<Div,void(Cont)>());
+template<typename Div> void spec_run(memory::Alloc &A, SearchState &state, Spec spec, Div diverge, const Cont cont) {
+  static_assert(memory::has_sig<Div,void(SearchState::Save,Cont)>());
   spec_switch(spec,
     [&](SpecCheckMin scm){
-      if(state.nodes_used<SpecCheckMin(spec).min) return;
-      diverge(cont);
+      if(state.nodes_used<scm->min) return;
+      diverge(state.save(),cont);
     },
     [&](SpecTask st){
       if(state.nodes_used+st->min > st->max) return;
-      cont.push(Spec(SpecCheckMin::alloc(A,[&](_SpecCheckMin &scm){
+      Cont c = cont;
+      if(st->min>0) c.push(A,Spec(SpecCheckMin::alloc(A,[&](_SpecCheckMin &scm){
         scm.min = state.nodes_used+st->min;
       })));
-      iterate_actions(A,state,st->task,[&](Action a){
-        diverge(cont.add(SpecAction::alloc(A,[&](_SpecAction &sa){
+      auto ss = state.save();
+      task_iterate_actions(A,state,st->task,[&](Action a){
+        diverge(ss,c.add(A,Spec(SpecAction::alloc(A,[&](_SpecAction &sa){
           sa.task = st->task;
           sa.action = a;
           sa.max = st->max;
-        })));
+        }))));
       });
     },
     [&](SpecAction sa){
       TaskSet ts = task_execute_action(A,state,sa->task,sa->action);
       if(state.nodes_used>sa->max) return;
-      diverge(cont.add(Spec(SpecTaskSet::alloc(A,[&](_SpecTaskSet &sts){
+      diverge(state.save(),cont.add(A,Spec(SpecTaskSet::alloc(A,[&](_SpecTaskSet &sts){
         sts.task_set = ts;
         sts.max = sa->max;
       }))));
     },
-    [&](SpecTaskSet sts){ 
-      if(sts->task_set.empty()){ diverge(cont); return; }
+    [&](SpecTaskSet sts){
+      auto ss = state.save();
+      if(sts->task_set.empty()){ diverge(ss,cont); return; }
       size_t budget = sts->max-state.nodes_used;
       size_t head_budget = budget/sts->task_set.size();
       auto head = sts->task_set.head();
       auto tail = sts->task_set.tail();
       {
-        Cont cont = cont;
-        if(!tail.empty()) cont.push(Spec(SpecTaskSet::alloc(A,[&](_SpecTaskSet &sts2){
+        Cont c = cont;
+        if(!tail.empty()) c.push(A,Spec(SpecTaskSet::alloc(A,[&](_SpecTaskSet &sts2){
           sts2.task_set = tail;
           sts2.max = sts->max;
         })));
-        diverge(cont.add(Spec(SpecTask::alloc(A,[&](_SpecTask &st){
+        diverge(ss,c.add(A,Spec(SpecTask::alloc(A,[&](_SpecTask &st){
           st.task = head;
           st.min = 0;
           st.max = state.nodes_used+head_budget;
         }))));
       }
-      if(!tail.empty() && head_budget<budget) diverge(cont
-        .add(Spec(SpecTask::alloc(A,[&](_SpecTask &st){
+      if(!tail.empty() && head_budget<budget) diverge(ss,cont
+        .add(A,Spec(SpecTask::alloc(A,[&](_SpecTask &st){
           st.task = head;
           st.min = state.nodes_used+head_budget+1;
           st.max = sts->max;
         })))
-        .add(Spec(SpecTaskSet::alloc(A,[&](_SpecTaskSet &sts2){
+        .add(A,Spec(SpecTaskSet::alloc(A,[&](_SpecTaskSet &sts2){
           sts2.task_set = tail;
           sts2.max = sts->max-(head_budget+1);
         })))
@@ -92,7 +96,7 @@ template<typename Div> void spec_run(memory::Alloc &A, SearchState &state, Spec 
 }
 
 // Search takes alloc as an argument to be able to return result in its memory.
-alt::SearchResult balanced_search(const Ctx &ctx, memory::Alloc &A, SearchState &state, size_t size_limit) { FRAME("connection_tableau::balanced_search()");
+alt::SearchResult search(const Ctx &ctx, memory::Alloc &A, SearchState &state, size_t size_limit) { FRAME("connection_tableau::balanced_search()");
   SCOPE("connection_tableau::balanced_search");
 
   struct Save {
@@ -101,13 +105,13 @@ alt::SearchResult balanced_search(const Ctx &ctx, memory::Alloc &A, SearchState 
     memory::Alloc::Save As;
   };
   vec<Save> saves;
-  auto div = [&](Cont cont){ saves.push_back(Save{
+  auto div = [&](SearchState::Save ss, Cont cont){ saves.push_back(Save{
     .cont = cont,
-    .ss = state.save(),
-    .As = As.save(),
+    .ss = ss,
+    .As = A.save(),
   }); };
 
-  div(Cont(A,Spec(SpecTask::alloc(A,[&](_SpecTask &st){
+  div(state.save(),Cont(A,Spec(SpecTask::alloc(A,[&](_SpecTask &st){
     st.task = start_task(A);
     st.min = 0;
     st.max = size_limit;
@@ -129,6 +133,6 @@ alt::SearchResult balanced_search(const Ctx &ctx, memory::Alloc &A, SearchState 
   return {0,steps};
 }
 
-} // namespace connection_tableau::tableau
+} // namespace connection_tableau::tableau::balanced
 
-#endif  // CONNECTION_TABLEAU_TABLEAU_H_
+#endif  // CONNECTION_TABLEAU_BALANCED_H_

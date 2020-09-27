@@ -105,7 +105,7 @@ public:
   };
 };
 
-inline VarRange Term::var_range() const { FRAME("var_range()");
+INL inline VarRange Term::var_range() const { FRAME("var_range()");
   switch(type()) {
   case VAR: return Var(*this).var_range();
   case FUN: return Fun(*this).var_range();
@@ -115,7 +115,7 @@ inline VarRange Term::var_range() const { FRAME("var_range()");
 
 
 //TODO: replace with hash consing
-static bool operator==(Term x, Term y) {
+INL inline static bool operator==(Term x, Term y) {
   if(x.type()!=y.type()) return 0;
   switch(x.type()) {
   case Term::FUN: {

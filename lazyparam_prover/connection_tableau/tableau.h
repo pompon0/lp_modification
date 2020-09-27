@@ -21,6 +21,7 @@ template<typename FTask, typename FAction> INL auto spec_switch(Spec spec, FTask
 // Search takes alloc as an argument to be able to return result in its memory.
 INL alt::SearchResult search(const Ctx &ctx, memory::Alloc &A, SearchState &state, size_t depth_limit) { FRAME("connection_tableau::search()");
   SCOPE("connection_tableau::search");
+  enum { SIZE_LIMIT = 100000 };
 
   using Cont = memory::List<Spec>;
   struct Save {
@@ -49,7 +50,7 @@ INL alt::SearchResult search(const Ctx &ctx, memory::Alloc &A, SearchState &stat
     spec_switch(s.cont.head(),
       [&](SpecTask st)INLL{
         if(task_features(*st).depth>depth_limit) return;
-        task_iterate_actions(A,state,*st,[&](Action a)INLL{
+        task_iterate_actions(A,state,SIZE_LIMIT,*st,[&](Action a)INLL{
           div(s.ss,s.cont.tail().add(A,Spec(SpecAction::alloc(A,[&](_SpecAction &sa)INLL {
             sa.task = *st;
             sa.action = a;
@@ -58,7 +59,7 @@ INL alt::SearchResult search(const Ctx &ctx, memory::Alloc &A, SearchState &stat
       },
       [&](SpecAction sa)INLL{
         auto cont = s.cont.tail();
-        for(auto ts = task_execute_action(A,state,sa->task,sa->action); !ts.empty(); ts = ts.tail()) {
+        for(auto ts = task_execute_action(A,state,SIZE_LIMIT,sa->task,sa->action); !ts.empty(); ts = ts.tail()) {
           cont.push(A,Spec(SpecTask::alloc(A,[&](Task &t)INLL{ t = ts.head(); })));
         }
         div(state.save(),cont);

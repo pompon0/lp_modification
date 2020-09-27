@@ -45,7 +45,7 @@ template<typename Div> void spec_run(memory::Alloc &A, SearchState &state, Spec 
         scm.min = state.nodes_used+st->min;
       })));
       auto ss = state.save();
-      task_iterate_actions(A,state,st->task,[&](Action a){
+      task_iterate_actions(A,state,st->max,st->task,[&](Action a){
         diverge(ss,c.add(A,Spec(SpecAction::alloc(A,[&](_SpecAction &sa){
           sa.task = st->task;
           sa.action = a;
@@ -54,7 +54,7 @@ template<typename Div> void spec_run(memory::Alloc &A, SearchState &state, Spec 
       });
     },
     [&](SpecAction sa){
-      TaskSet ts = task_execute_action(A,state,sa->task,sa->action);
+      TaskSet ts = task_execute_action(A,state,sa->max,sa->task,sa->action);
       if(state.nodes_used>sa->max) return;
       diverge(state.save(),cont.add(A,Spec(SpecTaskSet::alloc(A,[&](_SpecTaskSet &sts){
         sts.task_set = ts;

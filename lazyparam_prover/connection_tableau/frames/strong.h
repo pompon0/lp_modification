@@ -2,7 +2,7 @@
 #define CONNECTION_TABLEAU_FRAMES_STRONG_H_
 
 INL static memory::Maybe<TaskSet> strong(
-    memory::Alloc &A, SearchState *state, Branch branch, DerAndClause dcla, ssize_t strong_id) {
+    memory::Alloc &A, SearchState *state, Branch branch, DerAndClause dcla, ssize_t strong_id, size_t size_limit) {
   STATE_FRAME(A,state,"strong(%,%)",show(dcla),strong_id);
   state->stats.strong_steps++;
   auto mcla = state->allocate(A,dcla);
@@ -12,7 +12,7 @@ INL static memory::Maybe<TaskSet> strong(
 
   memory::List<Atom> todo;
   for(ssize_t i=cla.atom_count(); i--;) if(i!=strong_id) todo.push(A,cla.atom(i));
-  auto matoms = strong_resolution(A,state,todo);
+  auto matoms = strong_resolution(A,state,todo,size_limit);
   if(!matoms) return memory::nothing();
  
   TaskSet ts;
@@ -27,14 +27,14 @@ INL static memory::Maybe<TaskSet> strong(
   return just(ts);
 }
 
-INL static memory::Maybe<memory::List<Atom>> strong_resolution(memory::Alloc &A, SearchState *state, memory::List<Atom> todo) { FRAME("strong_resolution()");
+INL static memory::Maybe<memory::List<Atom>> strong_resolution(memory::Alloc &A, SearchState *state, memory::List<Atom> todo, size_t size_limit) { FRAME("strong_resolution()");
   memory::List<Atom> checked;
   while(!todo.empty()) {
     auto a = todo.head();
     todo = todo.tail();
     // Look for strong only atoms.
     if(!a.strong_only()) { checked.push(A,a); continue; }
-    auto filter = state->cla_index.get_matches(a,memory::nothing());
+    auto filter = state->cla_index.get_matches(a,memory::just(size_limit-state->nodes_used));
     auto mca = filter.next();
     if(!mca) return memory::nothing();
     // Filter out those which have more that 1 possible unification.

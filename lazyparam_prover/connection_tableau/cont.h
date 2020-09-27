@@ -99,13 +99,13 @@ template<typename H> struct ActionIterator {
   }
 };
 
-template<typename H> INL void task_iterate_actions(memory::Alloc &A, SearchState &state, Task t, H h) {
+template<typename H> INL void task_iterate_actions(memory::Alloc &A, SearchState &state, size_t size_limit, Task t, H h) {
   static_assert(memory::has_sig<H,void(Action)>());
   auto s = state.save();
   ActionIterator<H> d(h,&state);
   task_switch(t,
-    [&](StartFrame f)INLL{ f->run(A,&d); },
-    [&](WeakFrame f)INLL{ f->run(A,&d); }
+    [&](StartFrame f)INLL{ f->run(A,&d,size_limit); },
+    [&](WeakFrame f)INLL{ f->run(A,&d,size_limit); }
   );
   state.restore(s);
 }
@@ -131,11 +131,11 @@ struct ActionExecutor {
   }
 };
 
-INL static TaskSet task_execute_action(memory::Alloc &A, SearchState &state, Task task, Action action) {
+INL static TaskSet task_execute_action(memory::Alloc &A, SearchState &state, size_t size_limit, Task task, Action action) {
   ActionExecutor d(&state,action);
   task_switch(task,
-    [&](StartFrame f)INLL{ f->run(A,&d); },
-    [&](WeakFrame f)INLL{ f->run(A,&d); }
+    [&](StartFrame f)INLL{ f->run(A,&d,size_limit); },
+    [&](WeakFrame f)INLL{ f->run(A,&d,size_limit); }
   );
   DEBUG if(!d.task_set) error("action not found");
   return d.task_set.get();

@@ -6,7 +6,7 @@
 struct _WeakFrame {
   Branch branch;
 
-  template<typename DState> INL void run(memory::Alloc &A, DState *d) const {
+  template<typename DState> INL void run(memory::Alloc &A, DState *d, size_t size_limit) const {
     STATE_FRAME(A,d->state,"weak(%)",show(branch.false_.head()));
     d->state->stats.weak_steps++;
     // try to match with lemma
@@ -34,10 +34,10 @@ struct _WeakFrame {
     }
     
     // extend
-    auto matches = d->state->cla_index.get_matches(branch.false_.head(),memory::nothing());
+    auto matches = d->state->cla_index.get_matches(branch.false_.head(),memory::just(size_limit-d->state->nodes_used));
     while(auto mca = matches.next()) {
       auto ca = mca.get();
-      if(d->diverge(A,[&]{ return strong(A,d->state,branch,ca.cla,ca.i); })) return;
+      if(d->diverge(A,[&]{ return strong(A,d->state,branch,ca.cla,ca.i,size_limit); })) return;
     }
     return;
   }

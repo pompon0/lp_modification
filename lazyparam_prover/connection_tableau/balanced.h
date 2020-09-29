@@ -6,17 +6,14 @@
 
 namespace tableau::connection_tableau::balanced {
 
-// [a] Task,min,max -> {[c,d]}
+// [a] Task,min,max -> {[b,d]}
 // [b] TaskSet,max -> [a(max),b],[b(max),a(min)]
-// [c] Task,Action,max -> [b] (task set is known, but you have to push state forward)
 // [d] CheckRange { min } -> []
 struct _SpecCheckMin { size_t min; };
 struct _SpecTask { Task task; size_t min,max; };
-struct _SpecAction { Task task; Action action; size_t max; };
 struct _SpecTaskSet { TaskSet task_set; size_t max; };
 using SpecCheckMin = memory::Variant<0,_SpecCheckMin>;
 using SpecTask = memory::Variant<1,_SpecTask>;
-using SpecAction = memory::Variant<2,_SpecAction>;
 using SpecTaskSet = memory::Variant<3,_SpecTaskSet>;
 using Spec = memory::Coprod<SpecCheckMin,SpecTask,SpecAction,SpecTaskSet>;
 template<typename FCheckMin, typename FTask, typename FAction, typename FTaskSet> auto spec_switch(
@@ -24,7 +21,6 @@ template<typename FCheckMin, typename FTask, typename FAction, typename FTaskSet
   switch(spec.type()) {
   case SpecCheckMin::ID: return fcheckmin(SpecCheckMin(spec));
   case SpecTask::ID: return ftask(SpecTask(spec));
-  case SpecAction::ID: return faction(SpecAction(spec));
   case SpecTaskSet::ID: return ftaskset(SpecTaskSet(spec));
   default: error("unmatched case");
   }
@@ -32,7 +28,7 @@ template<typename FCheckMin, typename FTask, typename FAction, typename FTaskSet
 
 using Cont = memory::List<Spec>;
 template<typename Div> void spec_run(memory::Alloc &A, SearchState &state, Spec spec, Div diverge, const Cont cont) {
-  static_assert(memory::has_sig<Div,void(SearchState::Save,Cont)>());
+  static_assert(memory::has_sig<Div,void(Cont)>());
   spec_switch(spec,
     [&](SpecCheckMin scm){
       if(state.nodes_used<scm->min) return;
@@ -44,6 +40,14 @@ template<typename Div> void spec_run(memory::Alloc &A, SearchState &state, Spec 
       if(st->min>0) c.push(A,Spec(SpecCheckMin::alloc(A,[&](_SpecCheckMin &scm){
         scm.min = state.nodes_used+st->min;
       })));
+      auto d = [&](memory::function<memory::Maybe<TaskSet>(void)> f) {
+        
+      }
+      task_switch(st->task,
+        [&](StartFrame f){ f->run(A,d); },
+        [&](WeakFrame f){ f->run(A,d); }
+      );
+          
       auto ss = state.save();
       task_iterate_actions(A,state,st->max,st->task,[&](Action a){
         diverge(ss,c.add(A,Spec(SpecAction::alloc(A,[&](_SpecAction &sa){
@@ -52,14 +56,6 @@ template<typename Div> void spec_run(memory::Alloc &A, SearchState &state, Spec 
           sa.max = st->max;
         }))));
       });
-    },
-    [&](SpecAction sa){
-      TaskSet ts = task_execute_action(A,state,sa->max,sa->task,sa->action);
-      if(state.nodes_used>sa->max) return;
-      diverge(state.save(),cont.add(A,Spec(SpecTaskSet::alloc(A,[&](_SpecTaskSet &sts){
-        sts.task_set = ts;
-        sts.max = sa->max;
-      }))));
     },
     [&](SpecTaskSet sts){
       auto ss = state.save();

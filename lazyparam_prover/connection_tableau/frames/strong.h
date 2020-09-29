@@ -1,30 +1,27 @@
 #ifndef CONNECTION_TABLEAU_FRAMES_STRONG_H_
 #define CONNECTION_TABLEAU_FRAMES_STRONG_H_
 
-INL static memory::Maybe<TaskSet> strong(
-    memory::Alloc &A, SearchState *state, Branch branch, DerAndClause dcla, ssize_t strong_id, size_t size_limit) {
-  STATE_FRAME(A,state,"strong(%,%)",show(dcla),strong_id);
-  state->stats.strong_steps++;
-  auto mcla = state->allocate(A,dcla);
-  if(!mcla) return memory::nothing();
+template<typename DState> INL static void strong(DState *d, Branch branch, DerAndClause dcla, ssize_t strong_id) {
+  STATE_FRAME(d->A,d->state,"strong(%,%)",show(dcla),strong_id);
+  d->state->stats.strong_steps++;
+  auto mcla = d->state->allocate(d->A,dcla);
+  if(!mcla) return; 
   auto cla = mcla.get();
-  if(strong_id>=0) if(!state->val.unify(A,branch.false_.head(),cla.atom(strong_id))) return memory::nothing();
+  if(strong_id>=0) if(!d->state->val.unify(d->A,branch.false_.head(),cla.atom(strong_id))) return;
 
   memory::List<Atom> todo;
-  for(ssize_t i=cla.atom_count(); i--;) if(i!=strong_id) todo.push(A,cla.atom(i));
-  auto matoms = strong_resolution(A,state,todo,size_limit);
-  if(!matoms) return memory::nothing();
- 
-  TaskSet ts;
+  for(ssize_t i=cla.atom_count(); i--;) if(i!=strong_id) todo.push(d->A,cla.atom(i));
+  auto matoms = strong_resolution(d->A,d->state,todo,d->size_limit);
+  if(!matoms) return;
+
   for(auto atoms = matoms.get(); !atoms.empty(); atoms = atoms.tail()) {
-    auto b = WeakFrame::Builder(A);
-    b->branch = branch;
-    b->branch.false_.push(A,atoms.head());
-    branch.true_.push(A,atoms.head());
-    ts.push(A,Task(b.build()));
+    auto w = _WeakFrame{};
+    w.branch = branch;
+    w.branch.false_.push(d->A,atoms.head());
+    branch.true_.push(d->A,atoms.head());
+    d->and_([w](DState *d)INLL{ w.run(d); });
   }
-  STATE_LOG(A,state,"ts.size() = %",ts.size());
-  return just(ts);
+  d->done(Features{.depth=branch.false_.size()+1});
 }
 
 INL static memory::Maybe<memory::List<Atom>> strong_resolution(memory::Alloc &A, SearchState *state, memory::List<Atom> todo, size_t size_limit) { FRAME("strong_resolution()");

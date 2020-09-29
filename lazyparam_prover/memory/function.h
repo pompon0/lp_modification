@@ -21,14 +21,15 @@ template<typename Sig> struct function;
 template<typename Ret, typename ...Args> struct function<Ret(Args...)> {
   template<typename F> explicit function(memory::Alloc &A, const F &f) {
     static_assert(has_sig<F,Ret(Args...)>());
-    call = new(A.alloc_bytes(sizeof(Call<F>)))Call<F>{f};
+    call = new(A.alloc_bytes(sizeof(Call<F>)))Call<F>(f);
   };
   INL Ret operator()(Args ...args) const { return (*call)(args...); }
 private:
   struct BaseCall { virtual Ret operator()(Args...) const = 0; };
   template<typename F> struct Call : BaseCall {
+    Call(const F &_f) : f(_f) {}
     F f;
-    Ret operator()(Args ...args) const { return f(args...); }
+    Ret operator()(Args ...args) const { FRAME("call sizeof=%",sizeof(F)); return f(args...); }
   };
   const BaseCall *call;
 };

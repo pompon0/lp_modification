@@ -2,11 +2,10 @@
 #define CONNECTION_TABLEAU_TABLEAU_H_
 
 #include "lazyparam_prover/connection_tableau/cont.h"
-//#include "lazyparam_prover/connection_tableau/balanced.h"
+#include "lazyparam_prover/connection_tableau/balanced.h"
 
 namespace tableau::connection_tableau {
 
-//TODO: impose the depth limit
 struct Div {
   using Task = memory::function<void(Div*)>;
   using Cont = memory::List<Task>;
@@ -52,8 +51,6 @@ struct Div {
 // Search takes alloc as an argument to be able to return result in its memory.
 INL alt::SearchResult search(const Ctx &ctx, memory::Alloc &A, SearchState &state, size_t depth_limit) { FRAME("connection_tableau::search()");
   SCOPE("connection_tableau::search");
-  enum { SIZE_LIMIT = 100000 };
-
   Div d(A,&state,depth_limit,[](Div *d){ start_task(d); });
   size_t steps = 0;
   for(; d.saves.size(); steps++) {
@@ -68,7 +65,7 @@ INL alt::SearchResult search(const Ctx &ctx, memory::Alloc &A, SearchState &stat
 static ProverOutput prove(const Ctx &ctx, memory::Alloc &A, const ClauseIndex &cla_index, const FunOrd &fun_ord, size_t limit) { FRAME("prove()");
   SCOPE("prove");
   SearchState s(cla_index,fun_ord);
-  auto res = search(ctx,A,s,limit);
+  auto res = balanced::search(ctx,A,s,limit);
   s.stats.val = s.val.stats;
   DEBUG_ONLY(
     if(res.found) {

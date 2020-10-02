@@ -140,7 +140,7 @@ public:
       auto c1 = val.allocate(_c1).derived();
       auto s2 = val.save(); 
       for(size_t i1=0; i1<c1.atom_count(); ++i1) {
-        DEBUG info("[%] % ::>",c1.atom(i1).id(),show(c1.atom(i1)));
+        //DEBUG info("[%] % ::>",c1.atom(i1).id(),show(c1.atom(i1)));
         auto h = Index::atom_hash(c1.atom(i1));
         if(preindex[h^1].size()>100) {
           map[c1.atom(i1).id()] = h^1;
@@ -158,11 +158,11 @@ public:
           }
         }
 
-        DEBUG for(auto x : sets[map[c1.atom(i1).id()]]) info("\t[%] %",x.atom_id,show(and_clauses[x.clause_id]));
+        //DEBUG for(auto x : sets[map[c1.atom(i1).id()]]) info("\t[%] %",x.atom_id,show(and_clauses[x.clause_id]));
       }
     }
 
-    DEBUG {
+    /*DEBUG {
       for(const auto &v : sets) {
         size_t cost = 0;
         for(auto a : v) {
@@ -170,7 +170,7 @@ public:
           cost = and_clauses[a.clause_id].cost();
         }
       }
-    }
+    }*/
   }
 };
 

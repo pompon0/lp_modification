@@ -8,6 +8,8 @@
 #include "lazyparam_prover/connection_tableau/tableau.h"
 #include "tool/bin/wrapper.h"
 
+// TODO: apart running ML to choose the right alternative to find the answer,
+//   run ML to minimize the search space by an appropriate choice of task order
 namespace controller {
 
 class Problem {

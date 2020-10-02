@@ -13,6 +13,7 @@ struct Proxy;
 // [d] CheckRange { min } -> []
 using Task = memory::function<void(Proxy*)>;
 using TaskSet = memory::List<Task>;
+// TODO: indicate that min in checkmin is absolute, while in task it is relative
 struct _SpecCheckMin { size_t min; };
 struct _SpecTask { Task task; size_t min,max; };
 struct _SpecTaskSet { TaskSet task_set; size_t max; };
@@ -35,6 +36,7 @@ struct Div {
   template<typename F> INL Div(memory::Alloc &_A, SearchState *_state, size_t size_limit, F f)
       : A(_A), state(_state) {
     save(Cont(A,Spec(SpecTask::alloc(A,[&](_SpecTask &st){
+      st.min = 0;
       st.max = size_limit;
       st.task = Task(A,f);
     }))));
@@ -61,6 +63,11 @@ struct Div {
   INL bool step();
 };
 
+//TODO: add runtime checks in proxy
+// - that after and_(), done_() is required
+// - that done() can be called only once
+// - that (and_()+done) and or_() exclude each other
+// - that search state can be updated only until done()/or() is called
 struct Proxy {
   memory::Alloc &A;
   SearchState *state;
@@ -134,7 +141,7 @@ INL bool Div::step() {
       if(!tail.empty() && head_budget<budget) save(s.cont.tail()
         .add(A,Spec(SpecTask::alloc(A,[&](_SpecTask &st){
           st.task = head;
-          st.min = state->nodes_used+head_budget+1;
+          st.min = head_budget+1;
           st.max = sts->max;
         })))
         .add(A,Spec(SpecTaskSet::alloc(A,[&](_SpecTaskSet &sts2){
@@ -148,6 +155,7 @@ INL bool Div::step() {
 }
 
 // Search takes alloc as an argument to be able to return result in its memory.
+// TODO: generalize search and test it to find random test trees - to make sure that is doesn't skip any part of search space.
 alt::SearchResult search(const Ctx &ctx, memory::Alloc &A, SearchState &state, size_t size_limit) { FRAME("connection_tableau::balanced_search()");
   SCOPE("connection_tableau::balanced_search");
   Div d(A,&state,size_limit,[](Proxy *p){ start_task(p); });

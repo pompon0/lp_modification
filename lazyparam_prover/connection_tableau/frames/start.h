@@ -6,10 +6,12 @@
 struct _StartFrame {
   template<typename DState> INL void run(DState *d) const {
     STATE_FRAME(d->A,d->state,"start");
-    //TODO make it divergable
-    while(auto dcla = d->state->cla_index.next_starting_clause()) {
-      d->or_(Features{.depth=0},[dcla](DState *d)INLL{ return strong(d,Branch(),dcla.get(),-1); });
-    }
+    //TODO: next_starting_clause() has a side effect on state
+    // make it more explicit.
+    auto dcla = d->state->cla_index.next_starting_clause();
+    if(!dcla) return;
+    d->or_(Features{.depth=0},[dcla](DState *d)INLL{ strong(d,Branch(),dcla.get(),-1); });
+    d->or_(Features{.depth=0},[](DState *d)INLL{ _StartFrame{}.run(d); });
   }
 };
 

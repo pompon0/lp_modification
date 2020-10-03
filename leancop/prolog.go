@@ -27,7 +27,7 @@ func makeCmd(ctx context.Context, strategy string, inputPath string) *exec.Cmd {
     "-t",
     "halt",
     "--no-debug",
-    "--stack_limit=360M",
+    "--stack_limit=1G",
     "--quiet",
     "-g",
     fmt.Sprintf(program,utils.Runfile(leancopMainPath),inputPath,strategy),

@@ -25,11 +25,12 @@ const statusCounterSatisfiable = "CounterSatisfiable"
 const refutationNotFound = "% Refutation not found"
 
 func Prove(ctx context.Context, tptpFOFProblem []byte) (*spb.ProverOutput,error) {
+  const memLimitBytes = 2000000000 // 2GB
   var inBuf,outBuf bytes.Buffer
   if _,err := inBuf.Write(tptpFOFProblem); err!=nil {
     return nil,fmt.Errorf("inBuf.Write(): %v",err)
   }
-  cmd := exec.CommandContext(ctx,
+  cmd := exec.Command(
     utils.Runfile(vampireBinPath),
     "--statistics","none",
     "--proof","off",
@@ -37,7 +38,7 @@ func Prove(ctx context.Context, tptpFOFProblem []byte) (*spb.ProverOutput,error)
   cmd.Stdin = &inBuf
   cmd.Stdout = &outBuf
   cmd.Stderr = os.Stderr
-  if err := cmd.Run(); err!=nil {
+  if err := utils.RunWithMemLimit(ctx,cmd,memLimitBytes); err!=nil {
     if ctx.Err()==context.DeadlineExceeded {
       return &spb.ProverOutput{Solved:false},nil
     }

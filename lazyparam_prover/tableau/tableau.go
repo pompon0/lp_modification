@@ -64,7 +64,7 @@ func Tableau(ctx context.Context, cnfProblem *tpb.File, funOrd *spb.FunOrd, stre
   }
   gracefulExitTimeout := 200*time.Millisecond
   timeout -= gracefulExitTimeout
-  cmd := exec.CommandContext(ctx,utils.Runfile(tableau_bin_path),
+  cmd := exec.Command(utils.Runfile(tableau_bin_path),
     fmt.Sprintf("--timeout=%v",timeout),
     fmt.Sprintf("--trans=%v",trans),
     fmt.Sprintf("--method=%v",method),
@@ -78,7 +78,7 @@ func Tableau(ctx context.Context, cnfProblem *tpb.File, funOrd *spb.FunOrd, stre
     cmd.Stderr = &errBuf
   }
   const memLimitBytes = 2*1000*1000*1000
-  if err := utils.RunWithMemLimit(cmd,memLimitBytes); err!=nil {
+  if err := utils.RunWithMemLimit(ctx,cmd,memLimitBytes); err!=nil {
     status := err.(*exec.ExitError).Sys().(syscall.WaitStatus)
     if status.Signaled() && status.Signal()==syscall.SIGKILL {
       return &spb.ProverOutput{Solved:false,Killed:true},nil

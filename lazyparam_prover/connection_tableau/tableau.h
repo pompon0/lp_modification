@@ -63,9 +63,9 @@ struct Div {
 };
 
 // Search takes alloc as an argument to be able to return result in its memory.
-INL alt::SearchResult search(const Ctx &ctx, memory::Alloc &A, SearchState &state, size_t depth_limit) { FRAME("connection_tableau::search()");
+INL alt::SearchResult search(const Ctx &ctx, memory::Alloc &A, SearchState &state, bool cut, size_t depth_limit) { FRAME("connection_tableau::search()");
   SCOPE("connection_tableau::search");
-  Div d(A,&state,false,depth_limit,[](Div *d)INLL{ start_task(d); });
+  Div d(A,&state,cut,depth_limit,[](Div *d)INLL{ start_task(d); });
   size_t steps = 0;
   for(; d.saves.size(); steps++) {
     if(d.step()) return {1,steps};
@@ -76,37 +76,6 @@ INL alt::SearchResult search(const Ctx &ctx, memory::Alloc &A, SearchState &stat
   return {0,steps};
 }
 
-INL ProverOutput prove_(
-  const Ctx &ctx, 
-  memory::Alloc &A,
-  const ClauseIndex &cla_index,
-  const FunOrd &fun_ord,
-  size_t limit
-) { FRAME("prove()");
-  SCOPE("prove");
-  SearchState s(cla_index,fun_ord);
-  auto As = A.save();
-  auto res = balanced::search(ctx,A,s,false,limit);
-  s.stats.val = s.val.stats;
-  if(!res.found) A.restore(As);
-  DEBUG_ONLY(
-    if(res.found) {
-      str trace;
-      size_t i = 0;
-      for(auto l=s.trace; !l.empty(); l=l.tail()) {
-        trace = util::fmt("[%] %\n",i++,l.head()) + trace;
-      }
-      info("TRACE = \n%",trace);
-    }
-  )
-  return {
-    res.cont_count,
-    limit,
-    s.val.get_valuation(),
-    res.found ? s.get_proof(A) : 0,
-    s.stats,
-  };
-}
 template<typename SEARCH> INL ProverOutput prove(
   const Ctx &ctx,
   memory::Alloc &A,
@@ -121,7 +90,7 @@ template<typename SEARCH> INL ProverOutput prove(
   //info("ClauseIndex begin");
   //info("ClauseIndex end");
   for(;!ctx.done();) {
-    limit++; // avoid incrementing limit before context check
+    if(++limit>limit_max) break; // avoid incrementing limit before context check
     DEBUG info("limit = %",limit);
     ProverOutput out = search(ctx,A,limit);
     out.cont_count += cont_count;
@@ -151,7 +120,28 @@ static ProverOutput prove_loop(
 ) {
   ClauseIndex cla_index(form);
   return prove(ctx,A,1000000,[&](const Ctx &ctx, memory::Alloc &A, size_t limit)INLL{
-    return prove_(ctx,A,cla_index,fun_ord,limit);
+    SearchState s(cla_index,fun_ord);
+    auto As = A.save();
+    auto res = balanced::search(ctx,A,s,false,limit);
+    s.stats.val = s.val.stats;
+    if(!res.found) A.restore(As);
+    DEBUG_ONLY(
+      if(res.found) {
+        str trace;
+        size_t i = 0;
+        for(auto l=s.trace; !l.empty(); l=l.tail()) {
+          trace = util::fmt("[%] %\n",i++,l.head()) + trace;
+        }
+        info("TRACE = \n%",trace);
+      }
+    )
+    return ProverOutput {
+      res.cont_count,
+      limit,
+      s.val.get_valuation(),
+      res.found ? s.get_proof(A) : 0,
+      s.stats,
+    };
   });
 }
 } // namespace connection_tableau::tableau

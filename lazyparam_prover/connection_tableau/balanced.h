@@ -172,7 +172,7 @@ INL bool Div::step() {
 // TODO: generalize search and test it to find random test trees - to make sure that is doesn't skip any part of search space.
 alt::SearchResult search(const Ctx &ctx, memory::Alloc &A, SearchState &state, bool cut, size_t size_limit) { FRAME("connection_tableau::balanced_search()");
   SCOPE("connection_tableau::balanced_search");
-  Div d(A,&state,cut,size_limit,[](Proxy *p){ start_task(p); });
+  Div d(A,&state,cut,size_limit,[](Proxy *p)INLL{ start_task(p); });
   size_t steps = 0;
   for(; d.saves.size(); steps++) {
     if(d.step()) return {1,steps};

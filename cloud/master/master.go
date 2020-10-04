@@ -41,6 +41,7 @@ var maxInFlight = flag.Int("max_in_flight",10,"")
 var problemLimit = flag.Int("problem_limit",-1,"number of problems to solve (-1 for all problems)")
 var timeout = flag.Duration("timeout",16*time.Second,"timeout per problem")
 
+var validateProof = flag.Bool("validate_proof",true,"")
 var equalityOnly = flag.Bool("equality_only",false,"")
 
 const (
@@ -195,6 +196,7 @@ func run(ctx context.Context) error {
           Prover: *prover,
           TptpProblem: tptp,
           Timeout: timeoutProto,
+          ValidateProof: *validateProof,
         })
         // log.Printf("latency = %v",time.Now().Sub(t))
         atomic.AddInt64(&inFlight,-1)

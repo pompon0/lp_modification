@@ -55,7 +55,7 @@ func Prove(ctx context.Context, tptpFOFProblem []byte) (*spb.ProverOutput,error)
       case statusUnsatisfiable:
       case statusContradictoryAxioms:
       case statusOOM:
-        return &spb.ProverOutput{Oom:true},nil
+        return &spb.ProverOutput{Solved:false,Oom:true},nil
       default: return nil,fmt.Errorf("unknown status %q",status)
       }
       return &spb.ProverOutput{Solved:true},nil

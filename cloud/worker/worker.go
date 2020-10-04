@@ -77,7 +77,7 @@ func (s *server) Prove(ctx context.Context, req *pb.Req) (*pb.Resp,error) {
   }
   if err!=nil { return nil,status.Newf(codes.Internal,"prove(): %v",err).Err() }
   c.Duration = ptypes.DurationProto(time.Since(t0))
-  if c.Output.Proof!=nil {
+  if req.ValidateProof && c.Output.Proof!=nil {
     if _,err := tool.ValidateProof(ctx,&spb.CNF{Problem:c.Output.CnfProblem,Proof:c.Output.Proof}); err!=nil {
       return nil,status.Newf(codes.Internal,"tool.ValidateProof(): %v",err).Err()
     }

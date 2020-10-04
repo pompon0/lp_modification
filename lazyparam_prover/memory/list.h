@@ -31,6 +31,9 @@ public:
   INL void push(memory::Alloc &a, E h){ *this = List(a,h,*this); }
   INL [[nodiscard]] List add(memory::Alloc &a, E h) const { return List(a,h,*this); }
   size_t size() const { return empty() ? 0 : tail().size()+1; }
+
+  //TODO: consider some kind of hash consing instead.
+  INL bool pointer_equal(List l){ return ptr==l.ptr; }
 };
 
 }  // namespace memory

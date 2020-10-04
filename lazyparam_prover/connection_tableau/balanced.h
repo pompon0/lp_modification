@@ -32,6 +32,8 @@ template<typename FCheckMin, typename FTask, typename FTaskSet> auto spec_switch
   }
 }
 
+enum { CUT = true };
+
 struct Div {
   template<typename F> INL Div(memory::Alloc &_A, SearchState *_state, size_t size_limit, F f)
       : A(_A), state(_state) {
@@ -45,6 +47,19 @@ struct Div {
   SearchState *state;
 
   INL void save(Cont cont) {
+    if(CUT) {
+      //TODO: add comp(7) phase: restart search without cut
+      //TODO: can be optimized
+      size_t s = cont.size();
+      while(saves.size()) {
+        auto c = saves.back().cont;
+        auto sc = c.size();
+        if(sc<s) break;
+        while(sc-->s) c = c.tail();
+        if(!cont.pointer_equal(c)) break;
+        saves.pop_back();
+      }
+    }
     saves.push_back({
       .cont = cont,
       .ss = state->save(),

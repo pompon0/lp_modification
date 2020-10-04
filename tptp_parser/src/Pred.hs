@@ -6,6 +6,11 @@
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE ViewPatterns #-}
+
+{-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE FlexibleInstances #-}
 module Pred where
 
 import Ctx
@@ -20,18 +25,21 @@ import Data.Maybe(fromJust)
 import Text.Printf
 
 data Term' = TVar VarName | TFun FunName [Term]
-data Pred' = PEq Term Term | PCustom PredName [Term]
+data Pred' = Pred { _pred'name :: PredName, _pred'args :: [Term] }
 
 type Term = WithHash Term'
 type Pred = WithHash Pred'
+makeFieldsNoPrefix ''Pred'
+
+instance HasPred'name Pred PredName where { pred'name = wh.pred'name }
+instance HasPred'args Pred [Term] where { pred'args = wh.pred'args }
 
 instance HashSeq Term' where
   hashSeq (TVar vn) = [unit 0, hash (wrap vn)]
-  hashSeq (TFun fn args) = unit 1 : hash (wrap fn) : map hash args
+  hashSeq (TFun fn args) = unit 1 : hash (wrap fn) : (hash <$> args)
 
 instance HashSeq Pred' where
-  hashSeq (PEq a b) = [unit 0,hash a,hash b]
-  hashSeq (PCustom pn args) = unit 1 : hash (wrap pn) : map hash args
+  hashSeq (Pred pn args) = hash (wrap pn) : (hash <$> args)
 
 term'subst :: Traversal Term Term VarName Term
 term'subst g (unwrap -> TVar vn) = g vn
@@ -46,27 +54,6 @@ term'varName'rec = wh.(\g t -> case t of {
 term'subterm :: Fold Term Term
 term'subterm g t@(unwrap -> TFun fn args) = (traverse.term'subterm) g args *> g t *> pure t
 term'subterm g t@(unwrap -> TVar _) = g t *> pure t
-
-data SPred = SPred { _spred'name :: PredName, _spred'args :: [Term] }
-makeLenses ''SPred
-
-makeSPred :: Pred -> SPred
-makeSPred (unwrap -> PEq l r) = SPred eqPredName [l,r]
-makeSPred (unwrap -> PCustom pn args) = SPred pn args
-
-makePred :: SPred -> Pred
-makePred (SPred pn args) = wrap $ case args of
-  [l,r] | pn == eqPredName -> PEq l r
-  _ -> PCustom pn args 
-
-pred'spred :: Iso' Pred SPred 
-pred'spred = dimap makeSPred (fmap makePred)
-
-pred'name :: Lens' Pred PredName
-pred'name = pred'spred.spred'name
-
-pred'args :: Lens' Pred [Term]
-pred'args = pred'spred.spred'args
 
 instance Show Term where
   show (unwrap -> TVar vn) = show vn
@@ -84,9 +71,9 @@ emptyValuation = Map.empty
 eval :: FlatValuation -> VarName -> Term
 eval val vn = val^.at vn.non (error "var not found")
 
-ground :: Term -> Term
-ground (unwrap -> TVar _) = wrap $ TFun extraConstName []
-ground (unwrap -> TFun f args) = wrap $ TFun f (map ground args)
+--ground :: Term -> Term
+--ground (unwrap -> TVar _) = wrap $ TFun extraConstName []
+--ground (unwrap -> TFun f args) = wrap $ TFun f (map ground args)
 
 term'coq :: Term -> Coq.Expr
 term'coq (unwrap -> TVar vn) = Coq.Value (show vn)

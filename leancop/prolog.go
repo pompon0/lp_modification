@@ -26,11 +26,9 @@ func makeCmd(ctx context.Context, strategy string, inputPath string) *exec.Cmd {
   swiplArgs := []string {
     "-t",
     "halt",
-    "-nodebug",
-    "-L120M",
-    "-G120M",
-    "-T100M",
-    "-q",
+    "--no-debug",
+    "--stack_limit=1G",
+    "--quiet",
     "-g",
     fmt.Sprintf(program,utils.Runfile(leancopMainPath),inputPath,strategy),
   }
@@ -38,6 +36,14 @@ func makeCmd(ctx context.Context, strategy string, inputPath string) *exec.Cmd {
 }
 
 func PrologProve(ctx context.Context, tptpFOFProblem []byte) (*spb.ProverOutput,error) {
+  return prologProveWithSchedule(ctx,tptpFOFProblem,schedule)
+}
+
+func PrologProveCutComp7(ctx context.Context, tptpFOFProblem []byte) (*spb.ProverOutput,error) {
+  return prologProveWithSchedule(ctx,tptpFOFProblem,cutComp7)
+}
+
+func prologProveWithSchedule(ctx context.Context, tptpFOFProblem []byte, schedule []Strategy) (*spb.ProverOutput,error) {
   tmp,cleanup,err := tool.WriteTmp(tptpFOFProblem)
   if err!=nil { return nil,fmt.Errorf("WriteTmp(): %v",err) }
   defer cleanup()
@@ -89,7 +95,16 @@ func PrologProve(ctx context.Context, tptpFOFProblem []byte) (*spb.ProverOutput,
   return &spb.ProverOutput{Solved:false},nil
 }
 
-var schedule = []struct{ strategy string; timeout time.Duration }{
+type Strategy struct {
+  strategy string
+  timeout time.Duration
+}
+
+var cutComp7 = []Strategy{
+  {"[cut,comp(7)]",10*time.Second},
+}
+
+var schedule = []Strategy{
   {"[cut,comp(7)]",10*time.Second},
   {"[conj,def,cut]",15*time.Second},
   {"[nodef,scut,cut]",15*time.Second},

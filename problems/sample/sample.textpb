@@ -1,0 +1,74 @@
+problems {
+  name: "trivial"
+  tptp: "fof(trivial, conjecture, ($true)).\n"
+}
+
+problems {
+  name: "simple"
+  tptp: "fof(simple, conjecture, (?[X]:(![Y]: (p(X) => p(Y))))).\n"
+}
+
+problems {
+  name: "eqAxiom1"
+  tptp: "fof(eqAxiom1, conjecture, ((a1=a2) & (b1=b2) & (c1=c2)) => (f(a1,b1,c1)=f(a2,b2,c2))).\n"
+}
+
+problems {
+  name: "eqAxiom2"
+  tptp: "fof(eqAxiom2, conjecture, (a1=a2) => (f(a1,b1,c1)=f(a2,b1,c1))).\n"
+}
+
+problems {
+  name: "eqAxiom3"
+  tptp: "fof(eqAxiom3, conjecture, ((a=b) & (b=c) & (c=d)) => (a=d)).\n"
+}
+
+problems {
+  name: "eqAxiom4"
+  tptp: "fof(eqAxiom4, conjecture, ((a=b)  => (b=a))).\n"
+}
+
+problems {
+  name: "barber"
+  tptp: "fof(barber, conjecture, ~(?[B]:(![X]:(shaves(B,X) <=> ~shaves(X,X))))).\n"
+}
+
+problems {
+  name: "pelletier20"
+  tptp:
+    "fof(a1, axiom, (![X]: (![Y]: (?[Z]: (![W]: ((p(X) & q(Y)) => (r(Z) & u(W)))))))).\n"
+    "fof(c, conjecture, (?[X]: (?[Y]: ((p(X) & q(Y)) => (?[Z]: r(Z)))))).\n"
+}
+
+problems {
+  name: "pelletier24"
+  tptp:
+    "fof(a1, axiom, ~(?[X] : (u(X) & q(X)))).\n"
+    "fof(a2, axiom, (![X] : (p(X) => (q(X) | r(X))))).\n"
+    "fof(a3, axiom, ~(?[X] : (p(X) => (?[X]: q(X))))).\n"
+    "fof(a4, axiom, (![X] : ((q(X) & r(X)) => u(X)))).\n"
+    "fof(c, conjecture, (?[X] : (p(X) & r(X)))).\n"
+}
+
+problems {
+  name: "l143_zfmisc_1"
+  tptp:
+    "fof(l143_zfmisc_1, conjecture,  (! [A] :  (! [B] :  (! [C] :  ~ ( ( ~ (r2_hidden(A, C))  &  ( ~ (r2_hidden(B, C))  &  ~ (r1_xboole_0(k2_tarski(A, B), C)) ) ) ) ) ) ) ).\n"
+    "fof(t51_zfmisc_1, axiom,  (! [A] :  (! [B] :  (! [C] :  ~ ( ( ~ (r2_hidden(A, B))  &  ( ~ (r2_hidden(C, B))  &  ~ (r1_xboole_0(k2_tarski(A, C), B)) ) ) ) ) ) ) ).\n"
+}
+
+problems {
+  name: "l40_tex_2_reduced"
+  tptp:
+    "fof(a0, axiom, (d=c)).\n"
+    "fof(a1, axiom, (~q)).\n"
+    "fof(a2, axiom, (d=c <=> q)).\n"
+}
+
+problems {
+  name: "t33_zfmisc_1_reduced"
+  tptp:
+    "fof(a0, conjecture,  (p(y) => (x=c | d=y))).\n"
+    "fof(a1, axiom,       (p(y) => (x=c | d=y))).\n"
+}
+

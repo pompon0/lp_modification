@@ -2,120 +2,74 @@
 #define PARSE_H_
 
 #include "tptp.pb.h"
+#include "solutions.pb.h"
 #include "google/protobuf/io/coded_stream.h"
-#include "lazyparam_prover/pred.h"
+#include "lazyparam_prover/syntax/term.h"
+#include "lazyparam_prover/syntax/atom.h"
+#include "lazyparam_prover/syntax/clause.h"
+#include "lazyparam_prover/syntax/show.h"
 #include "lazyparam_prover/derived.h"
+#include "lazyparam_prover/kbo.h"
+#include "lazyparam_prover/ground.h"
+#include "lazyparam_prover/node.h"
 
 namespace tableau {
 
-template<typename T> struct IntDict {
-  size_t operator()(const T &v) {
-    if(!m.count(v)){ auto x = m.size(); m[v] = x; }
-    return m[v];
-  }
-  void clear(){ m.clear(); }
-  size_t size(){ return m.size(); }
-
-  std::map<size_t,T> rev() const {
-    std::map<size_t,T> rm;
-    for(const auto &p : m) rm[p.second] = p.first;
-    return rm;
-  }
-
-private:
-  std::map<T,size_t> m;
-};
-
 struct ParseCtx {
-  IntDict<str> pred_names;
-  IntDict<str> fun_names;
-  IntDict<str> var_names;
-
-  Term parse_term(const tptp::Term &t) {
-    FRAME("parse_term(%)",t.DebugString());
-    switch(t.type()){
-      case tptp::Term::VAR: {
-        return Term(Var::make(var_names(t.name())));
-      }
-      case tptp::Term::EXP: {
-        size_t ac = t.args().size();
-        Fun::Builder b(fun_names(t.name()),ac);
-        for(size_t i=0; i<ac; ++i)
-          b.set_arg(i,parse_term(t.args()[i]));
+  Term parse_term(memory::Alloc &A, NodeInputStream &s) {
+    FRAME("parse_term()");
+    auto n = s.node();
+    switch(n.type()){
+      case tptp::TERM_VAR: return Term(Var(A,n.id()));
+      case tptp::TERM_FUN: {
+        size_t ac = n.arity();
+        Fun::Builder b(A,n.id(),ac);
+        for(size_t i=0; i<ac; ++i) b.set_arg(i,parse_term(A,s));
         return Term(b.build());
       }
       default:
-        error("unexpected t.type() = %",t.type());
+        error("unexpected n.type() = %",n.type());
     }
   }
 
-  Atom parse_atom(const tptp::Formula &f) {
-    FRAME("parse_atom(%)",f.DebugString());
-    switch(f.formula_case()) {
-    case tptp::Formula::kOp: {
-      if(f.op().type()!=tptp::Formula::Operator::NEG)
-        error("f.op().type() = %, want %",f.op().type(),tptp::Formula::Operator::NEG);
-      if(f.op().args().size()!=1)
-        error("f.op.args().size() = %, want %",f.op().args().size(),1);
-      return parse_atom(f.op().args()[0]).neg();
+  Atom parse_atom(memory::Alloc &A, NodeInputStream &s) {
+    FRAME("parse_atom()");
+    auto n = s.node();
+    switch(n.type()) {
+    case tptp::FORM_NEG: return parse_atom(A,s).neg();
+    case tptp::PRED_EQ: {
+      Term l = parse_term(A,s);
+      Term r = parse_term(A,s);
+      return Atom::eq(A,true,l,r);
     }
-    case tptp::Formula::kPred: {
-      switch(f.pred().type()) {
-      case tptp::Formula::Pred::CUSTOM: {
-        size_t ac = f.pred().args().size();
-        Atom::Builder b(true,pred_names(f.pred().name()),ac);
-        for(size_t i=0; i<ac; ++i)
-          b.set_arg(i,parse_term(f.pred().args()[i]));
-        return b.build();
-      }
-      case tptp::Formula::Pred::EQ: {
-        if(f.pred().args().size()!=2)
-          error("f.pred().args().size() = %, want %",f.pred().args().size(),2);
-        return Atom::eq(true, parse_term(f.pred().args()[0]), parse_term(f.pred().args()[1]));
-      }
-      default:
-        error("unexpected f.pred().type() = %",f.pred().type());
-      }
+    case tptp::PRED: {
+      size_t ac = n.arity();
+      Atom::Builder b(A,true,n.id(),ac,false);
+      for(size_t i=0; i<ac; ++i) b.set_arg(i,parse_term(A,s));
+      return b.build();
     }
     default:
-      error("unexpected f.formula_case() = %",f.formula_case());
+      error("unexpected n.type() = %",n.type());
     }
   }
 
-  OrClause parse_orClause(const tptp::Formula &f) {
-    FRAME("parse_orClause(%)",f.DebugString());
-    var_names.clear();
-    vec<Atom> atoms;
-    switch(f.formula_case()) {
-    case tptp::Formula::kOp: {
-      switch(f.op().type()) {
-        case tptp::Formula::Operator::OR: {
-          for(const auto &a : f.op().args())
-            atoms.push_back(parse_atom(a));
-          break;
-        }
-        case tptp::Formula::Operator::FALSE: break;
-        default: {
-          atoms.push_back(parse_atom(f));
-          break;
-        }
-      }
-      break;
+  OrClause parse_orClause(memory::Alloc &A, NodeInputStream &s) {
+    FRAME("parse_orClause(%)",show(s));
+    size_t arity = 0;
+    switch(s.node_peek().type()) {
+      case tptp::FORM_OR: { s.node(); arity = s.arity(); break; }
+      case tptp::FORM_FALSE: { s.node(); arity = 0; break; }
+      default: { arity = 1; break; }
     }
-    case tptp::Formula::kPred: {
-      atoms.push_back(parse_atom(f));
-      break;
-    }
-    default:
-      error("unexpected f.formula_case() = %",f.formula_case());
-    }
-    OrClause::Builder b(atoms.size(),var_names.size());
-    for(size_t i=0; i<atoms.size(); ++i) b.set_atom(i,atoms[i]);
-    return b.build();
+    AndClause::Builder b(A,arity);
+    for(size_t i=0; i<arity; ++i) b.set_atom(i,parse_atom(A,s).neg());
+    return b.build().neg();
   }
 
-  NotAndForm parse_notAndForm(const tptp::File &file) {
-    NotAndForm form;
+  OrForm parse_orForm(memory::Alloc &A, const tptp::File &file) {
+    OrForm form;
+    NodeIndex idx(file.nodes());
+    FRAME("parse_orForm() idx = %",show(idx));
     for(const tptp::Input &input : file.input()) {
       if(input.language()!=tptp::Input::CNF)
         error("input.language() = %, want CNF",input.language());
@@ -123,8 +77,9 @@ struct ParseCtx {
       case tptp::Input::AXIOM:
       case tptp::Input::PLAIN:
       case tptp::Input::NEGATED_CONJECTURE: {
-        OrClause cla = parse_orClause(input.formula());
-        form.or_clauses.push_back(DerOrClause(cla.atom_count()>1,cla));
+        NodeInputStream s(idx,input.formula());
+        OrClause cla = parse_orClause(A,s);
+        form.and_clauses.push_back(DerAndClause(A,cla.atom_count()>1,cla.neg()));
         break;
       }
       default:
@@ -132,85 +87,104 @@ struct ParseCtx {
       }
     }
     return form;
-  }
-
-  NotAndForm parse_notAndForm(const str &file_raw) { FRAME("parse_notAndForm()");
-    tptp::File file;
-    auto stream = new google::protobuf::io::CodedInputStream((const uint8_t*)(&file_raw[0]),file_raw.size());
-    stream->SetRecursionLimit(100000000);
-    if(!file.ParseFromCodedStream(stream)) {
-      error("failed to parse input");
-    }
-    return parse_notAndForm(file);
-  }
+  } 
 };
 
 struct ProtoCtx {
-  ProtoCtx(const ParseCtx &pc) : pred_names(pc.pred_names.rev()), fun_names(pc.fun_names.rev()) {
-    fun_names[Fun::EXTRA_CONST] = "c";
+  RevNodeIndex idx;
+  ProtoCtx(const RevNodeIndex &_idx) : idx(_idx) {
+    //idx.add_fun(Fun::EXTRA_CONST,0);
+    //idx.add_pred(Atom::EQ_TRANS_POS,2);
+    //idx.add_pred(Atom::EQ_TRANS_NEG,2);
+    //idx.add_pred(Atom::EQ_SYMM,2);
   }
-  std::map<size_t,str> pred_names;
-  std::map<size_t,str> fun_names;
 
-  tptp::Term proto_term(Term t) const { FRAME("proto_term()");
-    tptp::Term pt;
+  void proto_term(NodeStream &s, Term t) { FRAME("proto_term()");
     switch(t.type()) {
       case Term::VAR: {
-        pt.set_type(tptp::Term::VAR);
-        pt.set_name(show(t));
+        s.add(idx.add_var(Var(t).id()));
         break;
       }
       case Term::FUN: {
         Fun f(t);
-        pt.set_type(tptp::Term::EXP);
-        DEBUG if(!fun_names.count(f.fun())) error("pred_names.count(%) = 0",f.fun());
-        pt.set_name(fun_names.at(f.fun()));
-        for(size_t i=0; i<f.arg_count(); ++i)
-          *(pt.add_args()) = proto_term(f.arg(i));
+        s.add(idx.add_fun(f.fun(),f.arg_count(),""));
+        for(size_t i=0; i<f.arg_count(); ++i) proto_term(s,f.arg(i));
         break;
       }
     }
-    return pt;
   }
 
-  tptp::Formula proto_atom(Atom a) const { FRAME("proto_atom()");
-    tptp::Formula f;
-    //TODO: error if a.pred() not in pred_names
+  void proto_atom(NodeStream &s, Atom a) { FRAME("proto_atom()");
+    if(!a.sign()) s.add(idx.add_standard(tptp::FORM_NEG));
     if(a.pred()==Atom::EQ) {
-      f.mutable_pred()->set_type(tptp::Formula::Pred::EQ);
+      s.add(idx.add_standard(tptp::PRED_EQ));
     } else {
-      f.mutable_pred()->set_type(tptp::Formula::Pred::CUSTOM);
-      DEBUG if(!pred_names.count(a.pred())) error("pred_names.count(%) = 0",a.pred());
-      f.mutable_pred()->set_name(pred_names.at(a.pred()));
+      s.add(idx.add_pred(a.pred(),a.arg_count(),""));
     }
-    for(size_t i=0; i<a.arg_count(); ++i)
-      *(f.mutable_pred()->add_args()) = proto_term(a.arg(i));
-    if(!a.sign()) {
-      tptp::Formula nf;
-      nf.mutable_op()->set_type(tptp::Formula::Operator::NEG);
-      *(nf.mutable_op()->add_args()) = f;
-      return nf;
-    }
-    return f;
+    for(size_t i=0; i<a.arg_count(); ++i) proto_term(s,a.arg(i));
   }
 
-  tptp::Formula proto_orClause(const OrClause &cla) const { FRAME("proto_orClause()");
-    tptp::Formula f;
-    f.mutable_op()->set_type(tptp::Formula::Operator::OR);
-    for(size_t i=0; i<cla.atom_count(); ++i) *(f.mutable_op()->add_args()) = proto_atom(cla.atom(i));
-    return f;
+  void proto_orClause(NodeStream &s, OrClause cla) { FRAME("proto_orClause()");
+    s.add(idx.add_standard(tptp::FORM_OR));
+    s.add(cla.atom_count());
+    for(size_t i=0; i<cla.atom_count(); ++i) proto_atom(s,cla.atom(i));
   }
 
-  tptp::File proto_notAndForm(const NotAndForm &f) const { FRAME("proto_notAndForm()");
+  solutions::Derivation proto_derAndClause(memory::Alloc &A, const DerAndClause &cla, const Valuation &val) { FRAME("proto_derAndClause()");
+    solutions::Derivation d;
+    d.set_cost(cla.cost());
+    auto derived = d.mutable_derived();
+    derived->set_name("derived");
+    derived->set_role(tptp::Input::PLAIN);
+    derived->set_language(tptp::Input::CNF);
+    NodeStream s;
+    proto_orClause(s,ground(A,val.eval(A,cla.derived())).neg());
+    derived->mutable_formula()->Add(s.stream.begin(),s.stream.end());
+    for(size_t i=0; i<cla.source_count(); ++i) {
+      auto ps = d.add_sources();
+      auto pg = ps->mutable_ground();
+      pg->set_name("ground");
+      pg->set_role(tptp::Input::PLAIN);
+      pg->set_language(tptp::Input::CNF);
+      NodeStream gs;
+      proto_orClause(gs,ground(A,val.eval(A,cla.source(i))).neg());
+      pg->mutable_formula()->Add(gs.stream.begin(),gs.stream.end());
+      auto pss = ps->mutable_source();
+      NodeStream ss;
+      pss->set_name("source");
+      pss->set_role(tptp::Input::PLAIN);
+      pss->set_language(tptp::Input::CNF);
+      proto_orClause(ss,cla.source(i).neg());
+      pss->mutable_formula()->Add(ss.stream.begin(),ss.stream.end());
+    }
+    return d;
+  }
+
+  solutions::Proof proto_Proof(memory::Alloc &A, const OrForm &f, const Valuation &val) { FRAME("proto_Proof");
+    solutions::Proof proof;
+    size_t i=0;
+    for(const auto &cla : f.and_clauses) {
+      auto pcla = proof.add_clauses();
+      *pcla = proto_derAndClause(A,cla,val);
+      pcla->mutable_derived()->set_name(util::fmt("a%",i++));
+    }
+    proof.mutable_nodes()->CopyFrom(idx.nodes);
+    return proof;
+  }
+
+  tptp::File proto_orForm(const OrForm &f) { FRAME("proto_orForm()");
     tptp::File file;
     size_t i = 0;
-    for(const auto &cla : f.or_clauses) {
+    for(const auto &cla : f.and_clauses) {
       auto input = file.add_input();
       input->set_name(util::fmt("a%",i++));
       input->set_role(tptp::Input::PLAIN);
       input->set_language(tptp::Input::CNF);
-      *(input->mutable_formula()) = proto_orClause(cla.derived());
+      NodeStream s;
+      proto_orClause(s,cla.derived().neg());
+      input->mutable_formula()->Add(s.stream.begin(),s.stream.end());
     }
+    file.mutable_nodes()->CopyFrom(idx.nodes);
     return file;
   }
 };

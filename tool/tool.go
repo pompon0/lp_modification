@@ -14,7 +14,7 @@ import (
   "github.com/golang/protobuf/proto"
 )
 
-const tool_bin_path = "__main__/tptp_parser/src/tool"
+const hs_tool_bin_path = "__main__/tptp_parser/src/tool"
 const cc_tool_bin_path = "__main__/lazyparam_prover/tool"
 const tmp_prefix = "tptp_benchmark_go_"
 
@@ -37,11 +37,22 @@ func ProtoToTptp(ctx context.Context, f *tpb.File) ([]byte,error) {
   defer cleanup()
 
   var outBuf bytes.Buffer
-  cmd := exec.CommandContext(ctx,utils.Runfile(tool_bin_path),"tptp",tmp)
+  cmd := exec.CommandContext(ctx,utils.Runfile(hs_tool_bin_path),"tptp",tmp)
   cmd.Stdout = &outBuf
   cmd.Stderr = os.Stderr
   if err = cmd.Run(); err!=nil { return nil,fmt.Errorf("cmd.Run(): %v",err) }
   return outBuf.Bytes(),nil
+}
+
+func ProofToTptp(ctx context.Context, proof *spb.Proof) ([]byte,error) {
+  f := &tpb.File{Nodes:proof.Nodes}
+  for _,d := range proof.Clauses {
+    f.Input = append(f.Input,d.Derived)
+    for _,s := range d.Sources {
+      f.Input = append(f.Input,s.Ground,s.Source)
+    }
+  }
+  return ProtoToTptp(ctx,f)
 }
 
 func TptpToProto(ctx context.Context, lang Language, tptp []byte) (*tpb.File,error) {
@@ -85,46 +96,6 @@ func TptpHasEquality(ctx context.Context, tptp []byte) (bool,error) {
 
 }
 
-func TptpToProto2(ctx context.Context, lang Language, tptp []byte) (*tpb.File,error) {
-  tmp,cleanup,err := WriteTmp(tptp)
-  if err!=nil { return nil,fmt.Errorf("WriteTmp(): %v",err) }
-  defer cleanup()
-
-  var outBuf bytes.Buffer
-  cmd := exec.CommandContext(ctx,utils.Runfile(tool_bin_path),"conv",string(lang),tmp)
-  cmd.Stdout = &outBuf
-  cmd.Stderr = os.Stderr
-  if err := cmd.Run(); err!=nil {
-    if ctx.Err()!=nil { return nil,ctx.Err() }
-    return nil,fmt.Errorf("cmd.Run(): %v",err)
-  }
-  pbFile := &tpb.File{}
-  if err:=proto.Unmarshal(outBuf.Bytes(),pbFile); err!=nil {
-    return nil,fmt.Errorf("proto.Unmarshal(): %v",err)
-  }
-  return pbFile,nil
-}
-
-func FOFToCNF(ctx context.Context, fof *tpb.File) (*tpb.File,error) {
-  fofBytes,err := proto.Marshal(fof)
-  if err!=nil { return nil,fmt.Errorf("proto.Marshal(): %v",err) }
-  tmp,cleanup,err := WriteTmp(fofBytes)
-  if err!=nil { return nil,fmt.Errorf("WriteTmp(): %v",err) }
-  defer cleanup()
-
-  var outBuf bytes.Buffer
-  cmd := exec.CommandContext(ctx,utils.Runfile(tool_bin_path),"cnf","reg",tmp)
-  cmd.Stdout = &outBuf
-  cmd.Stderr = os.Stderr
-  if err = cmd.Run(); err!=nil { return nil,fmt.Errorf("cmd.Run(): %v",err) }
-
-  cnf := &tpb.File{}
-  if err:=proto.Unmarshal(outBuf.Bytes(),cnf); err!=nil {
-    return nil,fmt.Errorf("proto.Unmarshal(): %v",err)
-  }
-  return cnf,nil
-}
-
 func ValidateProof(ctx context.Context, sol *spb.CNF) (*spb.Stats,error) {
   solBytes,err := proto.Marshal(sol)
   if err!=nil { return nil,fmt.Errorf("proto.Marshal(): %v",err) }
@@ -133,7 +104,7 @@ func ValidateProof(ctx context.Context, sol *spb.CNF) (*spb.Stats,error) {
   defer cleanup()
 
   var outBuf,errBuf bytes.Buffer
-  cmd := exec.CommandContext(ctx,utils.Runfile(tool_bin_path),"validate",tmpSol)
+  cmd := exec.CommandContext(ctx,utils.Runfile(hs_tool_bin_path),"validate",tmpSol)
   cmd.Stdout = &outBuf
   cmd.Stderr = &errBuf
   if err = cmd.Run(); err!=nil {

@@ -8,9 +8,13 @@ enum Prover{
   UNKNOWN = 0;
   VAMPIRE = 1;
   EPROVER = 2;
-  LEANCOP = 3;
+  LEANCOP_BMTP = 3;
   LEANCOP_PROLOG = 4;
-  LAZY_PARAMODULATION = 5;
+  LEANCOP_PROLOG_CUT_COMP_7 = 9;
+  reserved 5;
+  GPRUSAK_AXIOMATIC_EQ = 6;
+  GPRUSAK_LP_MODIFICATION = 7;
+  GPRUSAK_LAZY_PARAMODULATION = 8;
 }
 
 message Req {
@@ -18,6 +22,7 @@ message Req {
   Prover prover = 3;
   bytes tptp_problem = 1;
   google.protobuf.Duration timeout = 2;
+  bool validate_proof = 5;
 }
 
 message Resp {

@@ -36,7 +36,7 @@ func NewServer(commit string) *server {
   }
 }
 
-const maxTimeout = 31*time.Second
+const maxTimeout = 61*time.Second
 
 func (s *server) Prove(ctx context.Context, req *pb.Req) (*pb.Resp,error) {
   ok := s.sem.TryAcquire(1)
@@ -60,18 +60,24 @@ func (s *server) Prove(ctx context.Context, req *pb.Req) (*pb.Resp,error) {
       c.Output,err = vampire.Prove(proverCtx,req.TptpProblem)
     case pb.Prover_EPROVER:
       c.Output,err = eprover.Prove(proverCtx,req.TptpProblem)
-    case pb.Prover_LEANCOP:
+    case pb.Prover_LEANCOP_BMTP:
       c.Output,err = leancop.Prove(proverCtx,req.TptpProblem)
     case pb.Prover_LEANCOP_PROLOG:
       c.Output,err = leancop.PrologProve(proverCtx,req.TptpProblem)
-    case pb.Prover_LAZY_PARAMODULATION:
-      c.Output,err = tableau.Prove(proverCtx,req.TptpProblem)
+    case pb.Prover_LEANCOP_PROLOG_CUT_COMP_7:
+      c.Output,err = leancop.PrologProveCutComp7(proverCtx,req.TptpProblem)
+    case pb.Prover_GPRUSAK_AXIOMATIC_EQ:
+      c.Output,err = tableau.ProveAxiomaticEq(proverCtx,req.TptpProblem)
+    case pb.Prover_GPRUSAK_LP_MODIFICATION:
+      c.Output,err = tableau.ProveLPModification(proverCtx,req.TptpProblem)
+    case pb.Prover_GPRUSAK_LAZY_PARAMODULATION:
+      c.Output,err = tableau.ProveLazyParamodulation(proverCtx,req.TptpProblem)
     default:
       return nil,status.New(codes.InvalidArgument,"unknown prover").Err()
   }
   if err!=nil { return nil,status.Newf(codes.Internal,"prove(): %v",err).Err() }
   c.Duration = ptypes.DurationProto(time.Since(t0))
-  if c.Output.Proof!=nil {
+  if req.ValidateProof && c.Output.Proof!=nil {
     if _,err := tool.ValidateProof(ctx,&spb.CNF{Problem:c.Output.CnfProblem,Proof:c.Output.Proof}); err!=nil {
       return nil,status.Newf(codes.Internal,"tool.ValidateProof(): %v",err).Err()
     }

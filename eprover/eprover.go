@@ -21,8 +21,8 @@ const statusUnsatisfiable = "Unsatisfiable"
 const statusContradictoryAxioms = "ContradictoryAxioms"
 // refuted
 const statusCounterSatisfiable = "CounterSatisfiable"
-
-const resultOk = "# SZS status Theorem"
+// OOM
+const statusOOM = "ResourceOut"
 
 func Prove(ctx context.Context, tptpFOFProblem []byte) (*spb.ProverOutput,error) {
   const memLimitBytes = 2000000000 // 2GB
@@ -31,11 +31,12 @@ func Prove(ctx context.Context, tptpFOFProblem []byte) (*spb.ProverOutput,error)
     return nil,fmt.Errorf("inBuf.Write(): %v",err)
   }
 
-  cmd := exec.CommandContext(ctx,utils.Runfile(eproverBinPath),"-s","--auto-schedule")
+  cmd := exec.Command(utils.Runfile(eproverBinPath),"-s","--auto-schedule")
   cmd.Stdin = &inBuf
   cmd.Stdout = &outBuf
   cmd.Stderr = os.Stderr
-  if err := utils.RunWithMemLimit(cmd,memLimitBytes); err!=nil {
+
+  if err := utils.RunWithMemLimit(ctx,cmd,memLimitBytes); err!=nil {
     if ctx.Err()==context.DeadlineExceeded {
       return &spb.ProverOutput{Solved:false},nil
     }
@@ -46,12 +47,15 @@ func Prove(ctx context.Context, tptpFOFProblem []byte) (*spb.ProverOutput,error)
     //log.Printf("err = %q",errBuf.String())
     return nil,fmt.Errorf("cmd.Run(): %q %v",outBuf.String(),err)
   }
+  log.Printf("processing output...\n");
   for _,l := range strings.Split(strings.TrimSpace(outBuf.String()),"\n") {
     if strings.HasPrefix(l,statusPrefix) {
       switch status := strings.Split(strings.TrimPrefix(l,statusPrefix)," ")[0]; status {
       case statusTheorem:
       case statusUnsatisfiable:
       case statusContradictoryAxioms:
+      case statusOOM:
+        return &spb.ProverOutput{Solved:false,Oom:true},nil
       default: return nil,fmt.Errorf("unknown status %q",status)
       }
       return &spb.ProverOutput{Solved:true},nil

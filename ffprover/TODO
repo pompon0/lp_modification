@@ -1,0 +1,14 @@
+lcop.ml bez modeli > train
+train > xgb-train > model.xgb
+> upper confidence bound (mcts technique)
+stan -> użyteczność gałęzi
+
+label [feature:weight]*
+features -> prop actual state will close it
+
+lcop.ml -> action_train, state_train (AKA global)
+action -> calculate mcts policy
+state -> calculate reward for intermediate states
+
+target slurm: don't worry about it,
+  as long as you have a standalone binary, it will work

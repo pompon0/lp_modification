@@ -10,6 +10,7 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//eprover:go_default_library",
+        "//lazyparam_prover:prover_go_proto",
         "//tool:go_default_library",
         "//tptp_parser/proto:solutions_go_proto",
         "//tptp_parser/proto:tptp_go_proto",
@@ -24,7 +25,8 @@ go_test(
     embed = [":go_default_library"],
     deps = [
         "//eprover:go_default_library",
-        "//problems:go_default_library",
+        "//lazyparam_prover:prover_go_proto",
+        "//problems/sample:go_default_library",
         "//tool:go_default_library",
         "//tptp_parser/proto:solutions_go_proto",
     ],

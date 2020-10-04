@@ -1,32 +1,45 @@
 #ifndef MGU_H_
 #define MGU_H_
 
-#include "lazyparam_prover/types.h"
-#include "lazyparam_prover/pred.h"
+#include "utils/log.h"
+#include "utils/string.h"
+#include "utils/types.h"
+#include "lazyparam_prover/memory/array.h"
+#include "lazyparam_prover/memory/stack.h"
+#include "lazyparam_prover/syntax/term.h"
+#include "lazyparam_prover/syntax/atom.h"
+#include "lazyparam_prover/syntax/show.h"
+#include "lazyparam_prover/syntax/clause.h"
 #include "lazyparam_prover/derived.h"
-#include "lazyparam_prover/alloc.h"
-#include "lazyparam_prover/log.h"
-#include "lazyparam_prover/pred_format.h"
-#include "lazyparam_prover/util/string.h"
 
 namespace tableau {
 
 struct Valuation {
 private:
   // there is NO cycles in valuation, even x -> x
-  RewindArray<Term> val;
+  memory::RewindArray<Term> val;
 public:
-  using Snapshot = RewindArray<Term>::Snapshot;
-  void resize(size_t n){ val.resize(n); }
-  size_t size() const { return val.size(); }
-  Snapshot snapshot(){ return val.snapshot(); }
-  void rewind(Snapshot s){ 
-    val.rewind(s);
-    FRAME("Valuation::rewind(): %",DebugString());
+  INL Valuation(){}
+  INL Valuation(const Valuation &) = default;
+  ~Valuation(){}
+  using Save = memory::RewindArray<Term>::Save;
+  INL size_t size() const { return val.size(); }
+  
+  template<typename T> INL T allocate(T t) {
+    VarRange r = t.var_range();
+    t = t.shift(val.size()-r.begin);
+    val.resize(val.size()+r.end-r.begin);
+    return t;
   }
-  Maybe<Term> operator[](size_t i){ return val[i]; }
 
-  inline bool has_var(Term t, u64 v) { FRAME("has_var(%,%)",show(t),v);
+  INL Save save(){ return val.save(); }
+  INL void restore(Save s){ 
+    FRAME("Valuation::restore(): %",DebugString());
+    val.restore(s);
+  }
+  INL memory::Maybe<Term> operator[](size_t i){ return val[i]; }
+
+  bool has_var(Term t, u64 v) const { FRAME("has_var(%,%)",show(t),v);
     switch(t.type()) {
       case Term::VAR: 
         if(auto mx = val[Var(t).id()]) return has_var(mx.get(),v);
@@ -41,10 +54,10 @@ public:
     error("has_var(<type=%>,v",t.type());
   }
 
-  inline bool assign(u64 v, Term t) { FRAME("MGU.assign(%,%)",v,show(t));
+  INL bool assign(u64 v, Term t) { FRAME("MGU.assign(%,%)",v,show(t));
     DEBUG if(val[v]) error("val[%] is already set",v);
     // traverse TVar assignments
-    for(Maybe<Term> mtv; t.type()==Term::VAR && (mtv = val[Var(t).id()]); ) t = mtv.get();
+    for(memory::Maybe<Term> mtv; t.type()==Term::VAR && (mtv = val[Var(t).id()]); ) t = mtv.get();
     switch(t.type()) {
       case Term::VAR: {
         Var tv(t);
@@ -63,9 +76,9 @@ public:
     return 0;
   }
 
-  inline bool equal(Term x, Term y) {
-    for(Maybe<Term> mxv; x.type()==Term::VAR && (mxv = val[Var(x).id()]);) x = mxv.get();
-    for(Maybe<Term> myv; y.type()==Term::VAR && (myv = val[Var(y).id()]);) y = myv.get();
+  bool equal(Term x, Term y) const {
+    for(memory::Maybe<Term> mxv; x.type()==Term::VAR && (mxv = val[Var(x).id()]);) x = mxv.get();
+    for(memory::Maybe<Term> myv; y.type()==Term::VAR && (myv = val[Var(y).id()]);) y = myv.get();
     if(x.type()!=y.type()) return 0;
     switch(x.type()) {
       case Term::VAR: return Var(x).id()==Var(y).id();
@@ -80,7 +93,7 @@ public:
     return 0;
   }
 
-  inline bool equal_mod_sign(Atom x, Atom y) {
+  INL bool equal_mod_sign(Atom x, Atom y) {
     if(x.pred()!=y.pred()) return 0;
     for(size_t i=x.arg_count(); i--;) {
       if(!equal(x.arg(i),y.arg(i))) return 0;
@@ -88,7 +101,7 @@ public:
     return 1;
   }
 
-  inline bool mgu(Term x, Term y) { FRAME("mgu(%,%) %",show(x),show(y),DebugString());
+  bool mgu(Term x, Term y) { FRAME("mgu(%,%) %",show(x),show(y),DebugString());
     // TODO: add this iff hash consing is implemented
     // if(t1==t2) return 1;
     if(x.type()==Term::FUN && y.type()==Term::FUN) {
@@ -111,33 +124,33 @@ public:
   }
 
   // unifies atoms ignoring the sign
-  inline bool mgu(Atom x, Atom y) { FRAME("opposite()");
+  INL bool mgu(Atom x, Atom y) { FRAME("opposite()");
     SCOPE("Valuation::mgu(Atom)");
     if(x.pred()!=y.pred()) return 0;
     DEBUG if(x.arg_count()!=y.arg_count()) error("arg_count() mismatch: %, %",show(x),show(y));
-    auto s = snapshot();
+    auto s = save();
     for(size_t i=x.arg_count(); i--;)
-      if(!mgu(x.arg(i),y.arg(i))){ rewind(s); return 0; }
+      if(!mgu(x.arg(i),y.arg(i))){ restore(s); return 0; }
     return 1;
   }
 
-  inline Term shallow_eval(Term t) const {
+  INL Term shallow_eval(Term t) const {
     while(t.type()==Term::VAR && val[Var(t).id()]) t = val[Var(t).id()].get();
     return t;
   }
 
   // clears offset
-  inline Term eval(Term t) { FRAME("eval(%)",show(t));
+  Term eval(memory::Alloc &A, Term t) const { FRAME("eval(%)",show(t));
     switch(t.type()) {
       case Term::VAR: {
         u64 id = Var(t).id();
-        if(auto mv = val[id]) return eval(mv.get()); else return Term(Var::make(id));
+        if(auto mv = val[id]) return eval(A,mv.get()); else return Term(Var(A,id));
       }
       case Term::FUN: {
         Fun tf(t);
         size_t ac = tf.arg_count();
-        Fun::Builder b(tf.fun(),ac);
-        for(size_t i=0; i<ac; ++i) b.set_arg(i,eval(tf.arg(i)));
+        Fun::Builder b(A,tf.fun(),ac);
+        for(size_t i=0; i<ac; ++i) b.set_arg(i,eval(A,tf.arg(i)));
         return Term(b.build());
       }
       default: error("unhandled t.type() = %",t.type());
@@ -145,41 +158,35 @@ public:
   }
 
   // clears offset
-  inline Atom eval(Atom a) { FRAME("eval(%)",show(a));
+  INL Atom eval(memory::Alloc &A, Atom a) const { FRAME("eval(%)",show(a));
     size_t ac = a.arg_count();
-    Atom::Builder b(a.sign(),a.pred(),ac);
-    for(size_t i=ac; i--;) b.set_arg(i,eval(a.arg(i)));
+    Atom::Builder b(A,a.sign(),a.pred(),ac,a.strong_only());
+    for(size_t i=ac; i--;) b.set_arg(i,eval(A,a.arg(i)));
     return b.build();
   }
 
-  // clears offset
-  // FIXME: var_count gets invalidated due to evaluation
-  inline OrClause eval(OrClause cla) { FRAME("eval(%)",show(cla));
-    OrClause::Builder b(cla.atom_count(),cla.var_count());
-    for(size_t i=cla.atom_count(); i--;) b.set_atom(i,eval(cla.atom(i)));
+  INL AndClause eval(memory::Alloc &A, AndClause cla) const { FRAME("eval(%)",show(cla));
+    AndClause::Builder b(A,cla.atom_count());
+    for(size_t i=cla.atom_count(); i--;) b.set_atom(i,eval(A,cla.atom(i)));
     return b.build();
   }
 
-  // FIXME: var_count gets invalidated due to evaluation
-  inline AndClause eval(AndClause cla) { FRAME("eval(%)",show(cla));
-    for(Atom &a : cla.atoms) a = eval(a);
-    return cla;
+  INL OrderAtom::TermPair eval(memory::Alloc &A, OrderAtom::TermPair p) const {
+    return {eval(A,p.a),eval(A,p.b)};
   }
 
-  inline Constraint eval(Constraint c) {
-    List<Constraint::Pair> or_;
-    for(auto o = c.or_; !o.empty(); o = o.tail())
-      or_ += Constraint::Pair{eval(o.head().l),eval(o.head().r)};
-    c.or_ = or_;
-    return c;
+  INL OrderAtom eval(memory::Alloc &A, OrderAtom c) const {
+    OrderAtom::Builder b(A,c.rel(),c.pair_count());
+    for(size_t i=c.pair_count(); i--;) b.set_pair(i,eval(A,c.pair(i)));
+    return b.build();
   }
 
-  // FIXME: var_count gets invalidated due to evaluation
-  inline DerAndClause eval(DerAndClause cla) {
-    cla.derived = eval(cla.derived);
-    for(auto &s : cla.source) s = eval(s);
-    for(auto &c : cla.constraints) c = eval(c);
-    return cla;
+  INL DerAndClause eval(memory::Alloc &A, DerAndClause cla) const {
+    auto b = cla.to_builder(A);
+    b.derived = eval(A,b.derived);
+    for(auto &s : b.sources) s = eval(A,s);
+    for(auto &c : b.constraints) c = eval(A,c);
+    return b.build(A);
   }
 
   str DebugString() const {

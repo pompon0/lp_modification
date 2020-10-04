@@ -1,5 +1,8 @@
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive", "http_file")
 
+################################
+# BAZEL
+
 # "com_google_protobuf" declares some terribly old version of skylib,
 # forcing the newest version beforehead
 http_archive(
@@ -8,6 +11,190 @@ http_archive(
     strip_prefix = "bazel-skylib-1.0.2",
     urls = ["https://github.com/bazelbuild/bazel-skylib/archive/1.0.2.tar.gz"],
 )
+
+###############################
+# LLVM
+
+http_archive(
+  # cannot change this name, because files in its workspace refer to it
+  name = "com_grail_bazel_toolchain",
+  strip_prefix = "bazel-toolchain-e608913c0e106da931234fdd37de9ee37e0b2541",
+  urls = ["https://github.com/pompon0/bazel-toolchain/archive/e608913c0e106da931234fdd37de9ee37e0b2541.tar.gz"],
+  sha256 = "e09e8ef8a5f97078da2961561e176a5bf461962683159bcbd81674052475cdd0",
+)
+
+load("@com_grail_bazel_toolchain//toolchain:deps.bzl", "bazel_toolchain_dependencies")
+
+bazel_toolchain_dependencies()
+
+load("@com_grail_bazel_toolchain//toolchain:rules.bzl", "llvm_toolchain")
+
+llvm_toolchain(
+  name = "llvm_toolchain",
+  distribution = "clang+llvm-10.0.0-x86_64-linux-gnu-ubuntu-18.04.tar.xz",
+  llvm_version = "10.0.0",
+)
+
+load("@llvm_toolchain//:toolchains.bzl", "llvm_register_toolchains")
+
+llvm_register_toolchains()
+
+################################
+# GOLANG
+
+http_archive(
+    name = "io_bazel_rules_go",
+    urls = ["https://github.com/bazelbuild/rules_go/releases/download/v0.23.3/rules_go-v0.23.3.tar.gz"],
+    sha256 = "a8d6b1b354d371a646d2f7927319974e0f9e52f73a2452d2b3877118169eb6bb",
+)
+
+load("@io_bazel_rules_go//go:deps.bzl", "go_rules_dependencies", "go_register_toolchains")
+go_rules_dependencies()
+go_register_toolchains()
+
+http_archive(
+    name = "bazel_gazelle",
+    urls = ["https://github.com/bazelbuild/bazel-gazelle/releases/download/v0.19.1/bazel-gazelle-v0.19.1.tar.gz"],
+    sha256 = "86c6d481b3f7aedc1d60c1c211c6f76da282ae197c3b3160f54bd3a8f847896f",
+)
+load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies", "go_repository")
+gazelle_dependencies()
+# gazelle:repository_macro gazelle_generated_rules.bzl%gazelle_generated
+load("//:gazelle_generated_rules.bzl","gazelle_generated")
+gazelle_generated()
+
+################################
+# PROTO
+
+http_archive(
+    name = "rules_proto",
+    sha256 = "602e7161d9195e50246177e7c55b2f39950a9cf7366f74ed5f22fd45750cd208",
+    strip_prefix = "rules_proto-97d8af4dc474595af3900dd85cb3a29ad28cc313",
+    urls = [
+        "https://mirror.bazel.build/github.com/bazelbuild/rules_proto/archive/97d8af4dc474595af3900dd85cb3a29ad28cc313.tar.gz",
+        "https://github.com/bazelbuild/rules_proto/archive/97d8af4dc474595af3900dd85cb3a29ad28cc313.tar.gz",
+    ],
+)
+
+load("@rules_proto//proto:repositories.bzl", "rules_proto_dependencies", "rules_proto_toolchains")
+rules_proto_dependencies()
+rules_proto_toolchains()
+
+################################
+# C++
+
+http_archive(
+    name = "gtest",
+    strip_prefix = "googletest-release-1.8.1",
+    urls = ["https://github.com/google/googletest/archive/release-1.8.1.zip"],
+    sha256 = "927827c183d01734cc5cfef85e0ff3f5a92ffe6188e0d18e909c5efebf28a0c7",
+)
+
+http_archive(
+    name = "abseil",
+    strip_prefix = "abseil-cpp-d659fe54b35ab9b8e35c72e50a4b8814167d5a84",
+    urls = ["https://github.com/abseil/abseil-cpp/archive/d659fe54b35ab9b8e35c72e50a4b8814167d5a84.zip"],
+    sha256 = "743f879030960c80a0445310567ca99d8eae87468dd0e78fd0c8bfd46f429e37",
+)
+
+################################
+# DOCKER
+
+http_archive(
+    name = "io_bazel_rules_docker",
+    sha256 = "7eff487e95d268d577f13f6e3ea49be8704504b2096367e4a2181ecbbc111bad",
+    strip_prefix = "rules_docker-9bfcd7dbf0294ed9d11a99da6363fc28df904502",
+    urls = ["https://github.com/bazelbuild/rules_docker/archive/9bfcd7dbf0294ed9d11a99da6363fc28df904502.tar.gz"],
+)
+
+load(
+    "@io_bazel_rules_docker//repositories:repositories.bzl",
+    container_repositories = "repositories",
+)
+
+container_repositories()
+
+load("@io_bazel_rules_docker//go:image.bzl", _go_image_repos = "repositories")
+_go_image_repos()
+
+load("@io_bazel_rules_docker//container:container.bzl", "container_pull")
+
+container_pull(
+    name = "swipl",
+    registry = "index.docker.io",
+    repository = "amd64/swipl",
+    digest = "sha256:b6f51e9cbccc55386bfa3381336c70bda145405cc258055fc8cc2afaddb9a35b",
+)
+
+################################
+# HASKELL
+
+http_archive(
+    name = "rules_haskell",
+    strip_prefix = "rules_haskell-51f854748cd634b30001c49b6fe4c1574c0a3da0",
+    urls = ["https://github.com/pompon0/rules_haskell/archive/51f854748cd634b30001c49b6fe4c1574c0a3da0.tar.gz"],
+    sha256 = "75b2b48ec147cc162a22538466e876d83f0936281a188119ccce5a83c60bc934",
+)
+
+load("@rules_haskell//haskell:repositories.bzl", "rules_haskell_dependencies")
+
+rules_haskell_dependencies()
+
+load("@rules_haskell//haskell:toolchain.bzl", "rules_haskell_toolchains")
+
+rules_haskell_toolchains()
+
+load("@rules_haskell//haskell:cabal.bzl", "stack_snapshot")
+
+stack_snapshot(
+    name = "stackage",
+    packages = [
+        "attoparsec",
+        "base",
+        "bytestring",
+        "containers",
+        "data-default-class",
+        "deepseq",
+        "haskell-src-exts",
+        "lens",
+        "lens-family",
+        "mtl",
+        "parsec",
+        "prettyprinter",
+        "proto-lens",
+        "proto-lens-protoc",
+        "proto-lens-runtime",
+        "scientific",
+        "semigroups",
+        "tasty",
+        "tasty-hunit",
+        "text",
+        "transformers",
+        "vector",
+    ],
+    snapshot = "lts-14.2",
+)
+
+http_archive(
+    name = "tptp",
+    urls = ["https://github.com/aztek/tptp/archive/c920f1e611db53062fccc1bc5b7b3e2c0537cd15.zip"],
+    build_file = "//:third_party/tptp.BUILD",
+    sha256 = "f6d9f0a9e39e725c46ff94ceac20e8b689ec80184d612d1e2fb60c8f4876ea49",
+)
+
+http_archive(
+    name = "proto-lens-protoc",
+    urls = ["http://hackage.haskell.org/package/proto-lens-protoc-0.5.0.0/proto-lens-protoc-0.5.0.0.tar.gz"],
+    build_file = "//:third_party/proto-lens-protoc.BUILD",
+    sha256 = "161dcee2aed780f62c01522c86afce61721cf89c0143f157efefb1bd1fa1d164",
+    strip_prefix = "proto-lens-protoc-0.5.0.0",
+)
+
+register_toolchains(":protobuf-toolchain")
+
+
+################################
+# OTHER
 
 http_archive(
     name = "eprover",
@@ -21,9 +208,9 @@ http_archive(
 
 http_archive(
     name = "vampire",
-    strip_prefix = "vampire-3267e536135d0a9ac0691ee43153353cb130ca8e",
-    urls = ["https://github.com/vprover/vampire/archive/3267e536135d0a9ac0691ee43153353cb130ca8e.tar.gz"],
-    sha256 = "5459de1b1db951c8522b3b2e4af607c376da7e9cf41f2841b40e8271bd2abd14",
+    strip_prefix = "vampire-b4b5b00d35335b7fb376364bc0895a470c65820b",
+    urls = ["https://github.com/pompon0/vampire/archive/b4b5b00d35335b7fb376364bc0895a470c65820b.tar.gz"],
+    sha256 = "115cddad1a36506b1f89e190c3c407f698f7d271d681ec34b98da33d13bfb263",
     build_file = "//:third_party/vampire.BUILD",
 )
 
@@ -63,257 +250,8 @@ http_file(
     sha256 = "f56cd27648898713e83e2e0dc69e295b316ba4b7acad0e41d7667610b666c5f0",
 )
 
-http_archive(
-    name = "com_google_protobuf",
-    strip_prefix = "protobuf-3.11.2",
-    urls = ["https://github.com/google/protobuf/archive/v3.11.2.zip"],
-    sha256 = "e4f8bedb19a93d0dccc359a126f51158282e0b24d92e0cad9c76a9699698268d",
-)
+################################
+# GENERATE SUMMARY
 
-load("@com_google_protobuf//:protobuf_deps.bzl", "protobuf_deps")
-
-protobuf_deps()
-
-http_archive(
-    name = "gtest",
-    strip_prefix = "googletest-release-1.8.1",
-    urls = ["https://github.com/google/googletest/archive/release-1.8.1.zip"],
-    sha256 = "927827c183d01734cc5cfef85e0ff3f5a92ffe6188e0d18e909c5efebf28a0c7",
-)
-
-http_archive(
-    name = "abseil",
-    strip_prefix = "abseil-cpp-d659fe54b35ab9b8e35c72e50a4b8814167d5a84",
-    urls = ["https://github.com/abseil/abseil-cpp/archive/d659fe54b35ab9b8e35c72e50a4b8814167d5a84.zip"],
-    sha256 = "743f879030960c80a0445310567ca99d8eae87468dd0e78fd0c8bfd46f429e37",
-)
-
-http_archive(
-    name = "io_bazel_rules_go",
-    urls = ["https://github.com/bazelbuild/rules_go/releases/download/v0.20.0/rules_go-v0.20.0.tar.gz"],
-    sha256 = "078f2a9569fa9ed846e60805fb5fb167d6f6c4ece48e6d409bf5fb2154eaf0d8",
-)
-
-load("@io_bazel_rules_go//go:deps.bzl", "go_rules_dependencies", "go_register_toolchains")
-
-go_rules_dependencies()
-
-go_register_toolchains()
-
-http_archive(
-    name = "bazel_gazelle",
-    urls = ["https://github.com/bazelbuild/bazel-gazelle/releases/download/v0.19.1/bazel-gazelle-v0.19.1.tar.gz"],
-    sha256 = "86c6d481b3f7aedc1d60c1c211c6f76da282ae197c3b3160f54bd3a8f847896f",
-)
-
-load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies", "go_repository")
-
-gazelle_dependencies()
-
-######################################################
-
-http_archive(
-    name = "io_bazel_rules_docker",
-    sha256 = "df13123c44b4a4ff2c2f337b906763879d94871d16411bf82dcfeba892b58607",
-    strip_prefix = "rules_docker-0.13.0",
-    urls = ["https://github.com/bazelbuild/rules_docker/releases/download/v0.13.0/rules_docker-v0.13.0.tar.gz"],
-)
-
-load(
-    "@io_bazel_rules_docker//repositories:repositories.bzl",
-    container_repositories = "repositories",
-)
-
-container_repositories()
-
-load(
-    "@io_bazel_rules_docker//go:image.bzl",
-    _go_image_repos = "repositories",
-)
-
-_go_image_repos()
-
-load(
-    "@io_bazel_rules_docker//container:container.bzl",
-    "container_pull",
-)
-
-container_pull(
-    name = "swipl",
-    registry = "index.docker.io",
-    repository = "amd64/swipl",
-    digest = "sha256:b6f51e9cbccc55386bfa3381336c70bda145405cc258055fc8cc2afaddb9a35b",
-)
-
-######################################################
-# haskell
-
-http_archive(
-    name = "rules_haskell",
-    strip_prefix = "rules_haskell-master",
-    urls = ["https://github.com/pompon0/rules_haskell/archive/master.tar.gz"],
-    sha256 = "bb1444e628c09e3cd76578602b823493a531d3753eff31b696bf6ef3ad57116f",
-)
-
-load("@rules_haskell//haskell:repositories.bzl", "rules_haskell_dependencies")
-
-rules_haskell_dependencies()
-
-load("@rules_haskell//haskell:toolchain.bzl", "rules_haskell_toolchains")
-
-rules_haskell_toolchains()
-
-http_archive(
-    name = "happy",
-    strip_prefix = "happy-1.19.10",
-    urls = ["http://hackage.haskell.org/package/happy-1.19.10/happy-1.19.10.tar.gz"],
-    sha256 = "22eb606c97105b396e1c7dc27e120ca02025a87f3e44d2ea52be6a653a52caed",
-    build_file = "//:third_party/happy.BUILD",
-)
-
-load("@rules_haskell//haskell:cabal.bzl", "stack_snapshot")
-
-stack_snapshot(
-    name = "stackage",
-    packages = [
-        "base",
-        "data-default-class",
-        "haskell-src-exts",
-        "either",
-        "tasty-hunit",
-        "tasty",
-        "parsec",
-        "transformers",
-        "unix",
-        "bytestring",
-        "utf8-string",
-        "tar",
-        "http-conduit",
-        "zlib",
-        "lens",
-        "proto-lens-runtime",
-        "proto-lens",
-        "microlens",
-        "lens-family",
-        "text",
-        "containers",
-        "mtl",
-        "MissingH",
-        "threads",
-        "concurrent-extra",
-        "unbounded-delays",
-        "deepseq",
-        "split",
-        "data-ordlist",
-        "clock",
-        "hashable",
-        "hashtables",
-        "options",
-        "array",
-        "vector",
-        "proto-lens-protoc",
-        "attoparsec",
-        "prettyprinter",
-        "scientific",
-        "semigroups",
-    ],
-    snapshot = "lts-14.2",
-    tools = ["@happy"],
-)
-
-http_archive(
-    name = "set-monad",
-    strip_prefix = "set-monad-master",
-    urls = ["https://github.com/giorgidze/set-monad/archive/master.zip"],
-    sha256 = "64079a9dd5d59b92ceaf7c79768ccbcb753c9bc4a9935cfb8e430519d32ca468",
-    build_file = "//:third_party/set-monad.BUILD",
-)
-
-http_archive(
-    name = "tptp",
-    urls = ["https://hackage.haskell.org/package/tptp-0.1.1.0/tptp-0.1.1.0.tar.gz"],
-    build_file = "//:third_party/tptp.BUILD",
-    sha256 = "2ec3a5fd1c290f68aed82600299c17a3a698b24c189efb6a4df4ff300aa29233",
-)
-
-http_archive(
-    name = "proto-lens-protoc",
-    urls = ["http://hackage.haskell.org/package/proto-lens-protoc-0.5.0.0/proto-lens-protoc-0.5.0.0.tar.gz"],
-    build_file = "//:third_party/proto-lens-protoc.BUILD",
-    sha256 = "161dcee2aed780f62c01522c86afce61721cf89c0143f157efefb1bd1fa1d164",
-    strip_prefix = "proto-lens-protoc-0.5.0.0",
-)
-
-register_toolchains(":protobuf-toolchain")
-
-######################################################
-# generated by gazelle
-
-go_repository(
-    name = "org_golang_x_sync",
-    commit = "e225da77a7e68af35c70ccbf71af2b83e6acac3c",
-    importpath = "golang.org/x/sync",
-)
-
-go_repository(
-    name = "org_golang_google_grpc",
-    importpath = "google.golang.org/grpc",
-    sum = "h1:2dTRdpdFEEhJYQD8EMLB61nnrzSCTbG38PhqdhvOltg=",
-    version = "v1.26.0",
-)
-
-go_repository(
-    name = "org_golang_x_net",
-    importpath = "golang.org/x/net",
-    sum = "h1:efeOvDhwQ29Dj3SdAV/MJf8oukgn+8D8WgaCaRMchF8=",
-    version = "v0.0.0-20191209160850-c0dbc17a3553",
-)
-
-go_repository(
-    name = "org_golang_x_text",
-    importpath = "golang.org/x/text",
-    sum = "h1:tW2bmiBqwgJj/UpqtC8EpXEZVYOwU0yG4iWbprSVAcs=",
-    version = "v0.3.2",
-)
-
-go_repository(
-    name = "org_golang_x_oauth2",
-    importpath = "golang.org/x/oauth2",
-    sum = "h1:pE8b58s1HRDMi8RDc79m0HISf9D4TzseP40cEA6IGfs=",
-    version = "v0.0.0-20191202225959-858c2ad4c8b6",
-)
-
-go_repository(
-    name = "com_google_cloud_go",
-    importpath = "cloud.google.com/go",
-    sum = "h1:CH+lkubJzcPYB1Ggupcq0+k8Ni2ILdG2lYjDIgavDBQ=",
-    version = "v0.49.0",
-)
-
-go_repository(
-    name = "org_golang_google_api",
-    importpath = "google.golang.org/api",
-    sum = "h1:yzlyyDW/J0w8yNFJIhiAJy4kq74S+1DOLdawELNxFMA=",
-    version = "v0.15.0",
-)
-
-go_repository(
-    name = "io_opencensus_go",
-    importpath = "go.opencensus.io",
-    sum = "h1:75k/FF0Q2YM8QYo07VPddOLBslDt1MZOdEslOHvmzAs=",
-    version = "v0.22.2",
-)
-
-go_repository(
-    name = "com_github_googleapis_gax_go_v2",
-    importpath = "github.com/googleapis/gax-go/v2",
-    sum = "h1:sjZBwGj9Jlw33ImPtvFviGYvseOtDM7hkSKB7+Tv3SM=",
-    version = "v2.0.5",
-)
-
-go_repository(
-    name = "com_github_golang_groupcache",
-    importpath = "github.com/golang/groupcache",
-    sum = "h1:5ZkaAPbicIKTF2I64qf5Fh8Aa83Q/dnOafMYV0OMwjA=",
-    version = "v0.0.0-20191227052852-215e87163ea7",
-)
+load("//:list.bzl", "list_existing")
+# list_existing()

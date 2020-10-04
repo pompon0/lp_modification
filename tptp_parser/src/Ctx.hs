@@ -6,6 +6,8 @@
 {-# LANGUAGE UndecidableInstances #-}
 module Ctx where
 
+import Tptp
+import Err
 import HashSeq
 import Control.Lens
 import Data.Maybe
@@ -16,15 +18,8 @@ import Text.Printf
 import Prelude hiding(fail)
 import Control.Monad hiding(fail)
 import Control.Monad.Fail
-import Control.Exception
-import Debug.Trace
-
--------------------------------------
-
-newtype Err a = Err (Either String a) deriving(Functor,Applicative,Monad)
-instance MonadFail Err where { fail = Err . Left }
-
--------------------------------------
+import qualified Control.Exception as E
+import qualified Proto.Tptp as T
 
 instance HashSeq String where hashSeq = map (unit.fromIntegral.fromEnum)
 data Stack a = Stack'Empty | Stack { stack'top :: a, stack'values_ :: Set.Set a, stack'pop :: Stack a }
@@ -71,20 +66,17 @@ class (Show a, Eq a, Ord a) => Stackable a where
   pop s = (stack'top s, stack'pop s)
 
   stack'find :: Stack a -> a -> a
-  stack'find s l = assert (stack'has l s) l
+  stack'find s l = E.assert (stack'has l s) l
 
 instance (Show a, Eq a, Ord a) => Stackable a
 ---------------------------------------------
 
-newtype VarName = VarName String deriving(Eq,Ord,HashSeq)
-newtype FunName = FunName String deriving(Eq,Ord,HashSeq)
-newtype PredName = PredName String deriving(Eq,Ord,HashSeq)
-instance Show VarName where show (VarName x) = x
-instance Show FunName where show (FunName x) = x
-instance Show PredName where show (PredName x) = x
+newtype VarName = VarName Node deriving(Eq,Ord,HashSeq,Show)
+newtype FunName = FunName Node deriving(Eq,Ord,HashSeq,Show)
+newtype PredName = PredName Node deriving(Eq,Ord,HashSeq,Show)
 
-eqPredName = PredName "eq"
-extraConstName = FunName "c"
+isEq :: PredName -> Bool
+isEq (PredName n) = n^.type_==T.PRED_EQ
 
 data Global = Global {
   _funs :: Stack FunName,

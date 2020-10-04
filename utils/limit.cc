@@ -5,7 +5,7 @@
 #include <string.h>
 #include <cstdlib>
 #include <iostream>
-#include "lazyparam_prover/util/log.h"
+#include "utils/log.h"
 
 using namespace util;
 

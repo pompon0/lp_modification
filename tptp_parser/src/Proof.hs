@@ -3,9 +3,11 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Proof where
 
+import Err
 import Ctx
 import DNF
 import Pred
+import Tptp
 import qualified Data.Map as Map
 import Data.Text.Lens
 import Data.ProtoLens(defMessage)
@@ -16,19 +18,17 @@ import Data.Either(partitionEithers)
 import Valid
 import EqAxioms
 import qualified Proto.Solutions as SPB
+import Text.Printf
 
-classify :: OrForm -> OrForm -> Err SPB.Stats
-classify (OrForm c0) f = do
-  let {
-  (refl,c1) = partition isReflAxiom c0;
-  (symm,c2) = partition isSymmAxiom c1;
-  (trans,c3) = partition isTransAxiom c2;
-  (fmono,c4) = partitionEithers (map (\c -> case isFunCongAxiom c of { Just fn -> Left fn; Nothing -> Right c }) c3);
-  (pmono,c5) = partitionEithers (map (\c -> case isPredCongAxiom c of { Just pn -> Left pn; Nothing -> Right c }) c4);
-  }
-  x <- case isSubForm (OrForm c5) f of
-    Just x -> return x
-    Nothing -> fail "proof doesn't imply the formula"
+classify :: NodeIndex -> OrForm -> OrForm -> Err SPB.Stats
+classify idx (OrForm c) f = do
+  (idx,standardNodes) <-r$ index'withStandard idx
+  (refl,c) <-r$ partition isReflAxiom c;
+  (symm,c) <-r$ partition isSymmAxiom c;
+  (trans,c) <-r$ partition isTransAxiom c;
+  (fmono,c) <-r$ partitionEithers (map (\c -> case isFunCongAxiom c of { Just fn -> Left fn; Nothing -> Right c }) c);
+  (pmono,c) <-r$ partitionEithers (map (\c -> case isPredCongAxiom c of { Just pn -> Left pn; Nothing -> Right c }) c);
+  x <- isSubForm (OrForm c) f ??? "proof doesn't imply the formula"
   let {
     funMono = (flip map) (group $ sort fmono) (\fns -> (defMessage :: SPB.Stats'FunMono)
       & #name.unpacked .~ show (head fns)
@@ -37,7 +37,7 @@ classify (OrForm c0) f = do
       & #name.unpacked .~ show (head pns)
       & #count .~ fromIntegral (length pns));
     orClauses = (flip map) (group $ sort x) (\l -> (defMessage :: SPB.Stats'OrClause)
-      & #cla .~ toProto'Input (notAndClause $ head l)
+      & #cla .~ toProto'Input standardNodes (notAndClause $ head l)
       & #count .~ fromIntegral (length l));
   }
   return $ defMessage
@@ -47,3 +47,4 @@ classify (OrForm c0) f = do
     & #funMono .~ funMono 
     & #predMono .~ predMono 
     & #orClauses .~ orClauses
+    & #nodes .~ index'nodes idx

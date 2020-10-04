@@ -1,0 +1,25 @@
+syntax = "proto3";
+package tool;
+
+import "tptp.proto";
+
+message ProtoToTptpReq { tptp.File file = 1; }
+message ProtoToTptpResp { string tptp = 1; }
+
+message TptpToProtoReq { tptp.Input.Language lang = 1; string tptp = 2; }
+message TptpToProtoResp { tptp.File file = 1; } 
+
+message FofToCnfReq { string tptp_fof = 1; }
+message FofToCnfResp { string tptp_cnf = 1; }
+
+message Request {
+  ProtoToTptpReq proto_to_tptp = 1;
+  TptpToProtoReq tptp_to_proto = 2;
+  FofToCnfReq fof_to_cnf = 3;
+}
+
+message Response {
+  ProtoToTptpResp proto_to_tptp = 1;
+  TptpToProtoResp tptp_to_proto = 2;
+  FofToCnfResp fof_to_cnf = 3;
+}

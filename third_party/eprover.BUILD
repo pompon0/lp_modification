@@ -74,7 +74,6 @@ cc_binary(
   srcs = ["E/PROVER/eprover.c"],
 	copts = COPTS,
 	deps = [":libs"],
-  features = ["fully_static_link"],
-  linkopts = ["-static-libstdc++","-static-libgcc","-l:libstdc++.a","-lm"],
   visibility = ["//visibility:public"],
+  features = ["fully_static_link"],
 )

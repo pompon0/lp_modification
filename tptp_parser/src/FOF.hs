@@ -2,23 +2,23 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE ViewPatterns #-}
 module FOF where
 
+import Err
 import Ctx
 import HashSeq
 import Pred hiding (pred'args,pred'name,term'varName'rec)
 import qualified Proto.Tptp as T
-import TptpLens
+import Tptp
 
 import qualified Data.List as List
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Control.Lens
-import Control.Monad(when)
 import Data.ProtoLens(defMessage)
 import Data.ProtoLens.Labels()
 import Text.Printf
-import Debug.Trace
 
 data FOF = Forall VarName FOF
   | Exists VarName FOF
@@ -40,112 +40,109 @@ instance Show FOF where
 
 ---------------------------------------
 
-freeVars :: T.Formula'Formula -> Set.Set String
-freeVars f = case f of
-  T.Formula'Pred' pred -> Set.fromList $ pred^..pred'args.traverse.term'varName'rec
-  T.Formula'Quant' quant -> Set.difference (Set.unions $ quant^..quant'sub.to freeVars) (Set.fromList $ quant^..quant'varName)
-  T.Formula'Op op -> Set.unions (op^.. #args.traverse. #maybe'formula.traverse.to freeVars)
-
-global'make :: [T.File] -> Global
-global'make fs = Global {
-    _funs = stack'make (Set.fromList $ fs^..traverse.file'formula.formula'pred.pred'args.traverse.term'funName'rec.to FunName),
-    _preds = stack'make (Set.fromList $ fs^..traverse.file'formula.formula'pred.pred'name.to PredName)
-  }
-
-globalVar'make :: [T.File] -> GlobalVar 
-globalVar'make fs = GlobalVar {
-    _global' = global'make fs,
-    _existsVars = stack'make (Set.map VarName $ Set.unions $ fs^..traverse.file'formula.to freeVars)
-  }
-
-
-getFormula :: T.Formula -> Err T.Formula'Formula
-getFormula f = case f^. #maybe'formula of
-  Nothing -> fail "formula missing"
-  Just x -> return x
+freeVars :: NodeTree -> Set.Set Node
+freeVars (NodeTree n args) = runIdentity $ do
+  fv <- Set.empty & for args (\a cont s -> cont (Set.union s (freeVars a)))
+  r$ case n^.type_ of
+    T.FORALL -> let [v,_] = args in Set.difference fv (freeVars v)
+    T.EXISTS -> let [v,_] = args in Set.difference fv (freeVars v)
+    T.TERM_VAR -> let [] = args in Set.singleton n
+    _ -> fv
 
 -----------------------------------
 
-data Local = Local {
-  _global :: Global,
-  _vars :: Stack VarName
-}
-makeLenses ''Local
+fromProto'File :: T.File -> Err FOF
+fromProto'File f = do
+  idx <- nodes'index (f^. #nodes) ??? "nodes'index"
+  fs <- [] & for (f^. #input) (\i cont [] -> do
+    f <- input'fof idx i ??? "input'fof"
+    ft <- cont []
+    r$ f:ft)
+  r$ Or fs
 
-local'empty = Local global'empty stack'empty
-
-fromProto'File :: Global -> T.File -> Err FOF
-fromProto'File glob f = Or <$> mapM (input'fof glob) (f^. #input)
-
-input'fof :: Global -> T.Input -> Err FOF
-input'fof glob i = do
-  f <- getFormula (i^. #formula)
-  let vars = stack'make $ Set.map VarName $ freeVars f
+input'fof :: NodeIndex -> T.Input -> Err FOF
+input'fof idx i = do
+  (f,[]) <- stream'tree idx (i^. #formula)
+  fv <-r$ freeVars f
   case i^. #language of {
     T.Input'CNF -> return ();
-    T.Input'FOF -> when (vars/=stack'empty) $ fail "unexpected free vars in FOF";
+    T.Input'FOF -> when (not $ Set.null fv) $ fail "unexpected free vars in FOF";
     lang -> fail ("unexpected language: " ++ show lang);
   };
-  f2 <- formula'fof (Local glob vars) f
-  let f3 = lambda Forall stack'empty (vars,f2)
+  f <- formula'fof f
+  f <- f & for fv (\v cont f -> cont (Forall (VarName v) f))
   case i^. #role of {
-    T.Input'AXIOM -> return (Neg f3);
-    T.Input'LEMMA -> return (Neg f3);
-    T.Input'PLAIN -> return (Neg f3);
-    T.Input'DEFINITION -> return (Neg f3);
-    T.Input'NEGATED_CONJECTURE -> return (Neg f3);
-    T.Input'CONJECTURE -> return f3; 
-    T.Input'HYPOTHESIS -> return f3;
-  };
+    T.Input'AXIOM -> r (Neg f);
+    T.Input'LEMMA -> r (Neg f);
+    T.Input'PLAIN -> r (Neg f);
+    T.Input'DEFINITION -> r (Neg f);
+    T.Input'NEGATED_CONJECTURE -> r (Neg f);
+    T.Input'CONJECTURE -> r f; 
+    T.Input'HYPOTHESIS -> r f;
+  }
 
-formula'fof :: Local -> T.Formula'Formula -> Err FOF
-formula'fof local f =
-  case f of 
-    T.Formula'Pred' pred -> Atom <$> fromProto'Pred local pred
-    T.Formula'Quant' quant -> do { 
-      let { local' = local & vars %~ stack'push' (map VarName $ quant^..quant'varName) };
-      w <- (case (quant^. #type') of
-        T.Formula'Quant'FORALL -> return Forall
-        T.Formula'Quant'EXISTS -> return Exists);
-      sub <- formula'fof local' =<< getFormula (quant^. #sub);
-      return $ lambda w (local^.vars) (local'^.vars,sub);
-    }
-    T.Formula'Op op -> let
-      args' = mapM (\a -> getFormula a >>= formula'fof local) (op^. #args) in
-      case (op^. #type') of
-        T.Formula'Operator'NEG -> do { [a] <- args'; return (Neg a) } -- will throw Exception
-        T.Formula'Operator'OR -> Or <$> args'
-        T.Formula'Operator'AND -> And <$> args'
-        T.Formula'Operator'IFF -> do { [l,r] <- args'; return (Neg (Xor l r)) }
-        T.Formula'Operator'IMPL -> do { [l,r] <- args'; return (Or [(Neg l),r]) }
-        T.Formula'Operator'XOR -> do { [l,r] <- args'; return (Xor l r) }
-        T.Formula'Operator'NOR -> Neg . Or <$> args'
-        T.Formula'Operator'NAND -> Neg . And <$> args'
-        T.Formula'Operator'TRUE -> return (And [])
-        T.Formula'Operator'FALSE -> return (Or [])
+formula'fof :: NodeTree -> Err FOF
+formula'fof nt@(NodeTree n args) = do
+  quant <-r$ \q -> do
+    [v,f] <-r$ args
+    f <- formula'fof f;
+    r$ q (VarName (v^.root)) f;
+  args'fof <-r$ \args -> [] & for args (\a cont [] -> do
+    a <- formula'fof a
+    at <- cont []
+    r$ a:at)
+  case n^.type_ of 
+    T.PRED -> Atom <$> fromProto'Pred nt
+    T.PRED_EQ -> Atom <$> fromProto'Pred nt
+    T.FORALL -> quant Forall
+    T.EXISTS -> quant Exists
+    T.FORM_NEG -> do { [a] <- args'fof args; r$ Neg a }
+    T.FORM_OR -> Or <$> args'fof args
+    T.FORM_AND -> And <$> args'fof args
+    T.FORM_IFF -> do { [x,y] <- args'fof args; r$ Neg (Xor x y) }
+    T.FORM_IMPL -> do { [x,y] <- args'fof args; r$ Or [(Neg x),y] }
+    T.FORM_XOR -> do { [x,y] <- args'fof args; r$ Xor x y }
+    T.FORM_NOR -> Neg <$> Or <$> args'fof args
+    T.FORM_NAND -> Neg <$> And <$> args'fof args
+    T.FORM_TRUE -> r$ And []
+    T.FORM_FALSE -> r$ Or []
 
-fromProto'Pred :: Local -> T.Formula'Pred -> Err Pred
-fromProto'Pred local pred =
-  let args' = mapM (fromProto'Term local) (pred^.pred'args) in
-  case (pred^. #type') of
-    T.Formula'Pred'CUSTOM -> wrap.PCustom (stack'find (local^.global.preds) (PredName $ pred^.pred'name)) <$> args'
-    T.Formula'Pred'EQ -> do { [l,r] <- args'; return (wrap $ PEq l r) }
+isPred :: Node -> Bool
+isPred n = case n^.type_ of
+  T.PRED -> True
+  T.PRED_EQ -> True
+  _ -> False
 
-fromProto'Term :: Local -> T.Term -> Err Term
-fromProto'Term local term =
-  case (term^. #type') of
-    T.Term'VAR -> return $ wrap $ TVar $ stack'find (local^.vars) (VarName $ term^.term'name) 
-    T.Term'EXP -> wrap.TFun fn <$> args' where
-      args' = mapM (fromProto'Term local) (term^. #args)
-      fn = stack'find (local^.global.funs) (FunName $ term^.term'name) 
+isTerm :: Node -> Bool
+isTerm n = case n^.type_ of
+  T.TERM_FUN -> True
+  T.TERM_VAR -> True
+  _ -> False
 
-toProto'Pred :: Pred -> T.Formula'Pred
-toProto'Pred pred = case unwrap pred of
-  PEq l r -> defMessage & #type' .~ T.Formula'Pred'EQ & #args .~ map toProto'Term [l,r]
-  PCustom pn args -> defMessage & #type' .~ T.Formula'Pred'CUSTOM & pred'name .~ show pn & #args .~ map toProto'Term args
+fromProto'Pred :: NodeTree -> Err Pred
+fromProto'Pred (NodeTree n args) = do
+  when (not $ isPred n) (fail "non-pred node")
+  args <- [] & for args (\a cont [] -> do
+    a <- fromProto'Term a
+    at <- cont []
+    r$ a:at)
+  r$ wrap$ Pred (PredName n) args
 
-toProto'Term :: Term -> T.Term
-toProto'Term term = case unwrap term of
-  TVar vn -> defMessage & #type' .~ T.Term'VAR & term'name .~ show vn
-  TFun fn args -> defMessage & #type' .~ T.Term'EXP & term'name .~ show fn & #args .~ map toProto'Term args
+fromProto'Term :: NodeTree -> Err Term
+fromProto'Term (NodeTree n args) = do
+  when (not $ isTerm n) (fail "non-term node")
+  args <- [] & for args (\a cont [] -> do
+    a <- fromProto'Term a
+    at <- cont []
+    r$ a:at)
+  r$ wrap$ case n^.type_ of
+    T.TERM_VAR -> TVar (VarName n) 
+    T.TERM_FUN -> TFun (FunName n) args
+
+toProto'Pred :: Pred -> NodeTree
+toProto'Pred (unwrap -> Pred (PredName n) args) = NodeTree n (toProto'Term <$> args)
+
+toProto'Term :: Term -> NodeTree
+toProto'Term (unwrap -> TVar (VarName n)) = NodeTree n []
+toProto'Term (unwrap -> TFun (FunName n) args) = NodeTree n (toProto'Term <$> args)
 

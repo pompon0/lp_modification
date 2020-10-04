@@ -22,6 +22,7 @@ import (
 
   "github.com/pompon0/tptp_benchmark_go/tool"
   "github.com/pompon0/tptp_benchmark_go/problems"
+  "github.com/pompon0/tptp_benchmark_go/utils"
   "github.com/pompon0/tptp_benchmark_go/cloud/worker/push"
   pb "github.com/pompon0/tptp_benchmark_go/cloud/worker/worker_go_proto"
   spb "github.com/pompon0/tptp_benchmark_go/tptp_parser/proto/solutions_go_proto"
@@ -29,46 +30,19 @@ import (
 
 ////////////////////////////////////////////
 
-// run "gcloud auth application-default login" before executing this binary
+// run "gcloud auth configure-docker", so that binary is able to push to container registry
+// run "gcloud auth application-default login" so that binary has access to GCP.
 var workerAddr = flag.String("worker_addr","worker-su5lpnpdhq-uc.a.run.app:443","worker service address")
 
 var reportDir = flag.String("report_dir","","")
+var verboseLogPath = flag.String("verbose_log_path","/tmp/master.log","")
 
 var maxInFlight = flag.Int("max_in_flight",10,"")
 var problemLimit = flag.Int("problem_limit",-1,"number of problems to solve (-1 for all problems)")
 var timeout = flag.Duration("timeout",16*time.Second,"timeout per problem")
 
+var validateProof = flag.Bool("validate_proof",true,"")
 var equalityOnly = flag.Bool("equality_only",false,"")
-
-type EnumFlag struct {
-  fromString map[string]int32
-  Value int32
-}
-
-func NewEnumFlag(fromString map[string]int32) *EnumFlag {
-  return &EnumFlag{fromString: fromString}
-}
-
-func (f *EnumFlag) Desc() string {
-  var names []string
-  for k,_ := range f.fromString { names = append(names,k) }
-  sort.Slice(names,func(i,j int) bool { return f.fromString[names[i]] < f.fromString[names[j]] })
-  return strings.Join(names,"|")
-}
-
-func (f *EnumFlag) Set(name string) error {
-  v,ok := f.fromString[name]
-  if !ok { return fmt.Errorf("unknown %q",name) }
-  f.Value = v
-  return nil
-}
-
-func (f *EnumFlag) String() string {
-  for k,v := range f.fromString { if v==f.Value { return k } }
-  // For some reason we need to support execution on nil
-  // (https://golang.org/pkg/flag/#Value)
-  return ""
-}
 
 const (
   problemSetMizar = "mizar"
@@ -80,7 +54,7 @@ var problemSets = []string{problemSetMizar,problemSetTptp}
 
 var commit = flag.String("commit","","current version")
 var problemSet = flag.String("problem_set",problemSetMizar,strings.Join(problemSets,"|"))
-var prover = NewEnumFlag(pb.Prover_value)
+var prover = (*pb.Prover)(utils.NewEnumFlag("prover",pb.Prover_UNKNOWN))
 
 type ConnPool struct {
   conn []*grpc.ClientConn
@@ -154,12 +128,15 @@ func run(ctx context.Context) error {
     prob = x
   case problemSetTptp:
     x,cancel,err := problems.TptpProblems()
-    if err!=nil { return fmt.Errorf("problems.TptpProblems(): %v",err) }
+    if err!=nil { return fmt.Errorf("problems.TptpProblems(): %w",err) }
     defer cancel()
     prob = x
   default:
     return fmt.Errorf("unknown problem set %q",*problemSet)
   }
+
+  vlog,err := os.Create(*verboseLogPath)
+  if err!=nil { return fmt.Errorf("os.Create(): %w",err) }
 
   resultsChan := make(chan *spb.Case,1000)
   group,gCtx := errgroup.WithContext(ctx)
@@ -216,9 +193,10 @@ func run(ctx context.Context) error {
         //t := time.Now()
         resp,err = c.Prove(gCtx,&pb.Req{
           Commit: *commit,
-          Prover: pb.Prover(prover.Value),
+          Prover: *prover,
           TptpProblem: tptp,
           Timeout: timeoutProto,
+          ValidateProof: *validateProof,
         })
         // log.Printf("latency = %v",time.Now().Sub(t))
         atomic.AddInt64(&inFlight,-1)
@@ -259,6 +237,9 @@ func run(ctx context.Context) error {
           filteredCount++
           continue
         }
+        if _,err:=vlog.WriteString(fmt.Sprintf("%+v\n",r)); err!=nil {
+          return fmt.Errorf("vlog.WriteString(): %w",err)
+        }
         report.Cases = append(report.Cases, r)
         if !r.Output.Solved {
           failCount++
@@ -282,7 +263,6 @@ func run(ctx context.Context) error {
 }
 
 func main() {
-  flag.Var(prover,"prover",prover.Desc())
   flag.Parse()
   if err:=run(context.Background()); err!=nil {
     log.Fatalf("%v",err)

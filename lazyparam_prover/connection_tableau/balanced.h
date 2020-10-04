@@ -1,0 +1,189 @@
+#ifndef CONNECTION_TABLEAU_BALANCED_H_
+#define CONNECTION_TABLEAU_BALANCED_H_
+
+#include "lazyparam_prover/connection_tableau/cont.h"
+#include "lazyparam_prover/memory/layout.h"
+
+namespace tableau::connection_tableau::balanced {
+
+struct Proxy;
+
+// [a] Task,min,max -> {[b,d]}
+// [b] TaskSet,max -> [a(max),b],[b(max),a(min)]
+// [d] CheckRange { min } -> []
+using Task = memory::function<void(Proxy*)>;
+using TaskSet = memory::List<Task>;
+// TODO: indicate that min in checkmin is absolute, while in task it is relative
+struct _SpecCheckMin { size_t min; };
+struct _SpecTask { Task task; size_t min,max; };
+struct _SpecTaskSet { TaskSet task_set; size_t max; };
+using SpecCheckMin = memory::Variant<0,_SpecCheckMin>;
+using SpecTask = memory::Variant<1,_SpecTask>;
+using SpecTaskSet = memory::Variant<2,_SpecTaskSet>;
+using Spec = memory::Coprod<SpecCheckMin,SpecTask,SpecTaskSet>;
+using Cont = memory::List<Spec>;
+template<typename FCheckMin, typename FTask, typename FTaskSet> auto spec_switch(
+    Spec spec, FCheckMin fcheckmin, FTask ftask, FTaskSet ftaskset){
+  switch(spec.type()) {
+  case SpecCheckMin::ID: return fcheckmin(SpecCheckMin(spec));
+  case SpecTask::ID: return ftask(SpecTask(spec));
+  case SpecTaskSet::ID: return ftaskset(SpecTaskSet(spec));
+  default: error("unmatched case");
+  }
+}
+
+enum { CUT = true };
+
+struct Div {
+  template<typename F> INL Div(memory::Alloc &_A, SearchState *_state, size_t size_limit, F f)
+      : A(_A), state(_state) {
+    save(Cont(A,Spec(SpecTask::alloc(A,[&](_SpecTask &st){
+      st.min = 0;
+      st.max = size_limit;
+      st.task = Task(A,f);
+    }))));
+  }
+  memory::Alloc &A;
+  SearchState *state;
+
+  INL void save(Cont cont) {
+    if(CUT) {
+      //TODO: add comp(7) phase: restart search without cut
+      //TODO: can be optimized
+      size_t s = cont.size();
+      while(saves.size()) {
+        auto c = saves.back().cont;
+        auto sc = c.size();
+        if(sc<s) break;
+        while(sc-->s) c = c.tail();
+        if(!cont.pointer_equal(c)) break;
+        saves.pop_back();
+      }
+    }
+    saves.push_back({
+      .cont = cont,
+      .ss = state->save(),
+      .As = A.save(),
+    });
+  }
+  struct Save {
+    Cont cont;
+    SearchState::Save ss;
+    memory::Alloc::Save As;
+  };
+  vec<Save> saves;
+
+  //////////////////////////////
+
+  INL bool step();
+};
+
+//TODO: add runtime checks in proxy
+// - that after and_(), done_() is required
+// - that done() can be called only once
+// - that (and_()+done) and or_() exclude each other
+// - that search state can be updated only until done()/or() is called
+struct Proxy {
+  memory::Alloc &A;
+  SearchState *state;
+  size_t size_limit;
+  
+  template<typename F> INL void or_(Features x, F f){
+    div->save(cont.add(A,Spec(SpecTask::alloc(A,[&](_SpecTask &st){
+      st.min = 0;
+      st.max = size_limit;
+      st.task = Task(A,f);
+    }))));
+  }
+  template<typename F> INL void and_(F f){
+    new_tasks.push(A,Task(A,f));
+  }
+  INL void done(Features f){
+    div->save(cont.add(A,Spec(SpecTaskSet::alloc(A,[&](_SpecTaskSet &sts){
+      sts.max = size_limit;
+      sts.task_set = new_tasks;
+    }))));
+  }
+  
+  Div *div;
+  Cont cont;
+  memory::List<Task> new_tasks;
+};
+
+INL bool Div::step() {
+  auto s = saves.back(); saves.pop_back();
+  A.restore(s.As);
+  state->restore(s.ss);
+  if(s.cont.empty()){ return true; }
+  spec_switch(s.cont.head(),
+    [&](SpecCheckMin scm){
+      if(state->nodes_used<scm->min) return;
+      save(s.cont.tail());
+    },
+    [&](SpecTask st){
+      if(state->nodes_used+st->min > st->max) return;
+      Cont c = s.cont.tail();
+      if(st->min>0) c.push(A,Spec(SpecCheckMin::alloc(A,[&](_SpecCheckMin &scm){
+        scm.min = state->nodes_used+st->min;
+      })));
+      Proxy P{
+        .A = A,
+        .state = state,
+        .size_limit = st->max,
+        .div = this,
+        .cont = c,
+      };
+      st->task(&P);
+    },
+    [&](SpecTaskSet sts){
+      if(sts->task_set.empty()){ save(s.cont.tail()); return; }
+      size_t budget = sts->max-state->nodes_used;
+      size_t head_budget = budget/sts->task_set.size();
+      auto head = sts->task_set.head();
+      auto tail = sts->task_set.tail();
+      {
+        Cont c = s.cont.tail();
+        if(!tail.empty()) c.push(A,Spec(SpecTaskSet::alloc(A,[&](_SpecTaskSet &sts2){
+          sts2.task_set = tail;
+          sts2.max = sts->max;
+        })));
+        save(c.add(A,Spec(SpecTask::alloc(A,[&](_SpecTask &st){
+          st.task = head;
+          st.min = 0;
+          st.max = state->nodes_used+head_budget;
+        }))));
+      }
+      if(!tail.empty() && head_budget<budget) save(s.cont.tail()
+        .add(A,Spec(SpecTask::alloc(A,[&](_SpecTask &st){
+          st.task = head;
+          st.min = head_budget+1;
+          st.max = sts->max;
+        })))
+        .add(A,Spec(SpecTaskSet::alloc(A,[&](_SpecTaskSet &sts2){
+          sts2.task_set = tail;
+          sts2.max = sts->max-(head_budget+1);
+        })))
+      );
+    }
+  );
+  return false;
+}
+
+// Search takes alloc as an argument to be able to return result in its memory.
+// TODO: generalize search and test it to find random test trees - to make sure that is doesn't skip any part of search space.
+alt::SearchResult search(const Ctx &ctx, memory::Alloc &A, SearchState &state, size_t size_limit) { FRAME("connection_tableau::balanced_search()");
+  SCOPE("connection_tableau::balanced_search");
+  Div d(A,&state,size_limit,[](Proxy *p){ start_task(p); });
+  size_t steps = 0;
+  for(; d.saves.size(); steps++) {
+    if(d.step()) return {1,steps};
+    if(steps%100==0 && ctx.done()) return {0,steps};
+    DEBUG if(steps%1000==0) info("steps = %",steps);
+  }
+  DEBUG info("steps = %",steps);
+  return {0,steps};
+}
+
+} // namespace connection_tableau::tableau::balanced
+
+#endif  // CONNECTION_TABLEAU_BALANCED_H_

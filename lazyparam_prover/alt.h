@@ -1,19 +1,14 @@
 #ifndef LAZYPARAM_PROVER_ALT_H_
 #define LAZYPARAM_PROVER_ALT_H_
 
-#include "lazyparam_prover/ctx.h"
+#include "utils/ctx.h"
 
 namespace tableau {
 namespace alt {
 
 struct ExampleCont {
-  struct State {
-    struct Snapshot {};
-    void rewind(Snapshot){}
-    Snapshot snapshot(){ return {}; }
-  };
   bool done() const { return 1; }
-  template<typename Alts> void run(State &state, Alts &alts) const {}
+  memory::List<ExampleCont> run(memory::Alloc&) const { return memory::nothing(); }
 };
 
 struct SearchResult {
@@ -21,23 +16,29 @@ struct SearchResult {
   size_t cont_count;
 };
 
-template<typename Cont> SearchResult search(const Ctx &ctx, typename Cont::State &state, Cont c) {
+template<typename Cont> SearchResult search(const Ctx &ctx, memory::Alloc &A, Cont c) { FRAME("search()");
   SCOPE("alt::search");
-  struct Alt { Cont cont; typename Cont::State::Snapshot snapshot; };
-  size_t cont_count = 0;
-  List<Alt> alts({c,state.snapshot()});
-  for(size_t steps = 0; !alts.empty(); steps++) {
-    if(steps%100==0 && ctx.done()) return {0,cont_count};
+  struct Save {
+    memory::List<Cont> conts; 
+    memory::Alloc::Save A;
+  };
+  memory::List<Cont> start(A,c);
+  vec<Save> saves{Save{start,A.save()}};
+  size_t steps = 0;
+  for(; saves.size(); steps++) {
+    auto conts = saves.back().conts;
+    if(!conts.size()){ saves.pop_back(); continue; }
+    if(steps%100==0 && ctx.done()) return {0,steps};
     DEBUG if(steps%1000==0) info("steps = %",steps);
-    auto a = alts.head(); alts = alts.tail();
-    state.rewind(a.snapshot);
-    if(a.cont.done()) return {1,cont_count};
-    a.cont.run(state,[&alts,&state,&cont_count](Cont cont){
-      cont_count++;
-      alts = Alt{cont,state.snapshot()} + alts;
-    });
+    A.restore(saves.back().A);
+    auto c = conts.head();
+    saves.back().conts = conts.tail();
+    if(c.done()) return {1,steps};
+    conts = c.run(A);
+    saves.push_back(Save{conts,A.save()});
   }
-  return {0,cont_count};
+  DEBUG info("steps = %",steps);
+  return {0,steps};
 }
 
 } // namespace alt

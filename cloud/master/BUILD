@@ -11,6 +11,7 @@ go_library(
         "//problems:go_default_library",
         "//tool:go_default_library",
         "//tptp_parser/proto:solutions_go_proto",
+        "//utils:go_default_library",
         "@com_github_golang_protobuf//ptypes:go_default_library_gen",
         "@org_golang_google_grpc//:go_default_library",
         "@org_golang_google_grpc//codes:go_default_library",

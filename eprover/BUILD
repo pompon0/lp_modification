@@ -7,7 +7,6 @@ go_library(
     importpath = "github.com/pompon0/tptp_benchmark_go/eprover",
     visibility = ["//visibility:public"],
     deps = [
-        "//tool:go_default_library",
         "//tptp_parser/proto:solutions_go_proto",
         "//utils:go_default_library",
     ],
@@ -18,7 +17,7 @@ go_test(
     srcs = ["eprover_test.go"],
     embed = [":go_default_library"],
     deps = [
-        "//problems:go_default_library",
+        "//problems/sample:go_default_library",
         "//tool:go_default_library",
     ],
 )

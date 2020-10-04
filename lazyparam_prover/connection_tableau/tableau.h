@@ -79,7 +79,6 @@ INL alt::SearchResult search(const Ctx &ctx, memory::Alloc &A, SearchState &stat
 template<typename SEARCH> INL ProverOutput prove(
   const Ctx &ctx,
   memory::Alloc &A,
-  size_t limit_max,
   SEARCH search
 ) { FRAME("prove_loop()");
   static_assert(memory::has_sig<SEARCH,ProverOutput(const Ctx&, memory::Alloc &, size_t limit)>());
@@ -90,7 +89,7 @@ template<typename SEARCH> INL ProverOutput prove(
   //info("ClauseIndex begin");
   //info("ClauseIndex end");
   for(;!ctx.done();) {
-    if(++limit>limit_max) break; // avoid incrementing limit before context check
+    limit++; // avoid incrementing limit before context check
     DEBUG info("limit = %",limit);
     ProverOutput out = search(ctx,A,limit);
     out.cont_count += cont_count;
@@ -113,13 +112,17 @@ template<typename SEARCH> INL ProverOutput prove(
 }
 
 static ProverOutput prove_loop(
-  const Ctx &ctx,
+  Ctx::Ptr ctx,
   memory::Alloc &A,
   OrForm form,
   const FunOrd &fun_ord
 ) {
+  Ctx::Ptr half_ctx = ctx;
+  if(auto d = ctx->get_deadline()) {
+    half_ctx = Ctx::with_timeout(ctx,(*d-absl::Now())*0.6);
+  }
   ClauseIndex idx(form);
-  auto out = prove(ctx,A,12,[&](const Ctx &ctx, memory::Alloc &A, size_t limit)INLL{
+  auto out = prove(*half_ctx,A,[&](const Ctx &ctx, memory::Alloc &A, size_t limit)INLL{
     // prove
     SearchState s(idx,fun_ord);
     auto As = A.save();
@@ -135,7 +138,7 @@ static ProverOutput prove_loop(
     };
   });
   if(out.proof) return out;
-  return prove(ctx,A,1000000,[&](const Ctx &ctx, memory::Alloc &A, size_t limit){
+  return prove(*ctx,A,[&](const Ctx &ctx, memory::Alloc &A, size_t limit){
     // prove
     SearchState s(idx,fun_ord);
     auto As = A.save();

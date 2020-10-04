@@ -98,7 +98,7 @@ int main(int argc, char **argv) {
     FunOrd fun_ord(input.fun_ord(),input.problem().nodes());
     switch(method.get()) {
       case prover::CONNECTION_TABLEAU:
-        out = connection_tableau::prove_loop(*ctx,A,f,fun_ord);
+        out = connection_tableau::prove_loop(ctx,A,f,fun_ord);
         break;
       case prover::LAZY_PARAMODULATION:
         if(absl::GetFlag(FLAGS_trans).get()!=prover::SKIP) {

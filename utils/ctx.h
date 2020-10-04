@@ -5,7 +5,9 @@
 #include <future>
 #include <memory>
 #include <set>
+#include "absl/time/clock.h"
 #include "absl/time/time.h"
+#include "absl/types/optional.h"
 #include "utils/log.h"
 
 struct Ctx {
@@ -23,6 +25,10 @@ struct Ctx {
     return std::make_tuple(ctx,[ctx]{ ctx->cancel(); });
   }
   static Ptr with_timeout(Ptr base, absl::Duration timeout);
+  virtual absl::optional<absl::Time> get_deadline() {
+    if(base) return base->get_deadline();
+    return {};
+  }
 protected:
   Ctx(Ptr _base = 0) : base(_base) { FRAME("Ctx()");
     f = p.get_future().share();
@@ -52,19 +58,22 @@ protected:
 };
 
 struct CtxWithTimeout : Ctx {
-  CtxWithTimeout(Ctx::Ptr base, absl::Duration timeout) : Ctx(base) {
-    timeout_task = std::async(std::launch::async,[this,timeout]{
-      // TODO: probably wait_until would be better, as there are no guarantees
-      // on when the async task is started.
-      f.wait_for(absl::ToChronoMilliseconds(timeout));
+  CtxWithTimeout(Ctx::Ptr base, absl::Duration timeout) : Ctx(base), deadline(absl::Now()+timeout) {
+    timeout_task = std::async(std::launch::async,[this]{
+      f.wait_until(absl::ToChronoTime(deadline));
       cancel();
     });
+  }
+  virtual absl::optional<absl::Time> get_deadline() override {
+    //TODO: fix situation when parent deadline is shorter
+    return deadline;
   }
   ~CtxWithTimeout() {
     cancel();
     timeout_task.wait();
   }
 private:
+  absl::Time deadline;
   std::future<void> timeout_task;
 };
 

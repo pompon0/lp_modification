@@ -51,6 +51,7 @@ cc_library(
     deps = [
         "@abseil//absl/strings:strings",
         "@abseil//absl/time:time",
+        "@abseil//absl/types:optional",
         "@com_google_protobuf//:protobuf",
     ],
 )

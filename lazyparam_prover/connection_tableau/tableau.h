@@ -118,24 +118,31 @@ static ProverOutput prove_loop(
   OrForm form,
   const FunOrd &fun_ord
 ) {
-  ClauseIndex cla_index(form);
-  return prove(ctx,A,1000000,[&](const Ctx &ctx, memory::Alloc &A, size_t limit)INLL{
-    SearchState s(cla_index,fun_ord);
+  ClauseIndex idx(form);
+  auto out = prove(ctx,A,12,[&](const Ctx &ctx, memory::Alloc &A, size_t limit)INLL{
+    // prove
+    SearchState s(idx,fun_ord);
+    auto As = A.save();
+    auto res = balanced::search(ctx,A,s,true,limit);
+    s.stats.val = s.val.stats;
+    if(!res.found) A.restore(As);
+    return ProverOutput{
+      res.cont_count,
+      limit,
+      s.val.get_valuation(),
+      res.found ? s.get_proof(A) : 0,
+      s.stats,
+    };
+  });
+  if(out.proof) return out;
+  return prove(ctx,A,1000000,[&](const Ctx &ctx, memory::Alloc &A, size_t limit){
+    // prove
+    SearchState s(idx,fun_ord);
     auto As = A.save();
     auto res = balanced::search(ctx,A,s,false,limit);
     s.stats.val = s.val.stats;
     if(!res.found) A.restore(As);
-    DEBUG_ONLY(
-      if(res.found) {
-        str trace;
-        size_t i = 0;
-        for(auto l=s.trace; !l.empty(); l=l.tail()) {
-          trace = util::fmt("[%] %\n",i++,l.head()) + trace;
-        }
-        info("TRACE = \n%",trace);
-      }
-    )
-    return ProverOutput {
+    return ProverOutput{
       res.cont_count,
       limit,
       s.val.get_valuation(),
@@ -144,6 +151,7 @@ static ProverOutput prove_loop(
     };
   });
 }
+
 } // namespace connection_tableau::tableau
 
 #endif  // CONNECTION_TABLEAU_TABLEAU_H_

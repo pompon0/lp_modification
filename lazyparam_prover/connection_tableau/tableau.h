@@ -66,7 +66,7 @@ static ProverOutput prove(const Ctx &ctx, memory::Alloc &A, const ClauseIndex &c
   SCOPE("prove");
   SearchState s(cla_index,fun_ord);
   auto As = A.save();
-  auto res = balanced::search(ctx,A,s,limit);
+  auto res = balanced::search(ctx,A,s,false,limit);
   s.stats.val = s.val.stats;
   if(!res.found) A.restore(As);
   DEBUG_ONLY(

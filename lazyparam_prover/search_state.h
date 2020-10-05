@@ -50,6 +50,10 @@ inline str show(Branch b) {
 
 using Val = ConstrainedValuation<LPO>;
 
+struct Features {
+  size_t depth;
+};
+
 struct SearchState {
   SearchState(
     const ClauseIndex &_cla_index,

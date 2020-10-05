@@ -19,10 +19,6 @@
 
 namespace tableau::connection_tableau {
 
-struct Features {
-  size_t depth;
-};
-
 struct _ {
   #include "lazyparam_prover/connection_tableau/frames/start.h"
   #include "lazyparam_prover/connection_tableau/frames/strong.h"

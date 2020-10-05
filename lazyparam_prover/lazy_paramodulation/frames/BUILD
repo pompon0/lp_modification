@@ -3,11 +3,7 @@ cc_library(
     hdrs = [
         "start.h",
         "strong.h",
-        "weak_set.h",
         "weak.h",
-        "weak_unify.h",
-        "min_cost.h",
-        "reduction.h",
         "lazy_weak_connection.h",
         "lazy_pre_weak_connection.h",
         "lazy_strong_connection.h",

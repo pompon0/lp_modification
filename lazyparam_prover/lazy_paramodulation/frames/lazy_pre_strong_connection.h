@@ -8,7 +8,7 @@ struct _LazyPreStrongConnectionFrame {
     auto mcla = d->state->allocate(d->A,dcla);
     if(!mcla) return;
     auto cla = mcla.get();
-    STATE_FRAME(A,state,"lazy_pre_strong_connection(strong_id=%,cla=%)",strong_id,show(cla));
+    STATE_FRAME(d->A,d->state,"lazy_pre_strong_connection(strong_id=%,cla=%)",strong_id,show(cla));
     if(dcla.cost()==0) d->state->nodes_used++; // this implementation doesn't check regularity, so it doesn't have halting property with free clauses.
     if(d->state->nodes_used>d->size_limit) return;
 

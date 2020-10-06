@@ -3,7 +3,7 @@ struct _LazyPreWeakConnectionFrame {
   Atom L;
   Atom lr;
 
-  template<typename Div> INL void run(Div *d) const { STATE_FRAME(A,state,"lazy_pre_weak_connection(L=%,lr=%)",show(L),show(lr));
+  template<typename Div> INL void run(Div *d) const { STATE_FRAME(d->A,d->state,"lazy_pre_weak_connection(L=%,lr=%)",show(L),show(lr));
     if(++d->state->nodes_used>d->size_limit) return;
     DEBUG if(lr.pred()!=Atom::EQ || lr.sign()) error("lr = %",show(lr));
     auto l = lr.arg(0);

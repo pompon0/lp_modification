@@ -123,7 +123,6 @@ cc_library(
     name = "prover",
     hdrs = [
         "search_state.h",
-        "alt.h",
         "eq_axioms.h",
         "ground.h",
         "lpmod.h",
@@ -211,6 +210,7 @@ cc_binary(
         ":prover_cc_proto",
         "//lazyparam_prover/lazy_paramodulation:prover",
         "//lazyparam_prover/connection_tableau:prover",
+        "//lazyparam_prover/engine:engine",
         "//utils:utils",
         "@abseil//absl/flags:flag",
         "@abseil//absl/flags:parse",

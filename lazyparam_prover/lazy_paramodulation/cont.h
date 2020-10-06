@@ -4,7 +4,6 @@
 #include "lazyparam_prover/lazy_paramodulation/split.h"
 #include "lazyparam_prover/search_state.h"
 #include "lazyparam_prover/memory/lazy.h"
-#include "lazyparam_prover/alt.h"
 
 namespace tableau::lazy_paramodulation {
 
@@ -19,7 +18,7 @@ struct AxiomClause : memory::Lazy<DerAndClause>::Impl {
   }
 };
 
-struct _ {
+struct Cont {
 using State = SearchState;
 #include "lazyparam_prover/lazy_paramodulation/frames/start.h"
 #include "lazyparam_prover/lazy_paramodulation/frames/strong.h"
@@ -28,12 +27,9 @@ using State = SearchState;
 #include "lazyparam_prover/lazy_paramodulation/frames/lazy_pre_weak_connection.h"
 #include "lazyparam_prover/lazy_paramodulation/frames/lazy_strong_connection.h"
 #include "lazyparam_prover/lazy_paramodulation/frames/lazy_pre_strong_connection.h"
+template<typename Div> INL static void start(Div *d){ _StartFrame{}.run(d); }
 };
 
-template<typename Div> INL static inline void start_task(Div *d) {
-  _::_StartFrame{}.run(d);
-}
-
-} // namespace lazy_paramodulation::tableau
+} // namespace tableau::lazy_paramodulation
 
 #endif  // LAZY_PARAMODULATION_CONT_H_

@@ -7,7 +7,7 @@ struct _WeakFrame {
     Features f{.depth=branch.false_.size()};
     // match lemma
     if(matches_lemma(*d->state,branch)){ 
-      STATE_FRAME(A,state,"matches_lemma");
+      STATE_FRAME(d->A,d->state,"matches_lemma");
       d->done(f);
       return;
     }
@@ -30,7 +30,7 @@ struct _WeakFrame {
     // strong connections
     // P(r),-P(s)
     if(a.pred()!=Atom::EQ) {
-      STATE_FRAME(A,d->state,"[%] %",a.id(),show(a));
+      STATE_FRAME(d->A,d->state,"[%] %",a.id(),show(a));
       // since a may have been paramodulated, we cannot use the most optimized
       // version of get_matches.
       auto matches = d->state->cla_index.get_matches(a.pred(),!a.sign(),budget);

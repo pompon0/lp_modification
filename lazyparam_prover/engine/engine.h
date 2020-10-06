@@ -18,6 +18,15 @@ template<typename SEARCH> INL ProverOutput iterative_deepening(
     out.cost++; // avoid incrementing limit before context check
     DEBUG info("limit = %",out.cost);
     if(search(ctx,A,s,out.cost)) { 
+      DEBUG_ONLY(
+        str trace;
+        size_t i = 0;
+        for(auto l=s.trace; !l.empty(); l=l.tail()) {
+          trace = util::fmt("[%] %\n",i++,l.head()) + trace;
+        }
+        info("\n%",trace);
+      )
+      out.cont_count = s.stats.steps;
       out.stats = s.stats;
       out.val = s.val.get_valuation();
       out.proof = s.get_proof(A);
@@ -29,6 +38,7 @@ template<typename SEARCH> INL ProverOutput iterative_deepening(
     s.restore(ss);
   }
   DEBUG info("FAILURE");
+  out.cont_count = s.stats.steps;
   out.stats = s.stats;
   return out; 
 }

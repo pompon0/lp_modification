@@ -103,7 +103,7 @@ struct _LazyStrongConnectionFrame {
       d->state->lazy_clauses_used.push(d->A,lazy(d->A,AxiomClause{mb.build()}));
       d->state->lazy_clauses_used.push(d->A,lazy(d->A,AxiomClause{AndClause::make(d->A,fs_fv,l_r,fs_w.neg())}));
     }
-    for(auto brs = base.branch_set.branches; !brs.empty(); brs = brs.tail()) {
+    for(auto brs = bs.branches; !brs.empty(); brs = brs.tail()) {
       d->and_([brs](Div *d)INLL{ _WeakFrame{.branch=brs.head()}.run(d); });
     }
     Features f{.depth=base.branch_set.branch.false_.size()+1};  

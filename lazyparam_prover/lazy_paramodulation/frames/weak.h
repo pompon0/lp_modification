@@ -14,7 +14,7 @@ struct _WeakFrame {
     auto a = branch.false_.head();
     // reduce
     if(a.pred()==Atom::EQ && a.sign()) {
-      d->or_(f,[f,a](Div *d){
+      d->or_(f,[f,a](Div *d)INLL{
         if(!d->state->val.unify(d->A,a.arg(0),a.arg(1))) return;
         d->state->lazy_clauses_used.push(d->A,lazy(d->A,AxiomClause{AndClause::make(d->A,a.neg())}));
         d->done(f);
@@ -80,7 +80,7 @@ struct _WeakFrame {
     if(lr.pred()!=Atom::EQ || lr.sign()) return;
     auto br = branch;
     Features f{.depth=br.false_.size()};
-    d->or_(f,[br,lr,L](Div *d){
+    d->or_(f,[br,lr,L](Div *d)INLL{
       _LazyPreWeakConnectionFrame{
         .branch=br,
         .L = L,
@@ -94,7 +94,7 @@ struct _WeakFrame {
     if(x.pred()==Atom::EQ) return;
     if(Index::atom_hash(x)!=(Index::atom_hash(y)^1)) return;
     Features f{.depth=branch.false_.size()};
-    d->or_(f,[f,x,y](Div *d){
+    d->or_(f,[f,x,y](Div *d)INLL{
       d->state->stats.weak_unify_steps++;
       if(!d->state->val.unify(d->A,x,y)) return;
       d->done(f);

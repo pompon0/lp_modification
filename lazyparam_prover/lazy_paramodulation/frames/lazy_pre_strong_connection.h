@@ -35,10 +35,10 @@ struct _LazyPreStrongConnectionFrame {
         .L = apl.head(),
         .branch_lr = branch_lr,
       };
-      d->or_(f,[base,l,r](Div *d){
+      d->or_(f,[base,l,r](Div *d)INLL{
         _LazyStrongConnectionFrame{.base=base, .l=l, .r=r}.run(d);
       });
-      d->or_(f,[base,l,r](Div *d){
+      d->or_(f,[base,l,r](Div *d)INLL{
         _LazyStrongConnectionFrame{.base=base, .l=r, .r=l}.run(d);
       });
     }

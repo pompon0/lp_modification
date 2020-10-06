@@ -110,6 +110,7 @@ struct Proxy {
 };
 
 INL bool Div::step() {
+  state->stats.steps++;
   auto s = saves.back(); saves.pop_back();
   A.restore(s.As);
   state->restore(s.ss);
@@ -196,14 +197,9 @@ template<typename Cont> static ProverOutput schedule(
     return search<Cont>(ctx,A,s,true,limit);
   });
   if(out.proof) return out;*/
-  auto out = iterative_deepening(*ctx2,A,s,[&](const Ctx &ctx, memory::Alloc &A, SearchState &s, size_t limit)INLL{
-    return search<Cont>(ctx,A,s,false,limit);
+  return iterative_deepening(*ctx2,A,s,[&](const Ctx &ctx, memory::Alloc &A, SearchState &s, size_t limit)INLL{
+    return search<Cont>(ctx,A,s,true,limit);
   });
-  DEBUG_ONLY(
-    if(out.proof) {
-    }
-  )
-  return out;
 }
 
 } // namespace tableau::engine::balanced

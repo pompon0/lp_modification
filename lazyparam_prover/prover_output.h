@@ -8,6 +8,7 @@
 namespace tableau {
 
 struct Stats {
+  size_t steps = 0;
   size_t strong_steps = 0;
   size_t strong_only_steps = 0;
   size_t weak_connections_steps = 0;

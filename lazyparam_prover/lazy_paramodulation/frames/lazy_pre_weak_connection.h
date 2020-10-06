@@ -22,8 +22,8 @@ struct _LazyPreWeakConnectionFrame {
         .w = w,
         .L = apl.head(),
       };
-      d->or_(f,[base,l,r](Div *d){ _LazyWeakConnectionFrame{.base = base, .l=l, .r=r}.run(d); });
-      d->or_(f,[base,l,r](Div *d){ _LazyWeakConnectionFrame{.base = base, .l=r, .r=l}.run(d); });
+      d->or_(f,[base,l,r](Div *d)INLL{ _LazyWeakConnectionFrame{.base = base, .l=l, .r=r}.run(d); });
+      d->or_(f,[base,l,r](Div *d)INLL{ _LazyWeakConnectionFrame{.base = base, .l=r, .r=l}.run(d); });
     }
   }
 };

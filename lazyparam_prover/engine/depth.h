@@ -14,6 +14,7 @@ struct Div {
     : A(_A), state(_state), cut(_cut), depth_limit(_depth_limit) { save(Cont(A,Task(A,f))); }
 
   INL bool step() {
+    state->stats.steps++;
     auto s = saves.back(); saves.pop_back();
     A.restore(s.As);
     state->restore(s.ss);

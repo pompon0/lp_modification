@@ -33,6 +33,10 @@ func ProveLazyParamodulation(ctx context.Context, tptpFOFProblem []byte) (*spb.P
   return Prove(ctx,tptpFOFProblem,nil,ppb.Method_LAZY_PARAMODULATION,ppb.Transformation_SKIP,false);
 }
 
+func ProveNoEq(ctx context.Context, tptpFOFProblem []byte) (*spb.ProverOutput,error) {
+  return Prove(ctx,tptpFOFProblem,nil,ppb.Method_CONNECTION_TABLEAU,ppb.Transformation_SKIP,false);
+}
+
 func Prove(ctx context.Context, tptpFOFProblem []byte, funOrd *spb.FunOrd, method ppb.Method, trans ppb.Transformation, transOnly bool) (*spb.ProverOutput,error) {
   tptpCNF,err := eprover.FOFToCNF(ctx,tptpFOFProblem)
   if err!=nil { return nil,fmt.Errorf("eprover.FOFToCNF(): %v",err) }

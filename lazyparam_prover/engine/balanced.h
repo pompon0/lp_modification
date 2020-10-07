@@ -193,12 +193,12 @@ template<typename Cont> static ProverOutput schedule(
   if(!d) error("deadline required");
   Ctx::Ptr ctx1 = Ctx::with_timeout(ctx,(*d-absl::Now())*0.6);
   Ctx::Ptr ctx2 = ctx;
-  /*auto out = iterative_deepening(*ctx1,A,s,[&](const Ctx &ctx, memory::Alloc &A, SearchState &s, size_t limit)INLL{
+  auto out = iterative_deepening(*ctx1,A,s,[&](const Ctx &ctx, memory::Alloc &A, SearchState &s, size_t limit)INLL{
     return search<Cont>(ctx,A,s,true,limit);
   });
-  if(out.proof) return out;*/
+  if(out.proof) return out;
   return iterative_deepening(*ctx2,A,s,[&](const Ctx &ctx, memory::Alloc &A, SearchState &s, size_t limit)INLL{
-    return search<Cont>(ctx,A,s,true,limit);
+    return search<Cont>(ctx,A,s,false,limit);
   });
 }
 

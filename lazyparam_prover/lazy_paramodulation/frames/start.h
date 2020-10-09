@@ -1,14 +1,11 @@
-struct _StartFrame { size_t nodes_limit; };
-
-memory::List<Cont> start(memory::Alloc &A, StartFrame f) const { STATE_FRAME(A,state,"start");
-  memory::List<Cont> alts;
-  while(auto dcla = state->cla_index.next_starting_clause()) {
-    auto b = StrongFrame::Builder(A);
-    b->nodes_limit = f->nodes_limit;
-    b->branch = Branch();
-    b->dcla = dcla.get();
-    b->strong_id = -1;
-    alts.push(A,builder().add(A,Frame(b.build())).build());
+struct _StartFrame {
+  template<typename Div> INL void run(Div *d) const {
+    STATE_FRAME(d->A,d->state,"start");
+    //TODO: next_starting_clause() has a side effect on state
+    // make it more explicit.
+    auto dcla = d->state->cla_index.next_starting_clause();
+    if(!dcla) return;
+    d->or_(Features{.depth=0},[dcla](Div *d)INLL{ strong(d,Branch(),dcla.get(),-1); });
+    d->or_(Features{.depth=0},[](Div *d)INLL{ _StartFrame{}.run(d); });
   }
-  return alts;
-}
+};

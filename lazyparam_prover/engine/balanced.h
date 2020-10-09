@@ -1,10 +1,10 @@
-#ifndef CONNECTION_TABLEAU_BALANCED_H_
-#define CONNECTION_TABLEAU_BALANCED_H_
+#ifndef ENGINE_BALANCED_H_
+#define ENGINE_BALANCED_H_
 
-#include "lazyparam_prover/connection_tableau/cont.h"
 #include "lazyparam_prover/memory/layout.h"
+#include "lazyparam_prover/engine/engine.h"
 
-namespace tableau::connection_tableau::balanced {
+namespace tableau::engine::balanced {
 
 struct Proxy;
 
@@ -110,6 +110,7 @@ struct Proxy {
 };
 
 INL bool Div::step() {
+  state->stats.steps++;
   auto s = saves.back(); saves.pop_back();
   A.restore(s.As);
   state->restore(s.ss);
@@ -170,19 +171,37 @@ INL bool Div::step() {
 
 // Search takes alloc as an argument to be able to return result in its memory.
 // TODO: generalize search and test it to find random test trees - to make sure that is doesn't skip any part of search space.
-alt::SearchResult search(const Ctx &ctx, memory::Alloc &A, SearchState &state, bool cut, size_t size_limit) { FRAME("connection_tableau::balanced_search()");
+template<typename Cont> INL bool search(const Ctx &ctx, memory::Alloc &A, SearchState &state, bool cut, size_t size_limit) { FRAME("connection_tableau::balanced_search()");
   SCOPE("connection_tableau::balanced_search");
-  Div d(A,&state,cut,size_limit,[](Proxy *p)INLL{ start_task(p); });
+  Div d(A,&state,cut,size_limit,[](Proxy *p){ Cont::start(p); });
   size_t steps = 0;
   for(; d.saves.size(); steps++) {
-    if(d.step()) return {1,steps};
-    if(steps%100==0 && ctx.done()) return {0,steps};
+    if(d.step()) return true;
+    if(steps%100==0 && ctx.done()) return false;
     DEBUG if(steps%1000==0) info("steps = %",steps);
   }
   DEBUG info("steps = %",steps);
-  return {0,steps};
+  return false;
 }
 
-} // namespace connection_tableau::tableau::balanced
+template<typename Cont> static ProverOutput schedule(
+  Ctx::Ptr ctx,
+  memory::Alloc &A,
+  SearchState &s
+) {
+  auto d = ctx->get_deadline();
+  if(!d) error("deadline required");
+  Ctx::Ptr ctx1 = Ctx::with_timeout(ctx,(*d-absl::Now())*0.6);
+  Ctx::Ptr ctx2 = ctx;
+  auto out = iterative_deepening(*ctx1,A,s,[&](const Ctx &ctx, memory::Alloc &A, SearchState &s, size_t limit)INLL{
+    return search<Cont>(ctx,A,s,true,limit);
+  });
+  if(out.proof) return out;
+  return iterative_deepening(*ctx2,A,s,[&](const Ctx &ctx, memory::Alloc &A, SearchState &s, size_t limit)INLL{
+    return search<Cont>(ctx,A,s,false,limit);
+  });
+}
 
-#endif  // CONNECTION_TABLEAU_BALANCED_H_
+} // namespace tableau::engine::balanced
+
+#endif  // ENGINE_BALANCED_H_

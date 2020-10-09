@@ -25,16 +25,28 @@ const statusCounterSatisfiable = "CounterSatisfiable"
 const refutationNotFound = "% Refutation not found"
 
 func Prove(ctx context.Context, tptpFOFProblem []byte) (*spb.ProverOutput,error) {
+  return Run(ctx,tptpFOFProblem,true)
+}
+
+func ProveNoEq(ctx context.Context, tptpFOFProblem []byte) (*spb.ProverOutput,error) {
+  return Run(ctx,tptpFOFProblem,false)
+}
+
+func Run(ctx context.Context, tptpFOFProblem []byte, eqAxioms bool) (*spb.ProverOutput,error) {
   const memLimitBytes = 2000000000 // 2GB
   var inBuf,outBuf bytes.Buffer
   if _,err := inBuf.Write(tptpFOFProblem); err!=nil {
     return nil,fmt.Errorf("inBuf.Write(): %v",err)
   }
-  cmd := exec.Command(
-    utils.Runfile(vampireBinPath),
+  args := []string{
     "--statistics","none",
     "--proof","off",
-    "--mode","casc")
+    "--mode","casc",
+  }
+  if !eqAxioms {
+    args = append(args,"-ep","R")
+  }
+  cmd := exec.Command(utils.Runfile(vampireBinPath),args...)
   cmd.Stdin = &inBuf
   cmd.Stdout = &outBuf
   cmd.Stderr = os.Stderr

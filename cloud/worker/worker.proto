@@ -7,6 +7,7 @@ import "google/protobuf/duration.proto";
 enum Prover{
   UNKNOWN = 0;
   VAMPIRE = 1;
+  VAMPIRE_NO_EQ = 11;
   EPROVER = 2;
   LEANCOP_BMTP = 3;
   LEANCOP_PROLOG = 4;
@@ -15,6 +16,7 @@ enum Prover{
   GPRUSAK_AXIOMATIC_EQ = 6;
   GPRUSAK_LP_MODIFICATION = 7;
   GPRUSAK_LAZY_PARAMODULATION = 8;
+  GPRUSAK_NO_EQ = 10;
 }
 
 message Req {

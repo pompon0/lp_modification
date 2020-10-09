@@ -91,6 +91,10 @@ func Push(ctx context.Context, commit string) error {
   if err!=nil { return fmt.Errorf("ns.Service.Get(%q): %v",serviceName,err) }
 
   service.Spec.Template = template //.Metadata.Name = "worker-00051-fuc"
+  service.Spec.Traffic = []*run.TrafficTarget{{
+    LatestRevision: true,
+    Percent: 100,
+  }}
   service,err = ns.Services.ReplaceService(serviceName,service).Context(ctx).Do()
   if err!=nil {
     return fmt.Errorf("ns.Service.ReplaceService(%q): %v",serviceName,err)

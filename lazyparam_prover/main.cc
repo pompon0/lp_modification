@@ -7,8 +7,10 @@
 #include "utils/ctx.h"
 #include "utils/enum_flag.h"
 #include "utils/log.h"
-#include "lazyparam_prover/lazy_paramodulation/tableau.h"
-#include "lazyparam_prover/connection_tableau/tableau.h"
+#include "lazyparam_prover/lazy_paramodulation/cont.h"
+#include "lazyparam_prover/connection_tableau/cont.h"
+#include "lazyparam_prover/engine/balanced.h"
+#include "lazyparam_prover/engine/depth.h"
 #include "lazyparam_prover/derived.h"
 #include "lazyparam_prover/prover.pb.h"
 #include "lazyparam_prover/lpmod.h"
@@ -96,15 +98,17 @@ int main(int argc, char **argv) {
     auto method = absl::GetFlag(FLAGS_method);
     ProverOutput out;
     FunOrd fun_ord(input.fun_ord(),input.problem().nodes());
+    ClauseIndex idx(f);
+    SearchState state(idx,fun_ord);
     switch(method.get()) {
       case prover::CONNECTION_TABLEAU:
-        out = connection_tableau::prove_loop(*ctx,A,f,fun_ord);
+        out = engine::balanced::schedule<connection_tableau::Cont>(ctx,A,state);
         break;
       case prover::LAZY_PARAMODULATION:
         if(absl::GetFlag(FLAGS_trans).get()!=prover::SKIP) {
           error("method=LAZY_PARAMODULATION requires trans=SKIP");
         }
-        out = lazy_paramodulation::prove_loop(*ctx,A,f,fun_ord);
+        out = engine::balanced::schedule<lazy_paramodulation::Cont>(ctx,A,state);
         break;
       default:
         error("method = %",show(method));

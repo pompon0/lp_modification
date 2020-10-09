@@ -1,49 +1,46 @@
 struct _LazyPreStrongConnectionFrame {
-  size_t nodes_limit;
   Branch branch;
   DerAndClause dcla;
   size_t strong_id;
   bool branch_lr;
-};
 
-memory::List<Cont> lazy_pre_strong_connection(memory::Alloc &A, LazyPreStrongConnectionFrame f) const { 
-  auto mcla = state->allocate(A,f->dcla);
-  if(!mcla) return memory::nothing();
-  auto cla = mcla.get();
-  STATE_FRAME(A,state,"lazy_pre_strong_connection(strong_id=%,cla=%)",f->strong_id,show(cla));
-  if(f->dcla.cost()==0) state->nodes_used++; // this implementation doesn't check regularity, so it doesn't have halting property with free clauses .
-  if(state->nodes_used>f->nodes_limit) return memory::nothing();
+  template<typename Div> INL void run(Div *d) const { 
+    auto mcla = d->state->allocate(d->A,dcla);
+    if(!mcla) return;
+    auto cla = mcla.get();
+    STATE_FRAME(d->A,d->state,"lazy_pre_strong_connection(strong_id=%,cla=%)",strong_id,show(cla));
+    if(dcla.cost()==0) d->state->nodes_used++; // this implementation doesn't check regularity, so it doesn't have halting property with free clauses.
+    if(d->state->nodes_used>d->size_limit) return;
 
-  BranchSet bs{.branch = f->branch};
-  for(size_t i=cla.atom_count(); i--;) if(i!=f->strong_id) bs.push(A,cla.atom(i));
+    BranchSet bs{.branch = branch};
+    for(size_t i=cla.atom_count(); i--;) if(i!=strong_id) bs.push(d->A,cla.atom(i));
 
-  auto L = f->branch.false_.head();
-  auto lr = cla.atom(f->strong_id);
-  if(f->branch_lr) std::swap(L,lr);
-  DEBUG if(lr.pred()!=Atom::EQ || lr.sign()) error("lr = %",show(lr));
-  auto l = lr.arg(0);
-  auto r = lr.arg(1);
-  state->lazy_clauses_used.push(A,lazy(A,AxiomClause{AndClause::make(A,
-    lr.neg(),
-    Atom::eq(A,lr.sign(),r,l)
-  )}));
+    auto L = branch.false_.head();
+    auto lr = cla.atom(strong_id);
+    if(branch_lr) std::swap(L,lr);
+    DEBUG if(lr.pred()!=Atom::EQ || lr.sign()) error("lr = %",show(lr));
+    auto l = lr.arg(0);
+    auto r = lr.arg(1);
+    d->state->lazy_clauses_used.push(d->A,lazy(d->A,AxiomClause{AndClause::make(d->A,
+      lr.neg(),
+      Atom::eq(d->A,lr.sign(),r,l)
+    )}));
 
-  memory::List<Cont> alts;
-  Var w = state->val.allocate(Var(A,0));
-  for(auto apl = paths(A,L); !apl.empty(); apl = apl.tail()) {
-    _LazyStrongConnectionFrame::Base base {
-      .nodes_limit = f->nodes_limit,
-      .branch_set = bs,
-      .w = w,
-      .L = apl.head(),
-      .branch_lr = f->branch_lr,
-    };
-    auto b1 = LazyStrongConnectionFrame::Builder(A);
-    auto b2 = LazyStrongConnectionFrame::Builder(A);
-    b1->base = base; b1->l = l; b1->r = r;
-    b2->base = base; b2->l = r; b2->r = l;
-    alts.push(A,builder().add(A,Frame(b1.build())).build());
-    alts.push(A,builder().add(A,Frame(b2.build())).build());
+    Var w = d->state->val.allocate(Var(d->A,0));
+    Features f{.depth=branch.false_.size()+1};
+    for(auto apl = paths(d->A,L); !apl.empty(); apl = apl.tail()) {
+      _LazyStrongConnectionFrame::Base base {
+        .branch_set = bs,
+        .w = w,
+        .L = apl.head(),
+        .branch_lr = branch_lr,
+      };
+      d->or_(f,[base,l,r](Div *d)INLL{
+        _LazyStrongConnectionFrame{.base=base, .l=l, .r=r}.run(d);
+      });
+      d->or_(f,[base,l,r](Div *d)INLL{
+        _LazyStrongConnectionFrame{.base=base, .l=r, .r=l}.run(d);
+      });
+    }
   }
-  return alts;
-}
+};

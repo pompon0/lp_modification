@@ -13,25 +13,17 @@
 #include "lazyparam_prover/constrained_valuation.h"
 #include "lazyparam_prover/parse.h"
 #include "lazyparam_prover/eq_axioms.h"
-#include "lazyparam_prover/alt.h"
 #include "lazyparam_prover/index.h"
 #include "lazyparam_prover/prover_output.h"
 
 namespace tableau::connection_tableau {
 
-struct Features {
-  size_t depth;
-};
-
-struct _ {
+struct Cont {
   #include "lazyparam_prover/connection_tableau/frames/start.h"
   #include "lazyparam_prover/connection_tableau/frames/strong.h"
   #include "lazyparam_prover/connection_tableau/frames/weak.h"
+  template<typename Div> INL static void start(Div *d){ _StartFrame{}.run(d); }
 };
-
-template<typename DState> INL static inline void start_task(DState *d) {
-  _::_StartFrame{}.run(d);
-}
 
 }  // namespace tableau::connection_tableau
 

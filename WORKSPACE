@@ -208,10 +208,9 @@ http_archive(
 
 http_archive(
     name = "vampire",
-    strip_prefix = "vampire-b4b5b00d35335b7fb376364bc0895a470c65820b",
-    urls = ["https://github.com/pompon0/vampire/archive/b4b5b00d35335b7fb376364bc0895a470c65820b.tar.gz"],
-    sha256 = "115cddad1a36506b1f89e190c3c407f698f7d271d681ec34b98da33d13bfb263",
-    build_file = "//:third_party/vampire.BUILD",
+    strip_prefix = "vampire-ec2c30cb615e41aecd04be6b02d4718e22e4774e",
+    urls = ["https://github.com/pompon0/vampire/archive/ec2c30cb615e41aecd04be6b02d4718e22e4774e.tar.gz"],
+    sha256 = "b9f1248f9334df237b8cacbec76f3590ff18ea47b7efa9c2c431b25f9e4b1dac",
 )
 
 http_archive(
@@ -250,8 +249,3 @@ http_file(
     sha256 = "f56cd27648898713e83e2e0dc69e295b316ba4b7acad0e41d7667610b666c5f0",
 )
 
-################################
-# GENERATE SUMMARY
-
-load("//:list.bzl", "list_existing")
-# list_existing()

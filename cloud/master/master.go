@@ -33,6 +33,11 @@ import (
 // run "gcloud auth configure-docker", so that binary is able to push to container registry
 // run "gcloud auth application-default login" so that binary has access to GCP.
 var workerAddr = flag.String("worker_addr","worker-su5lpnpdhq-uc.a.run.app:443","worker service address")
+// add a large subordinate uid & gid range to the user
+// podman --cgroup=cgroupfs --log-level=debug --runtime=crun run -e COMMIT=xoxo -e PORT=6455 -p 5757:6455
+// worker_addr=localhost:5757
+var useTLS = flag.Bool("use_tls",true,"")
+var pushImage = flag.Bool("push_image",true,"")
 
 var reportDir = flag.String("report_dir","","")
 var verboseLogPath = flag.String("verbose_log_path","/tmp/master.log","")
@@ -70,16 +75,21 @@ func NewConnPool(ctx context.Context, addr string, n int) (*ConnPool,func(),erro
   p := &ConnPool{}
   cancel := func() { for _,c := range p.conn { c.Close() } }
   // connect to worker pool
-  creds,err := oauth.NewApplicationDefault(ctx)
-  if err!=nil {
-    cancel()
-    return nil,nil,fmt.Errorf("oauth.NewApplicationDefault(): %v",err)
-  }
-  tc := credentials.NewTLS(nil)
-  for i:=0; i<n; i++ {
-    conn, err := grpc.Dial(addr,
+  opts := []grpc.DialOption{grpc.WithInsecure()}
+  if *useTLS {
+    creds,err := oauth.NewApplicationDefault(ctx)
+    if err!=nil {
+      cancel()
+      return nil,nil,fmt.Errorf("oauth.NewApplicationDefault(): %v",err)
+    }
+    tc := credentials.NewTLS(nil)
+    opts = []grpc.DialOption{
       grpc.WithPerRPCCredentials(creds),
-      grpc.WithTransportCredentials(tc))
+      grpc.WithTransportCredentials(tc),
+    }
+  }
+  for i:=0; i<n; i++ {
+    conn, err := grpc.Dial(addr,opts...)
     if err != nil {
       cancel()
       return nil,nil,fmt.Errorf("grpc.Dial(): %v", err)
@@ -94,8 +104,10 @@ func run(ctx context.Context) error {
     return fmt.Errorf("commit cannot be empty")
   }
   // deploy current revision
-  if err:=push.Push(ctx,*commit); err!=nil {
-    return fmt.Errorf("push.Push(): %v",err)
+  if *pushImage {
+    if err:=push.Push(ctx,*commit); err!=nil {
+      return fmt.Errorf("push.Push(): %v",err)
+    }
   }
 
   pool,cancel,err := NewConnPool(ctx,*workerAddr,15)

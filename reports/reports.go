@@ -31,7 +31,8 @@ var reportPath = flag.String("report_path","","")
 var reportPath2 = flag.String("report_path_2","","")
 var cmd = flag.String("cmd",cmdSummary,strings.Join(cmds,"|"))
 var caseName = flag.String("case_name","","")
-var ignoreEqualityIrrelevant = flag.Bool("ignore_equality_irrelevant",false,"")
+
+var filterOutPath = flag.String("filter_out_path","","")
 
 type Rec struct {
   caseCount int
@@ -104,16 +105,24 @@ func diff(ctx context.Context) error {
   if err!=nil { return fmt.Errorf("problems.ReadReport(report_path=%q): %v",*reportPath,err) }
   report2,err := problems.ReadReport(*reportPath2)
   if err!=nil { return fmt.Errorf("problems.ReadReport(report_path=%q): %v",*reportPath2,err) }
+  var filterRep *spb.Report
+  if *filterOutPath!="" {
+    filterRep,err = problems.ReadReport(*filterOutPath)
+    if err!=nil {
+      return fmt.Errorf("problem.ReadReport(%q): %w",*filterOutPath,err)
+    }
+  }
+  filter := makeFilter(filterRep)
 
   reports := []*spb.Report{report1,report2}
   var results []map[string]*Result
   for i,r := range reports {
     fmt.Printf("[%d] commit = %q, labes = %v\n",i,r.Commit,r.Labels)
-    res,err := accumByPrefix(r)
+    res,err := accumByPrefix(r,filter)
     if err!=nil { return err }
     results = append(results,res)
   }
-  calcUnique(reports,results)
+  calcUnique(reports,results,filter)
   lines := map[string]string{}
   total := map[string]int{}
   for _,res := range results {
@@ -143,10 +152,24 @@ type Result struct {
 
 func (r *Result) String() string { return fmt.Sprintf("%3d/%3d",r.solved,r.total) }
 
-func accumByPrefix(r *spb.Report) (map[string]*Result,error) {
+func makeFilter(filter *spb.Report) func(string) bool {
+  filteredCases := map[string]bool{}
+  if filter!=nil {
+    for _,c := range filter.GetCases() {
+      if c.GetOutput().GetSolved() {
+        filteredCases[c.GetName()] = true
+      }
+    }
+  }
+  return func(name string) bool {
+    return filteredCases[name]
+  }
+}
+
+func accumByPrefix(r *spb.Report, filter func(string) bool) (map[string]*Result,error) {
   res := map[string]*Result{}
   for _,c := range r.Cases {
-    if *ignoreEqualityIrrelevant && problems.TptpProvableWithoutEquality[c.Name] { continue }
+    if filter(c.GetName()) { continue }
     labels := strings.Split(c.Name,"/")
     for i:=0; i<=len(labels); i++ {
       p := strings.Join(labels[:i],"/")
@@ -161,9 +184,10 @@ func accumByPrefix(r *spb.Report) (map[string]*Result,error) {
   return res,nil
 }
 
-func calcUnique(r []*spb.Report, m []map[string]*Result) {
+func calcUnique(r []*spb.Report, m []map[string]*Result, filter func(string) bool) {
   for ri:=0; ri<len(r); ri++ {
     for _,c := range r[ri].Cases {
+      if filter(c.GetName()) { continue }
       if m[ri][c.Name].solved==0 { continue }
       unique := true
       for rj:=0; rj<len(m); rj++ {
@@ -192,11 +216,22 @@ func multidiff(ctx context.Context) error {
   if len(reports)==0 {
     return fmt.Errorf("no reports found under %q",*reportDir)
   }
+  // Read report with cases to filter out.
+  var err error
+  var filterRep *spb.Report
+  if *filterOutPath!="" {
+    filterRep,err = problems.ReadReport(*filterOutPath)
+    if err!=nil {
+      return fmt.Errorf("problem.ReadReport(%q): %w",*filterOutPath,err)
+    }
+  }
+  filter := makeFilter(filterRep)
+
   lines := map[string]string{}
   total := map[string]int{}
   for i,r := range reports {
     fmt.Printf("[%d] commit = %q, labes = %v\n",i,r.Commit,r.Labels)
-    res,err := accumByPrefix(r)
+    res,err := accumByPrefix(r,filter)
     if err!=nil { return err }
     for k,v := range res {
       if v.total==1 { continue

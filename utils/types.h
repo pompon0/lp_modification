@@ -20,6 +20,10 @@ using std::swap;
 using Byte = uint8_t;
 using Bytes = vec<Byte>;
 
+static inline str bytes_str(const Bytes &b) {
+  return str(b.begin(),b.end());
+}
+
 struct Nil {
   template<typename T> operator ptr<T>(){ return {}; }
 };

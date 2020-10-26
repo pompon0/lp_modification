@@ -192,6 +192,35 @@ http_archive(
 
 register_toolchains(":protobuf-toolchain")
 
+################################
+# CMAKE
+
+http_archive(
+  name = "rules_foreign_cc",
+  strip_prefix = "rules_foreign_cc-9eb30f8c5a214799b73707666ca49e7b7a35978f",
+  url = "https://github.com/bazelbuild/rules_foreign_cc/archive/9eb30f8c5a214799b73707666ca49e7b7a35978f.zip",
+  sha256 = "0d82c6e7fcf623885a47ce52c2e30321aa0b868ff3b9fedfd6670541fc5874ad",
+)
+
+load("@rules_foreign_cc//:workspace_definitions.bzl", "rules_foreign_cc_dependencies")
+
+rules_foreign_cc_dependencies()
+
+################################
+# XGBOOST
+
+load("@bazel_tools//tools/build_defs/repo:git.bzl", "new_git_repository")
+
+# new_git_repository is required because xgboost uses git submodules.
+new_git_repository(
+  name = "xgboost",
+  init_submodules = True,
+  remote = "https://github.com/dmlc/xgboost.git",
+  # tag = "v1.1.1",
+  commit = "34408a7fdcebc0e32142ed2f52156ea65d813400",
+  shallow_since = "1591293367 -0700",
+  build_file = "//:third_party/xgboost.BUILD",
+)
 
 ################################
 # OTHER

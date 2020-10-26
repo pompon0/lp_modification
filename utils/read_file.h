@@ -32,7 +32,7 @@ namespace util
 
   inline Bytes read_file(str path)
   {
-    FILE *f = fopen(path.c_str(),"r"); if(!f) error("fopen(%) = %",path,strerror(errno));
+    FILE *f = fopen(path.c_str(),"r"); if(!f) error("fopen('%') = %",path,strerror(errno));
     auto s = read_file(f);
     fclose(f);
     return s;

@@ -2,6 +2,7 @@
 #define SYS_H_
 
 #include <unistd.h>
+#include <sys/wait.h>
 #include <errno.h>
 #include <cstring>
 

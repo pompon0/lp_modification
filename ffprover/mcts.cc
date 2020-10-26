@@ -1,21 +1,16 @@
-#include "lazyparam_prover/types.h"
+#include <iostream>
+#include "utils/ctx.h"
+#include "utils/log.h"
+#include "utils/types.h"
+#include "utils/read_file.h"
+#include "lazyparam_prover/controller.h"
+#include "ffprover/xgboost.h"
 
-auto thm_play_count = 0;
-auto play_count = 2000;
-auto one_per_play = true;
-auto ucb_mode = 0;
-auto do_ucb = true;
-auto play_dep = 1000;
-auto ucb_const = 1.;
-auto value_factor = 0.3;
-auto save_above = -1;
-auto predict_value = true;
-auto predict_policy = true;
-auto policy_temp = 2.;
+#include "absl/flags/flag.h"
+#include "absl/flags/parse.h"
+#include "absl/time/time.h"
 
-auto max_time = 60. // seconds
-auto max_mem = 3000000;
-auto max_infs = 20000000;
+/*
 
 double logit(x) {
   if(x==1.) return 10.;
@@ -175,59 +170,11 @@ Maybe<Status> playout(int depth, Tree tree, State st) {
   return nothing();
 }
 
-
-void print_guides(init_tree, bool won) {
-  auto do_seq(ostream &oc, ps) {
-    for(auto [i,n] : ps) oc << util::fmt(" %:%",i,n);
-  }
-  auto (st, t, _, al) = init_tree;
-
-  let ts = won ? is_theorem : bigstep_trees;
-  st.p->restore(0);
-  auto ocv = ofstream(path_v);
-  auto ocp = ofstream(path_p);
-  size_t l = ts.size()-1; 
-  auto print_more(Prover p, Tree t, int dist, State st, vec<Action> al) {
-    if(dist==0) return;
-    if(t.kind!=Tree::Open) error("aaa");
-    p->fea_global_update();
-    auto f = p->get_fea();
-    ocv << "%.5f" (logit (won ? pow(0.98,dist) : 0.));
-    do_seq(ocv,f); ocv << "\n";
-    if(won) {
-      vec<auto> fealist;
-      for(auto a : al) fealist.push_back(p->get_act_fea(a));
-      auto norm_vsum = double(t.n)/t.b.size();
-      for(size_t i=0; i<t.b.size(); i++) {
-        auto t = t.b[i];
-        auto f = fealist[i];
-        if(0<t.n) {
-          auto p = max(-6,log(double(t.n)/norm_vsum));
-          ocp << "%.5f" p;
-          do_seq(ocp,f);
-          ocp << "\n";
-        }
-      }
-    }
-    auto nt,na;
-    bool ok = false;
-    for(size_t i=0; i<t.b.size(); i++) {
-      for(auto x : ts) if(t.b[i]==x){ ok = true; nt = t.b[i]; na = al[i]; }
-    }
-    if(!ok) error("not_found");
-    auto [_, (ns, al)] = extend(st,na,in);
-    print_more(p,nt,dist - 1,ns,al);
-  }
-  print_more(p,t,l,st,al);
-  ocv.close();
-  ocp.close_out();
-}
-
 auto bigstep_hist = [];
 
-Maybe<Status> check_limits() {
+Maybe<Status> check_limits(Ctx ctx) {
+  if(ctx.done()) return just(ResourceOut); // error("max_time");
   if(infer>=max_infs) return just(ResourceOut); // error("max_infs");
-  if(Sys.time()-start_time>=max_time) return just(ResourceOut); // error("max_time");
   if(Xgb.c_mem()>=max_mem) return just(ResourceOut); // error("max_mem");
   return nothing();
 }
@@ -266,14 +213,47 @@ Status bigstep(State st, Tree tree) {
     st.move(st.actions[i]);
     do_tree(tree,st);
   }
-}
+}*/
 
-void main(int argc, char **argv) {
-  auto start_time = Sys.time();
-  /* TODO: set SIGINT i SIGTERM to exit by throwing exception */
-  Xgb.init (predict_policy || predict_value);;
-  auto init_state = Ff.start(argv[1]);
+/*
+auto thm_play_count = 0;
+auto play_count = 2000;
+auto one_per_play = true;
+auto ucb_mode = 0;
+auto do_ucb = true;
+auto play_dep = 1000;
+auto ucb_const = 1.;
+auto value_factor = 0.3;
+auto save_above = -1;
+auto predict_value = true;
+auto predict_policy = true;
+auto policy_temp = 2.;
+*/
+ABSL_FLAG(absl::Duration,timeout,absl::Seconds(60),"spend timeout+eps time on searching");
+//ABSL_FLAG(uint64_t,max_mem,3000000,"memory limit in bytes");
+ABSL_FLAG(uint64_t,max_infs,20000000,"limit on number of inferences");
+ABSL_FLAG(str,problem_path,"","path to TPTP problem");
+ABSL_FLAG(str,policy_model_path,"","path to policy model");
+ABSL_FLAG(str,value_model_path,"","path to value model");
+
+
+StreamLogger _(std::cerr);
+int main(int argc, char **argv) {
+  std::ios::sync_with_stdio(0);
+  absl::ParseCommandLine(argc, argv);
+  info("parsed");
+  auto ctx = Ctx::with_timeout(Ctx::background(),absl::GetFlag(FLAGS_timeout));
+  auto tptp_fof = bytes_str(util::read_file(absl::GetFlag(FLAGS_problem_path)));
+  auto problem = controller::Problem::New(tptp_fof);
+  auto prover = controller::Prover::New(problem);
+  info("loaded problem");
+  auto policy_model = ff::Model::New(absl::GetFlag(FLAGS_policy_model_path));
+  auto value_model = ff::Model::New(absl::GetFlag(FLAGS_value_model_path));
+  info("loaded models");
+
+  // TODO: set SIGINT i SIGTERM to exit by throwing exception
   // Initial tree with one unexplored node *)
+  /*
   Tree itree {
     .kind = Tree::Unexplored,
     .prior = 1.,
@@ -313,4 +293,6 @@ void main(int argc, char **argv) {
   }
   printf "%% Proof: %s\n" (String.concat " " (List.map string_of_int (List.rev !bigstep_hist)));
   printf "%% Bigsteps: %i Inf: %i Op: %i Cl: %i Ed:%i TotFea:%i Tim:%f\n" !bigsteps !infer !opened !closed !edges !totfea (Sys.time () -. start_time);
+  */
+  return 0;
 }

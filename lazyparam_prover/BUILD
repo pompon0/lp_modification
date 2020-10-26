@@ -217,5 +217,4 @@ cc_binary(
     ],
     visibility = ["//visibility:public"],
     features = ["fully_static_link"],
-    # linkopts = ["-static","--sysroot=/tmp/","-v"],
 )

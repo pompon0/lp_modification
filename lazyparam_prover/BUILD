@@ -140,7 +140,7 @@ cc_library(
     ],
 )
 
-"""cc_library(
+cc_library(
     name = "controller",
     hdrs = ["controller.h"],
     deps = [
@@ -160,7 +160,7 @@ cc_test(
         "//utils:utils",
         "@gtest//:gtest_main",
     ],
-)"""
+)
 
 cc_test(
     name = "mgu_test",

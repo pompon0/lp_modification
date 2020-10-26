@@ -5,7 +5,7 @@
 #include "lazyparam_prover/index.h"
 #include "lazyparam_prover/parse.h"
 #include "lazyparam_prover/search_state.h"
-#include "lazyparam_prover/connection_tableau/tableau.h"
+#include "lazyparam_prover/connection_tableau/cont.h"
 #include "tool/bin/wrapper.h"
 
 // TODO: apart running ML to choose the right alternative to find the answer,
@@ -41,60 +41,84 @@ private:
   }
 };
 
-class Prover {
-  using Cont = tableau::connection_tableau::Cont;
+class Prover {  
+  struct Div;
+  using Task = memory::function<void(Div*)>;
+  using Cont = memory::List<Task>;
+
 public:
   struct Action {
-    bool done() const { return cont.done(); }
-    tableau::connection_tableau::Cont cont;
-    memory::Alloc::Save A;
+    Cont cont;
+    tableau::SearchState::Save ss;
+    memory::Alloc::Save As;
+    bool done() const { return cont.empty(); }
+  };
+private:
+  struct Div {
+    enum { size_limit = 1000000 };
+    template<typename F> INL void or_(tableau::Features x, F f){ FRAME("or_"); save(_and.add(A,Task(A,f))); }
+    template<typename F> INL void and_(F f){ FRAME("and_"); _and.push(A,Task(A,f)); }
+    INL void done(tableau::Features f){ save(_and); }
+    
+    void save(Cont cont) {
+      actions.push_back({
+        .cont = cont,
+        .ss = state->save(),
+        .As = A.save(),
+      });
+    }
+    memory::Alloc &A;
+    tableau::SearchState *state;
+
+    Cont _and;
+    vec<Action> actions;
   };
 
+  Prover() = default;
+  ptr<memory::Alloc> A;
+  ptr<tableau::SearchState> state; 
+  ptr<Action> start;
+
+public:
   static ptr<Prover> New(Problem::Ptr problem) {
     auto p = own(new Prover());
     p->A = make<memory::Alloc>();
     p->state = make<tableau::SearchState>(*problem->idx,FunOrd());
-    auto cont = tableau::connection_tableau::start_cont(*p->A,*p->state,LIMIT);
-    p->start = own(new Action{cont,p->A->save()});
+    Cont cont(*p->A,Task(*p->A,[](Div *d){ tableau::connection_tableau::Cont::start(d); }));
+    p->start = own(new Action{
+      .cont = cont,
+      .ss = p->state->save(),
+      .As = p->A->save(),
+    });
     return p; 
   }
 
   Action reset() { return *start; }
 
-  // TODO: you cannot return to arbitrary action, try sth else.
   vec<Action> run(Action a) {
-    A->restore(a.A);
-    memory::List<Cont> cs = a.cont.run(*A);
-    auto As = A->save();
-    vec<Action> as;
-    for(; !cs.empty(); cs = cs.tail()) {
-      as.push_back(Action{cs.head(),As});
-    }
-    return as;
+    DEBUG if(a.cont.empty()) error("cont done");
+    A->restore(a.As);
+    state->restore(a.ss);
+    Div d{.A = *A, .state = state.get(), ._and = a.cont.tail()};
+    a.cont.head()(&d);
+    return d.actions;
   }
-
-private:
-  enum { LIMIT = 1000000 };
-  Prover() = default;
-  ptr<memory::Alloc> A;
-  ptr<tableau::SearchState> state; 
-  ptr<Action> start;
 };
 
-tableau::alt::SearchResult search(const Ctx &ctx, Prover &p) { FRAME("controller::search");
+bool search(const Ctx &ctx, Prover &p) { FRAME("controller::search");
   SCOPE("controller::search");
   vec<Prover::Action> as{p.reset()};
   size_t steps = 0;
   for(;as.size(); steps++) {
     Prover::Action a = as.back();
     as.pop_back();
-    if(a.done()) return {1,steps};
-    if(steps%100==0 && ctx.done()) return {0,steps};
+    if(a.done()) return true;
+    if(steps%100==0 && ctx.done()) break;
     DEBUG if(steps%1000==0) info("steps = %",steps);
     for(auto x : p.run(a)) as.push_back(x);
   }
   DEBUG info("steps = %",steps);
-  return {0,steps};
+  return false;
 }
 
 } // namespace controller

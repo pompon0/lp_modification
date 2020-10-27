@@ -1,3 +1,6 @@
+
+auto nnumber = 0;
+
 void print_guides(init_tree, bool won) {
   auto do_seq(ostream &oc, ps) {
     for(auto [i,n] : ps) oc << util::fmt(" %:%",i,n);

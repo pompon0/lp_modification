@@ -15,6 +15,10 @@ public:
   INL Maybe(Nothing) : Maybe() {}
   INL explicit Maybe(const T &v) : present(1) { new(data)T(v); }
   INL explicit operator bool() const { return present; } 
+  INL T& get() {
+    DEBUG if(!present) error("Maybe::get(): not present");
+    return *(T*)data;
+  }
   INL const T& get() const {
     DEBUG if(!present) error("Maybe::get(): not present");
     return *(T*)data;

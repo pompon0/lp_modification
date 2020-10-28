@@ -1,6 +1,10 @@
 cc_library(
   name = "mcts_lib",
-  hdrs = ["xgboost.h"],
+  hdrs = [
+    "xgboost.h",
+    "tree.h",
+    "search.h",
+  ],
   deps = [
     "//lazyparam_prover:controller",
     "//utils:utils",

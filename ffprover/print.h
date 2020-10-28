@@ -1,4 +1,13 @@
 
+static inline double logit(double x) {
+  if(x==1.) return 10.;
+  if(x==0.) return -10;
+  auto ret = log(x/(1.-x));
+  if(ret<-10.) return -10.;
+  if(ret>10.) return 10.;
+  return ret;
+}
+
 auto nnumber = 0;
 
 void print_guides(init_tree, bool won) {

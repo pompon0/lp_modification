@@ -302,7 +302,7 @@ OrForm conv(memory::Alloc &A, OrForm f) { FRAME("lazy::conv");
   return f2; 
 }
 
-} // namespace lazy
+} // namespace lpmod
 } // namespace tableau
 
 #endif  // LAZY_H_

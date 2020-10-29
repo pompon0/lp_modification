@@ -25,6 +25,7 @@ private:
 public:
   struct Ptr { 
     INL void visit(double reward) {
+      //info("visit(%)",reward);
       for(Node *x = node; x; x = x->parent) {
         x->visits++;
         x->rewards += reward;

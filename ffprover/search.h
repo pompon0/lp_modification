@@ -32,14 +32,15 @@ struct Search {
 
   Result run(Ctx::Ptr ctx, Tree::Ptr t, controller::Prover &p) {
     while(!ctx->done()) {
-      auto s = p.save();
-      for(size_t i = 0; i<cfg.playouts_per_bigstep; i++) {
-        p.restore(s);
-        playout(t,p);
-      }
       if(p.done()) return SOLVED;
       if(t.lost()) return DEADEND;
+      auto s = p.save();
+      for(size_t i = 0; i<cfg.playouts_per_bigstep; i++) {
+        playout(t,p);
+        p.restore(s);
+      }
       auto i = cfg.bigstep_selector(t);
+      //info("bigstep %",i);
       stats.bigsteps++;
       t = t.child(i);
       p.apply_action(i);
@@ -65,17 +66,21 @@ private:
 
   size_t select_child(Tree::Ptr t) {
     if(t.child_count()==0) error("t has no children");
-    size_t best_i=0; double best = 0;
+    ssize_t best_i=-1; double best = -1;
     for(size_t i=0; i<t.child_count(); i++) {
+      if(t.child(i).lost()) continue;
       auto x = cfg.child_priority(t,i);
-      if(x>best){ best_i = i; best = x; }
+      if(best_i==-1 || x>best){ best_i = i; best = x; }
     }
-    return best_i;
+    if(best_i==-1) error("all children lost");
+    return size_t(best_i);
   }
 
   void playout(Tree::Ptr t, controller::Prover &p) {
     size_t expansions = 0;
+    //str path = "";
     for(size_t d = cfg.playout_depth; d--;) {
+      if(t.lost()) return;
       if(p.done()) break;
       if(!t.expanded()) {
         if(expansions && cfg.one_expansion_per_playout) break;
@@ -85,11 +90,15 @@ private:
       }
       DEBUG if(t.lost()) error("playout in a lost branch");
       auto i = select_child(t);
+      //path += util::fmt("%/% ",i,t.child_count());
       t = t.child(i);
       p.apply_action(i);
       stats.inferences++;
     }
-    t.visit(reward(t,p));
+    auto r = reward(t,p);
+    //info("playout [%] %",path,r);
+    t.visit(r);
+    if(p.done()) t.set_won();
   } 
 };
 

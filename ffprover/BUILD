@@ -12,6 +12,29 @@ cc_library(
     "@abseil//absl/flags:flag",
     "@abseil//absl/time:time",
     "@xgboost//:xgboost",
+    ":openmp",
+  ],
+)
+
+cc_test(
+  name = "tree_test",
+  srcs = ["tree_test.cc"],
+  deps = [
+    ":mcts_lib",
+    "//utils:utils",
+    "@gtest//:gtest_main",
+  ],
+)
+   
+
+cc_test(
+  name = "search_test",
+  srcs = ["search_test.cc"],
+  deps = [
+    ":mcts_lib",
+    "//utils:utils",
+    "//problems/sample:sample_cc",
+    "@gtest//:gtest_main",
   ],
 )
 
@@ -23,7 +46,6 @@ cc_import(
 cc_binary(
   name = "mcts",
   deps = [
-    ":openmp",
     ":mcts_lib",
   ],
   srcs = ["mcts.cc"],

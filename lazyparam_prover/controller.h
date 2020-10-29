@@ -3,6 +3,8 @@
 
 #include <memory>
 #include "lazyparam_prover/index.h"
+#include "lazyparam_prover/eq_axioms.h"
+#include "lazyparam_prover/lpmod.h"
 #include "lazyparam_prover/parse.h"
 #include "lazyparam_prover/search_state.h"
 #include "lazyparam_prover/connection_tableau/cont.h"
@@ -19,7 +21,8 @@ public:
     auto file = tptp_to_proto(tptp_cnf(tptp_fof));
     auto p = own(new Problem());
     p->A = make<memory::Alloc>();
-    p->idx = make<tableau::ClauseIndex>(tableau::ParseCtx().parse_orForm(*p->A,file));
+    auto f = tableau::ParseCtx().parse_orForm(*p->A,file);
+    p->idx = make<tableau::ClauseIndex>(tableau::lpmod::conv(*p->A,f));
     return p;
   }
   friend class Prover;
@@ -74,40 +77,46 @@ class Prover {
   vec<Div::Cont> next; // (next[i]-current) define action features
  
   struct Save {
-    size_t serial_id; // DEBUG_ONLY
+    DEBUG_ONLY(size_t serial_id;)
     tableau::SearchState::Save state;
     memory::Alloc::Save A;
     Div::Cont current;
     vec<Div::Cont> next;
   };
   vec<Save> saves;
-  size_t serial_counter = 0; // DEBUG_ONLY
+  DEBUG_ONLY(size_t serial_counter = 0;)
 public:
   struct SaveId {
-    Prover *prover; // DEBUG_ONLY
-    size_t serial_id; // DEBUG_ONLY
+    DEBUG_ONLY(
+      Prover *prover;
+      size_t serial_id;
+    )
     size_t id;
   };
 
   SaveId save() {
     saves.push_back({
-      .serial_id = serial_counter++, // DEBUG_ONLY
+      DEBUG_ONLY(.serial_id = serial_counter++,)
       .state = state->save(),
       .A = A->save(),
       .current = current,
       .next = next,
     });
     return {
-      .prover = this, // DEBUG_ONLY
-      .serial_id = saves.back().serial_id, // DEBUG_ONLY
+      DEBUG_ONLY(
+        .prover = this,
+        .serial_id = saves.back().serial_id,
+      )
       .id = saves.size()-1,
     };
   }
 
   void restore(SaveId s) {
-    if(s.prover!=this) error("Save of a different prover");
-    if(s.id>=saves.size()) error("s.id = %, want < %",s.id,saves.size());
-    if(saves[s.id].serial_id!=s.serial_id) error("s.serial_id = %, want %",s.id,saves[s.id].serial_id);
+    DEBUG_ONLY({
+      if(s.prover!=this) error("Save of a different prover");
+      if(s.id>=saves.size()) error("s.id = %, want < %",s.id,saves.size());
+      if(saves[s.id].serial_id!=s.serial_id) error("s.serial_id = %, want %",s.id,saves[s.id].serial_id);
+    })
     A->restore(saves[s.id].A);
     state->restore(saves[s.id].state);
     current = saves[s.id].current;
@@ -135,8 +144,9 @@ public:
   INL StateFeaturesVec state_features() const { return {}; }
   INL ActionFeaturesVec action_features(size_t i) const { return {}; }
 
-  INL void apply_action(size_t i) {
-    DEBUG if(i>=next.size()) error("run_action(%), there are % actions",i,next.size());
+  INL void apply_action(size_t i) { FRAME("apply_action(%)",i);
+    DEBUG if(done()) error("already done");
+    DEBUG if(i>=next.size()) error("there are % actions",i,next.size());
     current = next[i];
     if(!current.empty()) next = Div::Run(*A,state.get(),current);
   }

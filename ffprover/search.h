@@ -7,6 +7,17 @@
 
 namespace ff {
 
+struct Result {
+  enum Status { SOLVED, DEADEND, CANCELLED };
+  Status status;
+  struct Node {
+    controller::StateFeaturesVec state;
+    vec<controller::ActionFeaturesVec> actions;
+    Tree::Ptr tree;
+  };
+  vec<Node> path;
+};
+
 struct Search {
   struct Config { 
     bool one_expansion_per_playout;
@@ -28,12 +39,20 @@ struct Search {
   Config cfg;
   Stats stats;
 
-  enum Result { SOLVED, DEADEND, CANCELLED };
-
   Result run(Ctx::Ptr ctx, Tree::Ptr t, controller::Prover &p) {
+    Result res;
     while(!ctx->done()) {
-      if(p.done()) return SOLVED;
-      if(t.lost()) return DEADEND;
+      // push a node on the result path
+      res.path.push_back({
+        .state = p.state_features(),
+        .tree = t,
+      });
+      for(size_t i=0; i<p.action_count(); i++)
+        res.path.back().actions.push_back(p.action_features(i));
+      // early exit
+      if(p.done()){ res.status = Result::SOLVED; return res; }
+      if(t.lost()){ res.status = Result::DEADEND; return res; }
+      // perform playouts
       auto s = p.save();
       for(size_t i = 0; i<cfg.playouts_per_bigstep; i++) {
         playout(t,p);
@@ -45,9 +64,10 @@ struct Search {
       t = t.child(i);
       p.apply_action(i);
     }
-    return CANCELLED;
+    res.status = Result::CANCELLED;
+    return res;
   }
-
+  
 private:
   double reward(Tree::Ptr t, controller::Prover &p) {
     if(p.done()) return 1.;
@@ -99,7 +119,7 @@ private:
     //info("playout [%] %",path,r);
     t.visit(r);
     if(p.done()) t.set_won();
-  } 
+  }
 };
 
 }  // namespace ff

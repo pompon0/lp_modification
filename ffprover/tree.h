@@ -46,6 +46,12 @@ public:
       return Ptr(tree,&node->children.get()[i]);
     }
 
+    INL bool has_parent() const { return node->parent; }
+    INL Ptr parent() const {
+      DEBUG if(!node->parent) error("root has no parent");
+      return Ptr(tree,node->parent);
+    }
+
     INL bool expanded() const { return bool(node->children); }
 
     void expand(const vec<double> &priorities) { FRAME("expand");

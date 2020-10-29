@@ -24,6 +24,10 @@ static inline str bytes_str(const Bytes &b) {
   return str(b.begin(),b.end());
 }
 
+static inline Bytes str_bytes(const str &s) {
+  return Bytes(s.begin(),s.end());
+}
+
 struct Nil {
   template<typename T> operator ptr<T>(){ return {}; }
 };

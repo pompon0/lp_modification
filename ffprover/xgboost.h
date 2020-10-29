@@ -12,21 +12,43 @@ namespace ff {
 
 struct FeatureVec {
   enum { max_fea = 100 }; // bound on indices values
-  void push(unsigned index, float datum) {
+  void push(unsigned index, float value) {
     indices.push_back(index);
-    data.push_back(datum);
-  } 
+    values.push_back(value);
+  }
+  str show() const {
+    vec<str> fs;
+    for(size_t i=0; i<indices.size(); i++) fs.push_back(util::fmt("%:%",indices[i],values[i]));
+    return util::join(" ",fs);
+  }
 private:
   friend struct Matrix;
   vec<unsigned> indices;
-  vec<float> data;
+  vec<float> values;
+};
+
+// TODO: dataset show() is xgboost-specific,
+// so it doesn't belong here. Move is somewhere else.
+struct DataSet {
+  struct Instance {
+    double label;
+    FeatureVec features;
+    str show() const { return util::fmt("% %",label,features.show()); }
+  };
+  
+  vec<Instance> instances;
+  str show() const {
+    vec<str> is;
+    for(const auto &i : instances) is.push_back(i.show()+"\n");
+    return util::join("",is);
+  }
 };
 
 struct Matrix {
   static ptr<Matrix> New(const FeatureVec &f) {
     DMatrixHandle handle;
     size_t indptr[] = {0,f.indices.size()};
-    if(auto err = XGDMatrixCreateFromCSREx(indptr, &f.indices[0], &f.data[0], 2, f.indices.size(), f.max_fea, &handle); err!=0) {
+    if(auto err = XGDMatrixCreateFromCSREx(indptr, &f.indices[0], &f.values[0], 2, f.indices.size(), f.max_fea, &handle); err!=0) {
       error("XGDMatrixCreateFromCSREx() = %",err);
     }
     return own(new Matrix(handle));

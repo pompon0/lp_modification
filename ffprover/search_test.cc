@@ -48,6 +48,6 @@ TEST(SEARCH,simple) {
     auto tree = Tree::New();
     Search search(cfg);
     auto ctx = Ctx::with_timeout(Ctx::background(),absl::Seconds(5));
-    ASSERT_EQ(Search::SOLVED,search.run(ctx,tree->root(),*prover));
+    ASSERT_EQ(Result::SOLVED,search.run(ctx,tree->root(),*prover).status);
   }
 }

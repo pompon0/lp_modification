@@ -1,5 +1,6 @@
 #include <iostream>
 #include <algorithm>
+#include <random>
 #include "utils/ctx.h"
 #include "utils/log.h"
 #include "utils/types.h"
@@ -13,15 +14,27 @@
 #include "absl/flags/parse.h"
 #include "absl/time/time.h"
 
+std::mt19937 rnd(7987345);
+std::uniform_real_distribution dist(0.,1.);
+
 using namespace ff;
+
+INL static inline FeatureVec action_features(controller::ActionFeaturesVec a){ return {}; }
+INL static inline FeatureVec state_features(controller::StateFeaturesVec a){ return {}; }
 
 ptr<Model> priority_model;
 ptr<Model> reward_model;
 
-INL static inline double logistic(double v){ return 1./(1.+exp(-v)); }
+INL static inline double logit(double x) {
+  if(x==1.) return 10.;
+  if(x==0.) return -10;
+  auto ret = log(x/(1.-x));
+  if(ret<-10.) return -10.;
+  if(ret>10.) return 10.;
+  return ret;
+}
 
-INL static inline FeatureVec action_features(controller::ActionFeaturesVec a){ return {}; }
-INL static inline FeatureVec state_features(controller::StateFeaturesVec a){ return {}; }
+INL static inline double logistic(double v){ return 1./(1.+exp(-v)); }
 
 Search::Config cfg {
   .one_expansion_per_playout = true,
@@ -36,7 +49,7 @@ Search::Config cfg {
     return priority_model ? exp(priority_model->predict(action_features(f)))/policy_temp : 1.;
   },
   .child_priority = [](Tree::Ptr t, size_t i) {
-    //return Random.float(1.) * prior;;
+    //return dist(rnd) * t.child(i).priority();
 
     double sum_visits = std::max<size_t>(1,t.visits());
     double visits = std::max<size_t>(1,t.child(i).visits());
@@ -78,6 +91,34 @@ ABSL_FLAG(absl::Duration,timeout,absl::Seconds(60),"spend timeout+eps time on se
 ABSL_FLAG(str,problem_path,"","path to TPTP problem");
 ABSL_FLAG(str,priority_model_path,"","path to priority model");
 ABSL_FLAG(str,reward_model_path,"","path to reward model");
+ABSL_FLAG(str,priority_training_path,"","output path for priority training data");
+ABSL_FLAG(str,reward_training_path,"","output path for reward training data");
+
+void save_result(Result res) {
+  DataSet priority_data;
+  DataSet reward_data;
+  bool won = res.status==Result::SOLVED;
+  size_t dist = 0;
+  for(;res.path.size(); dist++) {
+    auto x = res.path.back(); res.path.pop_back();
+    reward_data.instances.push_back({
+      .label = logit(won?pow(0.98,dist):0.),
+      .features = state_features(x.state),
+    });
+    if(won) {
+      auto norm_vsum = double(x.tree.visits())/double(x.tree.child_count());
+      for(size_t i=0; i<x.tree.child_count(); i++) {
+        double v = x.tree.child(i).visits();
+        if(v>0) priority_data.instances.push_back({
+          .label = std::max<double>(-6,log(v/norm_vsum)),
+          .features = action_features(x.actions[i]),
+        });
+      }
+    }
+  }
+  util::write_file(absl::GetFlag(FLAGS_priority_training_path),str_bytes(priority_data.show()));
+  util::write_file(absl::GetFlag(FLAGS_reward_training_path),str_bytes(reward_data.show()));
+}
 
 StreamLogger _(std::cerr);
 int main(int argc, char **argv) {
@@ -97,17 +138,17 @@ int main(int argc, char **argv) {
   Search search(cfg);
 
   auto res = search.run(ctx,tree->root(),*prover);
-  switch(res) {
-    case Search::SOLVED:
+  switch(res.status) {
+    case Result::SOLVED:
       info("SZS status Theorem");
       break;
       //print_guides init_tree true;
       //print_dot itree
-    case Search::DEADEND:
+    case Result::DEADEND:
       info("SZS status DeadEnd");
       break;
       //print_guides init_tree false
-    case Search::CANCELLED:
+    case Result::CANCELLED:
       /*if(is_theorem==[]){
         printf "%% SZS status ResourceOut: %s\n%!" x;
         print_guides init_tree false
@@ -119,7 +160,7 @@ int main(int argc, char **argv) {
       break;
       //print_guides init_tree false
     default:
-      error("search.run() = %",res);
+      error("search.run() = %",res.status);
   }
   //printf "%% Proof: %s\n" (String.concat " " (List.map string_of_int (List.rev !bigstep_hist)));
   info("%% Bigsteps: % Inf: % %%",search.stats.bigsteps,search.stats.inferences);

@@ -12,7 +12,7 @@ cc_library(
     "@abseil//absl/flags:flag",
     "@abseil//absl/time:time",
     "@xgboost//:xgboost",
-    ":openmp",
+    "@openmp//:openmp",
   ],
 )
 

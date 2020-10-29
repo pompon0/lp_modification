@@ -222,6 +222,14 @@ new_git_repository(
   build_file = "//:third_party/xgboost.BUILD",
 )
 
+http_archive(
+  name = "openmp",
+  strip_prefix = "llvm-project-llvmorg-11.0.0",
+  url = "https://github.com/llvm/llvm-project/archive/llvmorg-11.0.0.zip",
+  sha256 = "6db05aa39192950b73311672c074b3942aedbb92d5ff14e170323fc747ccb99f",
+  build_file = "//:third_party/openmp.BUILD",
+)
+
 ################################
 # OTHER
 

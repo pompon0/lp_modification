@@ -65,8 +65,32 @@ struct Div {
   vec<Cont> next;
 };
 
-struct ActionFeaturesVec {};
-struct StateFeaturesVec {};
+// If we decide items order before MCTS, it has to be based on the problem features.
+//
+// We can however have a separate model to evaluate each new branch separately
+// and sort the items according to that evaluation. But that would have to be
+// trained on resulting search space size.
+
+// should we flatten the search tree for MCTS?
+// shouldn't this be rather a state diff? IMO it should summarize all new branches
+struct ActionFeaturesVec {
+  size_t new_branches;
+  // number of new pos/neg equality branches
+  // (?) number of new branches per task type
+};
+
+struct StateFeaturesVec {
+  size_t proof_size; // in clauses
+  size_t open_branches;
+  // proof size in literals
+  // depth of the current branch
+  // depth of the open branches
+  // total proof depth
+  // number of variables 
+  // number of free variables (total/in current branch)
+  // number of free variables present only in a single branch
+  // number of literals per predicate? (can we do that?)
+};
 
 class Prover {  
   Prover() = default;
@@ -140,9 +164,18 @@ public:
     return next.size(); 
   }
 
-  //TODO:
-  INL StateFeaturesVec state_features() const { return {}; }
-  INL ActionFeaturesVec action_features(size_t i) const { return {}; }
+  INL StateFeaturesVec state_features() const {
+    return {
+      .proof_size = state->nodes_used,
+      .open_branches = current.size(),
+    };
+  }
+  INL ActionFeaturesVec action_features(size_t i) const {
+    DEBUG if(i>=next.size()) error("there are % actions",i,next.size());
+    return {
+      .new_branches = next[i].size()-current.size(),
+    };
+  }
 
   INL void apply_action(size_t i) { FRAME("apply_action(%)",i);
     DEBUG if(done()) error("already done");

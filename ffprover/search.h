@@ -4,6 +4,7 @@
 #include <functional>
 #include "lazyparam_prover/controller.h"
 #include "ffprover/tree.h"
+#include "utils/log.h"
 
 namespace ff {
 
@@ -42,6 +43,7 @@ struct Search {
   Result run(Ctx::Ptr ctx, Tree::Ptr t, controller::Prover &p) {
     Result res;
     while(!ctx->done()) {
+      if(stats.bigsteps%1==0) info("bigsteps = %",stats.bigsteps);
       // push a node on the result path
       res.path.push_back({
         .state = p.state_features(),

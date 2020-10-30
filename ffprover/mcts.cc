@@ -1,3 +1,5 @@
+//#define DEBUG_MODE
+//#define VERBOSE
 #include <iostream>
 #include <algorithm>
 #include <random>
@@ -19,8 +21,17 @@ std::uniform_real_distribution dist(0.,1.);
 
 using namespace ff;
 
-INL static inline FeatureVec action_features(controller::ActionFeaturesVec a){ return {}; }
-INL static inline FeatureVec state_features(controller::StateFeaturesVec a){ return {}; }
+INL static inline FeatureVec action_features(controller::ActionFeaturesVec a) {
+  FeatureVec v;
+  v.push(0,a.new_branches);
+  return v;
+}
+INL static inline FeatureVec state_features(controller::StateFeaturesVec a) {
+  FeatureVec v;
+  v.push(0,a.proof_size);
+  v.push(1,a.open_branches);
+  return v;
+}
 
 ptr<Model> priority_model;
 ptr<Model> reward_model;
@@ -38,8 +49,8 @@ INL static inline double logistic(double v){ return 1./(1.+exp(-v)); }
 
 Search::Config cfg {
   .one_expansion_per_playout = true,
-  .playouts_per_bigstep = 2000,
-  .playout_depth = 200,
+  .playouts_per_bigstep = 10000,
+  .playout_depth = 100,
   .base_reward = [](controller::StateFeaturesVec f) {
     const auto value_factor = 0.3;
     return reward_model ? logistic(reward_model->predict(state_features(f))) : value_factor;
@@ -102,7 +113,7 @@ void save_result(Result res) {
   for(;res.path.size(); dist++) {
     auto x = res.path.back(); res.path.pop_back();
     reward_data.instances.push_back({
-      .label = logit(won?pow(0.98,dist):0.),
+      .label = logit(won?pow(0.98,dist):0.), // TODO: should it really be [-10,10] ?
       .features = state_features(x.state),
     });
     if(won) {
@@ -149,20 +160,14 @@ int main(int argc, char **argv) {
       break;
       //print_guides init_tree false
     case Result::CANCELLED:
-      /*if(is_theorem==[]){
-        printf "%% SZS status ResourceOut: %s\n%!" x;
-        print_guides init_tree false
-      } else {
-        printf "%% SZS status Theorem (slow)\n%%";
-        print_guides init_tree true
-      }*/
       info("SZS status ResourceOut");
       break;
       //print_guides init_tree false
     default:
       error("search.run() = %",res.status);
   }
-  //printf "%% Proof: %s\n" (String.concat " " (List.map string_of_int (List.rev !bigstep_hist)));
-  info("%% Bigsteps: % Inf: % %%",search.stats.bigsteps,search.stats.inferences);
+
+  info("Bigsteps: % Inf: %",search.stats.bigsteps,search.stats.inferences);
+  save_result(res);
   return 0;
 }

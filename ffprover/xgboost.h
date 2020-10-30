@@ -11,14 +11,15 @@
 namespace ff {
 
 struct FeatureVec {
-  enum { max_fea = 100 }; // bound on indices values
+  unsigned max_index = 0; // bound on indices values
   void push(unsigned index, float value) {
     indices.push_back(index);
     values.push_back(value);
+    util::maxi(max_index,index);
   }
   str show() const {
     vec<str> fs;
-    for(size_t i=0; i<indices.size(); i++) fs.push_back(util::fmt("%:%",indices[i],values[i]));
+    for(size_t i=0; i<indices.size(); i++) fs.push_back(util::fmt("%:%",indices[i],std::to_string(values[i])));
     return util::join(" ",fs);
   }
 private:
@@ -45,16 +46,16 @@ struct DataSet {
 };
 
 struct Matrix {
-  static ptr<Matrix> New(const FeatureVec &f) {
+  static ptr<Matrix> New(const FeatureVec &f) { FRAME("Matrix::New()");
     DMatrixHandle handle;
     size_t indptr[] = {0,f.indices.size()};
-    if(auto err = XGDMatrixCreateFromCSREx(indptr, &f.indices[0], &f.values[0], 2, f.indices.size(), f.max_fea, &handle); err!=0) {
+    if(auto err = XGDMatrixCreateFromCSREx(indptr, &f.indices[0], &f.values[0], 2, f.indices.size(), f.max_index+1, &handle); err!=0) {
       error("XGDMatrixCreateFromCSREx() = %",err);
     }
     return own(new Matrix(handle));
   }
 
-  ~Matrix() {
+  ~Matrix() { FRAME("~Matrix()");
     if(auto err = XGDMatrixFree(handle_); err!=0) {
       error("XGDMatrixFree(): %",XGBGetLastError());
     } 
@@ -66,20 +67,25 @@ private:
 };
 
 struct Model {
-  static ptr<Model> New(const str &model_path) {
+  static ptr<Model> New(const str &model_path) { FRAME("Model::New(%)",model_path);
     if(model_path=="") {
       return own(new Model());
     }
     BoosterHandle handle;
+    info("XGBoosterCreate()");
     if(auto err = XGBoosterCreate(0 /*dmat*/, 0 /*len(dmat)*/, &handle); err!=0) {
       error("XGBoosterCreate(): %",XGBGetLastError());
     }
-    if(auto err = XGBoosterLoadModel(&handle, model_path.c_str()); err!=0) {
+    info("XGBoosterLoadModel()");
+    // WARNING: this compiles without error, no matter if you put handle (void*),
+    // or &handle (void**), which sucks.
+    if(auto err = XGBoosterLoadModel(handle, model_path.c_str()); err!=0) {
       error("XGBoosterLoadModel(): %",XGBGetLastError());
     }
+    info("Done");
     return own(new Model(handle));
   }
-  ~Model() {
+  ~Model() { FRAME("~Model()");
     if(initialized) {
       if(auto err = XGBoosterFree(handle_); err!=0) {
         error("XGBoosterFree(): %",XGBGetLastError());

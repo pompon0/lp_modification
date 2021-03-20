@@ -4,3 +4,7 @@ build --cxxopt=-Werror=attributes
 build --cxxopt=-Winline
 build --cxxopt=--std=c++17
 build --crosstool_top=@llvm_toolchain//:toolchain
+
+build --override_repository=rules_haskell=/home/gprusak/github/rules_haskell
+# build --override_repository=xgboost=/home/gprusak/github/xgboost
+# build --override_repository=com_grail_bazel_toolchain=/home/gprusak/github/bazel-toolchain

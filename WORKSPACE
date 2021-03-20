@@ -68,11 +68,12 @@ gazelle_generated()
 
 http_archive(
     name = "rules_proto",
-    sha256 = "602e7161d9195e50246177e7c55b2f39950a9cf7366f74ed5f22fd45750cd208",
-    strip_prefix = "rules_proto-97d8af4dc474595af3900dd85cb3a29ad28cc313",
+    # sha256 = "602e7161d9195e50246177e7c55b2f39950a9cf7366f74ed5f22fd45750cd208",
+    sha256 = "9fc210a34f0f9e7cc31598d109b5d069ef44911a82f507d5a88716db171615a8",
+    strip_prefix = "rules_proto-f7a30f6f80006b591fa7c437fe5a951eb10bcbcf",
     urls = [
-        "https://mirror.bazel.build/github.com/bazelbuild/rules_proto/archive/97d8af4dc474595af3900dd85cb3a29ad28cc313.tar.gz",
-        "https://github.com/bazelbuild/rules_proto/archive/97d8af4dc474595af3900dd85cb3a29ad28cc313.tar.gz",
+        "https://mirror.bazel.build/github.com/bazelbuild/rules_proto/archive/f7a30f6f80006b591fa7c437fe5a951eb10bcbcf.tar.gz",
+        "https://github.com/bazelbuild/rules_proto/archive/f7a30f6f80006b591fa7c437fe5a951eb10bcbcf.tar.gz",
     ],
 )
 
@@ -195,11 +196,12 @@ register_toolchains(":protobuf-toolchain")
 ################################
 # CMAKE
 
+# Rule repository, note that it's recommended to use a pinned commit to a released version of the rules
 http_archive(
   name = "rules_foreign_cc",
-  strip_prefix = "rules_foreign_cc-9eb30f8c5a214799b73707666ca49e7b7a35978f",
-  url = "https://github.com/bazelbuild/rules_foreign_cc/archive/9eb30f8c5a214799b73707666ca49e7b7a35978f.zip",
-  sha256 = "0d82c6e7fcf623885a47ce52c2e30321aa0b868ff3b9fedfd6670541fc5874ad",
+  sha256 = "c2cdcf55ffaf49366725639e45dedd449b8c3fe22b54e31625eb80ce3a240f1e",
+  strip_prefix = "rules_foreign_cc-0.1.0",
+  url = "https://github.com/bazelbuild/rules_foreign_cc/archive/0.1.0.zip",
 )
 
 load("@rules_foreign_cc//:workspace_definitions.bzl", "rules_foreign_cc_dependencies")
@@ -209,25 +211,36 @@ rules_foreign_cc_dependencies()
 ################################
 # XGBOOST
 
-load("@bazel_tools//tools/build_defs/repo:git.bzl", "new_git_repository")
-
-# new_git_repository is required because xgboost uses git submodules.
-new_git_repository(
-  name = "xgboost",
-  init_submodules = True,
-  remote = "https://github.com/dmlc/xgboost.git",
-  # tag = "v1.1.1",
-  commit = "34408a7fdcebc0e32142ed2f52156ea65d813400",
-  shallow_since = "1591293367 -0700",
-  build_file = "//:third_party/xgboost.BUILD",
-)
-
 http_archive(
   name = "openmp",
   strip_prefix = "llvm-project-llvmorg-11.0.0",
   url = "https://github.com/llvm/llvm-project/archive/llvmorg-11.0.0.zip",
   sha256 = "6db05aa39192950b73311672c074b3942aedbb92d5ff14e170323fc747ccb99f",
   build_file = "//:third_party/openmp.BUILD",
+)
+
+http_archive(
+  name = "dmlc",
+  strip_prefix = "dmlc-core-5df8305fe699d3b503d10c60a231ab0223142407",
+  url = "https://github.com/dmlc/dmlc-core/archive/5df8305fe699d3b503d10c60a231ab0223142407.zip",
+  sha256 = "10a0c81866dbd2e4bd23da031ec44e05e56e6cd75506dd9b37cd64e83169c99c",
+  build_file = "//:third_party/dmlc.BUILD",
+)
+
+http_archive(
+  name = "rabit",
+  strip_prefix = "rabit-4fb34a008db6437c84d1877635064e09a55c8553",
+  url = "https://github.com/dmlc/rabit/archive/4fb34a008db6437c84d1877635064e09a55c8553.zip",
+  sha256 = "9928f637c5d6d6f44512f95eb6ffa7ed878eb9b300a897514abc38bba3759dce",
+  build_file = "//:third_party/rabit.BUILD",
+)
+
+http_archive(
+  name = "xgboost",
+  strip_prefix = "xgboost-34408a7fdcebc0e32142ed2f52156ea65d813400",
+  url = "https://github.com/dmlc/xgboost/archive/34408a7fdcebc0e32142ed2f52156ea65d813400.zip",
+  sha256 = "8baee6a5f4198803cf2623c4d1c3c1326f026309b289bc663c3e492a7f30d34a",
+  build_file = "//:third_party/xgboost.BUILD",
 )
 
 ################################

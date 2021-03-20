@@ -3,7 +3,7 @@ package(
 )
 
 cc_library(
-  name = "xgboost",
+  name = "rabit",
   includes = [
       "include/",
       "src/",
@@ -11,20 +11,17 @@ cc_library(
   hdrs = glob([
     "include/**/*.h",
     "src/**/*.h",
-    "src/**/*.cu",
   ]),
   srcs = glob([
     "src/**/*.cc",
-  ], exclude = [
-    "src/cli_main.cc",
+  ],exclude=[
+    "src/engine_base.cc",
+    "src/engine_mpi.cc",
+    "src/engine_mock.cc",
+    "src/engine_empty.cc",
   ]),
-  copts = [
-    "-fopenmp",
-  ],
   deps = [
-    "@rabit//:rabit",
     "@dmlc//:dmlc",
-    "@openmp//:openmp",
   ],
 )
 

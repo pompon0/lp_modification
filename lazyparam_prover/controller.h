@@ -179,7 +179,7 @@ public:
 
   INL void apply_action(size_t i) { FRAME("apply_action(%)",i);
     DEBUG if(done()) error("already done");
-    DEBUG if(i>=next.size()) error("there are % actions",i,next.size());
+    DEBUG if(i>=next.size()) error("i=%, but there are % actions",i,next.size());
     current = next[i];
     if(!current.empty()) next = Div::Run(*A,state.get(),current);
   }

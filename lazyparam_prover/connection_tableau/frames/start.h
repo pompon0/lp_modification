@@ -10,8 +10,9 @@ struct _StartFrame {
     // make it more explicit.
     auto dcla = d->state->cla_index.next_starting_clause();
     if(!dcla) return;
-    d->or_(Features{.depth=0},[dcla](DState *d)INLL{ strong(d,Branch(),dcla.get(),-1); });
-    d->or_(Features{.depth=0},[](DState *d)INLL{ _StartFrame{}.run(d); });
+    Features f{.depth = 0, .mcts_node = false};
+    d->or_(f,[dcla](DState *d)INLL{ strong(d,Branch(),dcla.get(),-1); });
+    d->or_(f,[](DState *d)INLL{ _StartFrame{}.run(d); });
   }
 };
 

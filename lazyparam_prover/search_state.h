@@ -50,8 +50,13 @@ inline str show(Branch b) {
 
 using Val = ConstrainedValuation<LPO>;
 
+// Features of a continuation.
 struct Features {
   size_t depth;
+  // mctx_node is true iff continuation should be treated as a node in MCTS.
+  // Otherwise, the head of the continuation should be executed immediately in search of MCTS nodes.
+  // Current interpretation: mctx_node <=> just finished some unification.
+  bool mcts_node = true; 
 };
 
 struct SearchState {

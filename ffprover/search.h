@@ -40,7 +40,7 @@ struct Search {
   Config cfg;
   Stats stats;
 
-  Result run(Ctx::Ptr ctx, Tree::Ptr t, controller::Prover &p) {
+  Result run(Ctx::Ptr ctx, Tree::Ptr t, controller::Prover &p) { FRAME("Search::run");
     Result res;
     while(!ctx->done()) {
       if(stats.bigsteps%1==0) info("bigsteps = %",stats.bigsteps);
@@ -49,8 +49,10 @@ struct Search {
         .state = p.state_features(),
         .tree = t,
       });
-      for(size_t i=0; i<p.action_count(); i++)
-        res.path.back().actions.push_back(p.action_features(i));
+      if(!p.done()) {
+        for(size_t i=0,ac=p.action_count(); i<ac; i++)
+          res.path.back().actions.push_back(p.action_features(i));
+      }
       // early exit
       if(p.done()){ res.status = Result::SOLVED; return res; }
       if(t.lost()){ res.status = Result::DEADEND; return res; }
@@ -117,9 +119,7 @@ private:
       p.apply_action(i);
       stats.inferences++;
     }
-    auto r = reward(t,p);
-    //info("playout [%] %",path,r);
-    t.visit(r);
+    t.visit(reward(t,p));
     if(p.done()) t.set_won();
   }
 };

@@ -24,7 +24,7 @@ struct _WeakFrame {
     // try to match with lemma
     auto a = branch.false_.head();
     auto atom_hash = Index::atom_hash(a);
-    Features f{.depth=branch.false_.size()};
+    Features f{.depth=branch.false_.size(),.mcts_node=false};
     for(auto b = branch.true_; !b.empty(); b = b.tail()) {
       if(atom_hash!=Index::atom_hash(b.head())) continue;
       if(!d->state->val.equal_mod_sign(a,b.head())) continue;
@@ -37,7 +37,7 @@ struct _WeakFrame {
         if((atom_hash^1)!=Index::atom_hash(b.head())) continue;
         d->or_(f,[f,a,b](DState *d)INLL{
           if(!d->state->val.unify(d->A,a,b.head())) return;
-          d->done(f);
+          d->done(Features{.depth=f.depth,.mcts_node=true});
         });
       }
     }

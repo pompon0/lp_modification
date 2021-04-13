@@ -1,4 +1,4 @@
-//#define DEBUG_MODE
+// #define DEBUG_MODE
 #include "gtest/gtest.h"
 #include "utils/ctx.h"
 #include "utils/log.h"

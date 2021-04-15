@@ -10,7 +10,7 @@ import (
 )
 
 const tptpProblemsPath = "tptp_problems/file/downloaded"
-const tptpProblemsCount = 6268
+const tptpProblemsCount = 6357
 
 func TptpProblems() (map[string]*Problem,func(),error) {
   return openZip(utils.Runfile(tptpProblemsPath))

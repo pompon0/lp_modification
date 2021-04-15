@@ -3,18 +3,6 @@
 
 #include "lazyparam_prover/connection_tableau/frames/strong.h"
 
-// exec (S->S) -> (And [S->S] | Or [S->S])
-//   executes a single step of a subtree, of a function which is defined coinductively 
-
-// template<typename D> void weak(D *d) { ... }
-// struct D {
-//   memory::Alloc &A,
-//   SearchState *state;
-//   const size_t size_limit;
-//   void done(){}
-//   void and_(fun<void(D*)> f){}
-//   void or_(fun<void(D*)> f){}
-// }
 struct _WeakFrame {
   Branch branch;
 
@@ -24,7 +12,10 @@ struct _WeakFrame {
     // try to match with lemma
     auto a = branch.false_.head();
     auto atom_hash = Index::atom_hash(a);
-    Features f{.depth=branch.false_.size(),.mcts_node=false};
+    typename DState::Features f;
+    auto depth = [&]()INLL{ return branch.false_.size(); };
+    f.set_depth(depth);
+    f.set_mcts_node(false);
     for(auto b = branch.true_; !b.empty(); b = b.tail()) {
       if(atom_hash!=Index::atom_hash(b.head())) continue;
       if(!d->state->val.equal_mod_sign(a,b.head())) continue;
@@ -35,9 +26,12 @@ struct _WeakFrame {
       // try to unify with path
       for(auto b = branch.false_; !b.empty(); b = b.tail()) {
         if((atom_hash^1)!=Index::atom_hash(b.head())) continue;
-        d->or_(f,[f,a,b](DState *d)INLL{
+        d->or_(f,[depth,a,b](DState *d)INLL{
           if(!d->state->val.unify(d->A,a,b.head())) return;
-          d->done(Features{.depth=f.depth,.mcts_node=true});
+          typename DState::Features f;
+          f.set_depth(depth);
+          f.set_mcts_node(true);
+          d->done(f);
         });
       }
     }

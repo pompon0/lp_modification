@@ -21,10 +21,11 @@ template<typename DState> INL static void strong(DState *d, Branch branch, DerAn
     branch.true_.push(d->A,atoms.head());
     d->and_([w](DState *d)INLL{ w.run(d); });
   }
-  d->done(Features{
-    .depth = branch.false_.size()+1,
-    .mcts_node = true,
-  });
+  typename DState::Features f;
+  f.set_depth([&]{ return branch.false_.size()+1; });
+  f.set_mcts_node(true);
+  f.set_new_goals(matoms.get());
+  d->done(f);
 }
 
 INL static memory::Maybe<memory::List<Atom>> strong_resolution(memory::Alloc &A, SearchState *state, memory::List<Atom> todo, size_t size_limit) { FRAME("strong_resolution()");

@@ -5,7 +5,9 @@ struct _StartFrame {
     // make it more explicit.
     auto dcla = d->state->cla_index.next_starting_clause();
     if(!dcla) return;
-    d->or_(Features{.depth=0},[dcla](Div *d)INLL{ strong(d,Branch(),dcla.get(),-1); });
-    d->or_(Features{.depth=0},[](Div *d)INLL{ _StartFrame{}.run(d); });
+    typename Div::Features f;
+    f.set_depth([&]{ return 0; });
+    d->or_(f,[dcla](Div *d)INLL{ strong(d,Branch(),dcla.get(),-1); });
+    d->or_(f,[](Div *d)INLL{ _StartFrame{}.run(d); });
   }
 };

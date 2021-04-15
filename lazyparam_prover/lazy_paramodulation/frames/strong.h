@@ -13,5 +13,7 @@ template<typename Div> INL static void strong(Div *d, Branch branch, DerAndClaus
     branch.true_.push(d->A,cla.atom(i));
     d->and_([w](Div *d)INLL{ w.run(d); });
   }
-  d->done(Features{.depth=branch.false_.size()+1}); 
+  typename Div::Features f;
+  f.set_depth([&]()INLL{ return branch.false_.size()+1; });
+  d->done(f); 
 }

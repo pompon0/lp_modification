@@ -83,6 +83,8 @@ struct Div {
 // - that (and_()+done) and or_() exclude each other
 // - that search state can be updated only until done()/or() is called
 struct Proxy {
+  using Features = tableau::Features;
+
   memory::Alloc &A;
   SearchState *state;
   size_t size_limit;

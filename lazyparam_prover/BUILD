@@ -142,7 +142,10 @@ cc_library(
 
 cc_library(
     name = "controller",
-    hdrs = ["controller.h"],
+    hdrs = [
+      "controller.h",
+      "features.h",
+    ],
     deps = [
       ":parse",
       ":prover",

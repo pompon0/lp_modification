@@ -102,7 +102,7 @@ func inlineImports(ctx context.Context, rootPath string, problemPath string, max
   return []byte(strings.Join(lines,"\n")),nil
 }
 
-// due to a bug in tptp4X, you cannot inline and shorted in one step.
+// due to a bug in tptp4X, you cannot inline and shorten in one step.
 func shorten(ctx context.Context, tptp []byte) ([]byte,error) {
   var inBuf,outBuf bytes.Buffer
   if _,err := inBuf.Write(tptp); err!=nil {
@@ -163,7 +163,7 @@ const problemsDir = "Problems"
 const outputZipName = "tptp_problems.zip"
 
 var tptpRoot = flag.String("tptp_root","","")
-
+var shortenNames = flag.Bool("shorten_names",false,"")
 
 func run(ctx context.Context) error {
   problemsPath := path.Join(*tptpRoot,problemsDir)
@@ -207,16 +207,17 @@ func run(ctx context.Context) error {
     }
 
     // inline imports or skip
-    tptpFOFLong,err := inlineImports(ctx,*tptpRoot,p,inlineImportsMaxOutput)
+    tptpFOF,err := inlineImports(ctx,*tptpRoot,p,inlineImportsMaxOutput)
     if err==errBufferFull {
       log.Printf("Skipping %q; inlineImports(): %v",relPath,err)
       return nil
     } else if err!=nil {
       return fmt.Errorf("inlineImports(%q): %v",relPath,err)
     }
-    tptpFOF,err := shorten(ctx,tptpFOFLong)
-    if err!=nil {
-      return fmt.Errorf("shorten(%q): %v",relPath,err)
+    if *shortenNames {
+      if tptpFOF,err = shorten(ctx,tptpFOF); err!=nil {
+        return fmt.Errorf("shorten(%q): %v",relPath,err)
+      }
     }
     log.Printf("len(tptpFOF) = %v",len(tptpFOF))
 

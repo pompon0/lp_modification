@@ -45,6 +45,14 @@ private:
 };
 
 struct Div {
+  struct Features : tableau::Features {
+    void set_new_goals(memory::List<tableau::Atom> goals) {
+      for(; goals; goals = goals.tail()) {
+        auto a = goals.head();
+      }
+    }
+  };
+
   using Task = memory::function<void(Div*)>;
   using Cont = memory::List<Task>; 
   struct Action {
@@ -67,34 +75,6 @@ struct Div {
   }
   Cont _and;
   vec<Action> next;
-};
-
-// If we decide items order before MCTS, it has to be based on the problem features.
-//
-// We can however have a separate model to evaluate each new branch separately
-// and sort the items according to that evaluation. But that would have to be
-// trained on resulting search space size.
-
-// should we flatten the search tree for MCTS?
-// shouldn't this be rather a state diff? IMO it should summarize all new branches
-struct ActionFeaturesVec {
-  bool mcts_node = true;
-  size_t new_branches;
-  // number of new pos/neg equality branches
-  // (?) number of new branches per task type
-};
-
-struct StateFeaturesVec {
-  size_t proof_size; // in clauses
-  size_t open_branches;
-  // proof size in literals
-  // depth of the current branch
-  // depth of the open branches
-  // total proof depth
-  // number of variables 
-  // number of free variables (total/in current branch)
-  // number of free variables present only in a single branch
-  // number of literals per predicate? (can we do that?)
 };
 
 class RawProver {  

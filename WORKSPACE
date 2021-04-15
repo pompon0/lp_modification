@@ -295,7 +295,7 @@ http_file(
 
 http_file(
     name = "tptp_problems",
-    urls = ["https://storage.googleapis.com/tptp/tptp_problems.zip"],
-    sha256 = "f56cd27648898713e83e2e0dc69e295b316ba4b7acad0e41d7667610b666c5f0",
+    urls = ["https://storage.googleapis.com/tptp/tptp_problems_long.zip"],
+    sha256 = "7872e2032bdd06aa7857915305ec70663a17c3346f84bb50bf5155986d8c2c00",
 )
 

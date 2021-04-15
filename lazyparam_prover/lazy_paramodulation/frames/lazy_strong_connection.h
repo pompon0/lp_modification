@@ -106,7 +106,8 @@ struct _LazyStrongConnectionFrame {
     for(auto brs = bs.branches; !brs.empty(); brs = brs.tail()) {
       d->and_([brs](Div *d)INLL{ _WeakFrame{.branch=brs.head()}.run(d); });
     }
-    Features f{.depth=base.branch_set.branch.false_.size()+1};  
+    typename Div::Features f;
+    f.set_depth([&]()INLL{ return base.branch_set.branch.false_.size()+1; });
     d->done(f);
   }
 };

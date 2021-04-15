@@ -27,7 +27,8 @@ struct _LazyPreStrongConnectionFrame {
     )}));
 
     Var w = d->state->val.allocate(Var(d->A,0));
-    Features f{.depth=branch.false_.size()+1};
+    typename Div::Features f;
+    f.set_depth([&]()INLL{ return branch.false_.size()+1; });
     for(auto apl = paths(d->A,L); !apl.empty(); apl = apl.tail()) {
       _LazyStrongConnectionFrame::Base base {
         .branch_set = bs,

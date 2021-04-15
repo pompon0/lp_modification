@@ -6,6 +6,8 @@
 namespace tableau::engine::depth {
 
 struct Div {
+  using Features = tableau::Features;
+
   using Task = memory::function<void(Div*)>;
   using Cont = memory::List<Task>;
   enum { size_limit = 100000 };

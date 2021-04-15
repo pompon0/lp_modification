@@ -4,7 +4,8 @@ struct _WeakFrame {
   template<typename Div> INL void run(Div *d) const { STATE_FRAME(d->A,d->state,"weak(%)",show(branch.false_.head())); 
     d->state->stats.weak_steps++;
     COUNTER("expand");
-    Features f{.depth=branch.false_.size()};
+    typename Div::Features f;
+    f.set_depth([&]()INLL{ return branch.false_.size(); });
     // match lemma
     if(matches_lemma(*d->state,branch)){ 
       STATE_FRAME(d->A,d->state,"matches_lemma");

@@ -14,7 +14,8 @@ struct _LazyPreWeakConnectionFrame {
       Atom::eq(d->A,lr.sign(),r,l)
     )}));
 
-    Features f{.depth=branch.false_.size()+1};
+    typename Div::Features f;
+    f.set_depth([&]()INLL{ return branch.false_.size()+1; });
     Var w = d->state->val.allocate(Var(d->A,0));
     for(auto apl = paths(d->A,L); !apl.empty(); apl = apl.tail()) {
       _LazyWeakConnectionFrame::Base base {

@@ -8,8 +8,10 @@ import (
 
   "github.com/pompon0/tptp_benchmark_go/eprover"
   "github.com/pompon0/tptp_benchmark_go/problems/sample"
+  "github.com/google/go-cmp/cmp"
   tpb "github.com/pompon0/tptp_benchmark_go/tptp_parser/proto/tptp_go_proto"
   spb "github.com/pompon0/tptp_benchmark_go/tptp_parser/proto/solutions_go_proto"
+
 )
 
 const num845_2 = `
@@ -35,6 +37,46 @@ func parsingTestCases() map[string][]byte {
   for k,v := range sample.SampleProblems() { r[k] = v }
   r["NUM845+2.p"] = []byte(num845_2)
   return r
+}
+
+func TestClearUnknownNames(t *testing.T) {
+  ctx := context.Background()
+  fof := sample.SampleProblems()["barber"]
+  cnf,err := eprover.FOFToCNF(ctx,fof)
+  if err!=nil { t.Fatalf("FOFToCNF(): %v",err) }
+  fofProto,err := TptpToProto(ctx,FOF,fof)
+  if err!=nil { t.Fatalf("TptpToProto(FOF): %v",err) }
+  cnfProto,err := TptpToProto(ctx,CNF,cnf)
+  if err!=nil { t.Fatalf("TptpToProto(CNF): %v",err) }
+
+  getNames := func(f *tpb.File) map[string]bool {
+    names := map[string]bool{}
+    for _,node := range f.GetNodes() {
+      if n := node.GetName(); n!="" {
+        names[n] = true
+      }
+    }
+    return names
+  }
+
+  fofNames := getNames(fofProto)
+  cnfNames := getNames(cnfProto)
+  // Function under test:
+  ClearUnknownNames(cnfProto,fofProto.GetNodes())
+  cnfNames2 := getNames(cnfProto)
+
+  for k,_ := range fofNames {
+    if _,ok := cnfNames[k]; !ok {
+      t.Fatalf("test case not valid: cnfNames = %v, want strict superset of %v",cnfNames,fofNames)
+    }
+  }
+  if cmp.Equal(fofNames,cnfNames) {
+    t.Fatalf("test case useless: conversion to CNF didn't introduce new names")
+  }
+  // Correctness check:
+  if !cmp.Equal(fofNames,cnfNames2) {
+    t.Fatalf("cnfNames2 = %v, want %v",cnfNames2,fofNames)
+  }
 }
 
 func TestTptpToProto(t *testing.T) {

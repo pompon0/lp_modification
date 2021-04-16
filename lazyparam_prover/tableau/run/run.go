@@ -14,6 +14,7 @@ import (
   "github.com/golang/protobuf/proto"
   "github.com/pompon0/tptp_benchmark_go/tool"
   "github.com/pompon0/tptp_benchmark_go/problems"
+  "github.com/pompon0/tptp_benchmark_go/problems/sample"
   "github.com/pompon0/tptp_benchmark_go/utils"
   "github.com/pompon0/tptp_benchmark_go/lazyparam_prover/tableau"
   tpb "github.com/pompon0/tptp_benchmark_go/tptp_parser/proto/tptp_go_proto"
@@ -99,22 +100,25 @@ func find() ([]byte,error) {
   tp,cancel,err := problems.TptpProblems()
   if err!=nil { return nil,fmt.Errorf("problems.TptpProblems(): %v",err) }
   defer cancel()
+  sp := sample.SampleProblems()
   var tptp []byte
   if *caseName!="" {
-    p,ok := mp[*caseName]
-    if !ok {
-      p,ok = tp[*caseName]
+    if p,ok := mp[*caseName]; ok {
+      return p.Get()
     }
-    if !ok { return nil,fmt.Errorf("case %q not found",*caseName) }
-    if tptp,err = p.Get(); err!=nil {
-      return nil,fmt.Errorf("p.Get(): %v",err)
+    if p,ok := tp[*caseName]; ok {
+      return p.Get()
     }
+    if p,ok := sp[*caseName]; ok {
+      return p,nil
+    }
+    return nil,fmt.Errorf("case %q not found",*caseName)
   } else {
     if tptp,err = ioutil.ReadAll(os.Stdin); err!=nil {
       return nil,fmt.Errorf("ioutil.ReadAll(): %v",err)
     }
+    return tptp,nil
   }
-  return tptp,nil
 }
 
 type prob struct {

@@ -75,8 +75,8 @@ func FOFToCNF(ctx context.Context, tptpFOF []byte) ([]byte,error) {
   cmd.Stderr = os.Stderr
   if err := cmd.Run(); err!=nil {
     if ctx.Err()!=nil { return nil,ctx.Err() }
-    log.Printf("in = %q",tptpFOF)
-    log.Printf("out = %q",outBuf.String())
+    //log.Printf("in = %q",tptpFOF)
+    //log.Printf("out = %q",outBuf.String())
     return nil,fmt.Errorf("cmd.Run(): %v",err)
   }
   var buf bytes.Buffer
@@ -88,24 +88,3 @@ func FOFToCNF(ctx context.Context, tptpFOF []byte) ([]byte,error) {
   }
   return buf.Bytes(),nil
 }
-
-/*func run(ctx context.Context) error {
-  // benchmark problem set
-  before,err := problems.GetProblems(ctx)
-  if err!=nil { return fmt.Errorf("GetProblems(): %v",err) }
-  after,err := toCNF(ctx,before)
-  if err!=nil { return fmt.Errorf("toCNF(): %v",err) }
-  if err := problems.WriteProblemSet(after,output_path); err!=nil {
-    return fmt.Errorf("problems.WriteProblemSet(): %v",err)
-  }
-
-  // sample problem set
-  before = problems.SampleProblems
-  after,err = toCNF(ctx,before)
-  if err!=nil { return fmt.Errorf("toCNF(): %v",err) }
-  if err := problems.WriteProblemSet(after,sample_output_path); err!=nil {
-    return fmt.Errorf("problems.WriteProblemSet(): %v",err)
-  }
-
-  return nil
-}*/

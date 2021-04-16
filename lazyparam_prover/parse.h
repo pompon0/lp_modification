@@ -11,12 +11,12 @@
 #include "lazyparam_prover/derived.h"
 #include "lazyparam_prover/kbo.h"
 #include "lazyparam_prover/ground.h"
-#include "lazyparam_prover/node.h"
+#include "tool/node.h"
 
 namespace tableau {
 
 struct ParseCtx {
-  Term parse_term(memory::Alloc &A, NodeInputStream &s) {
+  Term parse_term(memory::Alloc &A, tool::NodeInputStream &s) {
     FRAME("parse_term()");
     auto n = s.node();
     switch(n.type()){
@@ -32,7 +32,7 @@ struct ParseCtx {
     }
   }
 
-  Atom parse_atom(memory::Alloc &A, NodeInputStream &s) {
+  Atom parse_atom(memory::Alloc &A, tool::NodeInputStream &s) {
     FRAME("parse_atom()");
     auto n = s.node();
     switch(n.type()) {
@@ -53,7 +53,7 @@ struct ParseCtx {
     }
   }
 
-  OrClause parse_orClause(memory::Alloc &A, NodeInputStream &s) {
+  OrClause parse_orClause(memory::Alloc &A, tool::NodeInputStream &s) {
     FRAME("parse_orClause(%)",show(s));
     size_t arity = 0;
     switch(s.node_peek().type()) {
@@ -68,7 +68,7 @@ struct ParseCtx {
 
   OrForm parse_orForm(memory::Alloc &A, const tptp::File &file) {
     OrForm form;
-    NodeIndex idx(file.nodes());
+    tool::NodeIndex idx(file.nodes());
     FRAME("parse_orForm() idx = %",show(idx));
     for(const tptp::Input &input : file.input()) {
       if(input.language()!=tptp::Input::CNF)
@@ -77,7 +77,7 @@ struct ParseCtx {
       case tptp::Input::AXIOM:
       case tptp::Input::PLAIN:
       case tptp::Input::NEGATED_CONJECTURE: {
-        NodeInputStream s(idx,input.formula());
+        tool::NodeInputStream s(idx,input.formula());
         OrClause cla = parse_orClause(A,s);
         form.and_clauses.push_back(DerAndClause(A,cla.atom_count()>1,cla.neg()));
         break;
@@ -91,15 +91,15 @@ struct ParseCtx {
 };
 
 struct ProtoCtx {
-  RevNodeIndex idx;
-  ProtoCtx(const RevNodeIndex &_idx) : idx(_idx) {
+  tool::RevNodeIndex idx;
+  ProtoCtx(const tool::RevNodeIndex &_idx) : idx(_idx) {
     //idx.add_fun(Fun::EXTRA_CONST,0);
     //idx.add_pred(Atom::EQ_TRANS_POS,2);
     //idx.add_pred(Atom::EQ_TRANS_NEG,2);
     //idx.add_pred(Atom::EQ_SYMM,2);
   }
 
-  void proto_term(NodeStream &s, Term t) { FRAME("proto_term()");
+  void proto_term(tool::NodeStream &s, Term t) { FRAME("proto_term()");
     switch(t.type()) {
       case Term::VAR: {
         s.add(idx.add_var(Var(t).id()));
@@ -114,7 +114,7 @@ struct ProtoCtx {
     }
   }
 
-  void proto_atom(NodeStream &s, Atom a) { FRAME("proto_atom()");
+  void proto_atom(tool::NodeStream &s, Atom a) { FRAME("proto_atom()");
     if(!a.sign()) s.add(idx.add_standard(tptp::FORM_NEG));
     if(a.pred()==Atom::EQ) {
       s.add(idx.add_standard(tptp::PRED_EQ));
@@ -124,7 +124,7 @@ struct ProtoCtx {
     for(size_t i=0; i<a.arg_count(); ++i) proto_term(s,a.arg(i));
   }
 
-  void proto_orClause(NodeStream &s, OrClause cla) { FRAME("proto_orClause()");
+  void proto_orClause(tool::NodeStream &s, OrClause cla) { FRAME("proto_orClause()");
     s.add(idx.add_standard(tptp::FORM_OR));
     s.add(cla.atom_count());
     for(size_t i=0; i<cla.atom_count(); ++i) proto_atom(s,cla.atom(i));
@@ -137,7 +137,7 @@ struct ProtoCtx {
     derived->set_name("derived");
     derived->set_role(tptp::Input::PLAIN);
     derived->set_language(tptp::Input::CNF);
-    NodeStream s;
+    tool::NodeStream s;
     proto_orClause(s,ground(A,val.eval(A,cla.derived())).neg());
     derived->mutable_formula()->Add(s.stream.begin(),s.stream.end());
     for(size_t i=0; i<cla.source_count(); ++i) {
@@ -146,11 +146,11 @@ struct ProtoCtx {
       pg->set_name("ground");
       pg->set_role(tptp::Input::PLAIN);
       pg->set_language(tptp::Input::CNF);
-      NodeStream gs;
+      tool::NodeStream gs;
       proto_orClause(gs,ground(A,val.eval(A,cla.source(i))).neg());
       pg->mutable_formula()->Add(gs.stream.begin(),gs.stream.end());
       auto pss = ps->mutable_source();
-      NodeStream ss;
+      tool::NodeStream ss;
       pss->set_name("source");
       pss->set_role(tptp::Input::PLAIN);
       pss->set_language(tptp::Input::CNF);
@@ -180,7 +180,7 @@ struct ProtoCtx {
       input->set_name(util::fmt("a%",i++));
       input->set_role(tptp::Input::PLAIN);
       input->set_language(tptp::Input::CNF);
-      NodeStream s;
+      tool::NodeStream s; 
       proto_orClause(s,cla.derived().neg());
       input->mutable_formula()->Add(s.stream.begin(),s.stream.end());
     }

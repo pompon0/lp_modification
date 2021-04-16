@@ -47,57 +47,16 @@ cc_test(
 )
 
 cc_library(
-    name = "node",
-    hdrs = ["node.h"],
-    deps = [
-        "//utils:utils",
-        "//tptp_parser/proto:tptp_cc_proto",
-        "@com_google_protobuf//:protobuf",
-    ],
-)
-
-cc_library(
     name = "parse",
     hdrs = [
         "parse.h",
     ],
     deps = [
-        ":node",
+        "//tool:node",
         "//lazyparam_prover/syntax:syntax",
         "//tptp_parser/proto:tptp_cc_proto",
         "@com_google_protobuf//:protobuf",
     ],
-)
-
-cc_library(
-    name = "parse2",
-    hdrs = [
-        "parse2.h",
-    ],
-    deps = [
-        ":node",
-        "//lazyparam_prover/syntax:syntax",
-        "//tptp_parser/proto:tptp_cc_proto",
-        # vampire agressively takes over signal handling of the whole binary
-        # in particular it severly reduces the global memory limits.
-        # DO NOT LINK into actual prover, until you refector it.
-        "@vampire//:lib",
-        "@com_google_protobuf//:protobuf",
-    ],
-)
-
-cc_binary(
-    name = "tool",
-    srcs = ["tool.cc"],
-    deps = [
-        "//tptp_parser/proto:tptp_cc_proto",
-        ":parse2",
-        "//utils:utils",
-        "@abseil//absl/flags:parse",
-        "@abseil//absl/flags:flag",
-    ],
-    visibility = ["//visibility:public"],
-    features = ["fully_static_link"],
 )
 
 cc_library(
@@ -143,15 +102,15 @@ cc_library(
 cc_library(
     name = "controller",
     hdrs = [
-      "controller.h",
-      "features.h",
+        "controller.h",
+        "features.h",
     ],
     deps = [
-      ":parse",
-      ":prover",
-      "//tool/bin:wrapper",
-      "//utils:utils",
-      "//lazyparam_prover/connection_tableau:prover",
+        ":parse",
+        ":prover",
+        "//tool/bin:wrapper",
+        "//utils:utils",
+        "//lazyparam_prover/connection_tableau:prover",
     ],
 )
 

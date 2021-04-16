@@ -9,6 +9,7 @@ go_library(
         "//lazyparam_prover:prover_go_proto",
         "//lazyparam_prover/tableau:go_default_library",
         "//problems:go_default_library",
+        "//problems/sample:go_default_library",
         "//tool:go_default_library",
         "//tptp_parser/proto:solutions_go_proto",
         "//tptp_parser/proto:tptp_go_proto",

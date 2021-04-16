@@ -1,12 +1,12 @@
 #include "absl/flags/flag.h"
 #include "absl/flags/parse.h"
-#include "lazyparam_prover/parse2.h"
+#include "tool/parse2.h"
 
 #include <iostream>
 #include "utils/log.h"
 #include "tptp.pb.h"
 
-using namespace tableau;
+using namespace tool;
 
 StreamLogger _(std::cerr);
 int main(int argc, char **argv) {

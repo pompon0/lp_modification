@@ -14,6 +14,7 @@
 #include "lazyparam_prover/derived.h"
 #include "lazyparam_prover/prover.pb.h"
 #include "lazyparam_prover/lpmod.h"
+#include "tool/node.h"
 #include "solutions.pb.h"
 
 #include "absl/flags/flag.h"
@@ -70,7 +71,7 @@ int main(int argc, char **argv) {
   
   memory::Alloc A;
   OrForm f(ParseCtx().parse_orForm(A,input.problem()));
-  RevNodeIndex idx(input.problem().nodes());
+  tool::RevNodeIndex idx(input.problem().nodes());
 
   auto emergency_block = new char[1000*1000];
   try {

@@ -11,12 +11,9 @@
 
 #include "utils/log.h"
 #include "utils/string.h"
-#include "lazyparam_prover/syntax/term.h"
-#include "lazyparam_prover/syntax/atom.h"
-#include "lazyparam_prover/syntax/clause.h"
-#include "lazyparam_prover/node.h"
+#include "tool/node.h"
 
-namespace tableau {
+namespace tool {
 
 struct ParseCtx {
   RevNodeIndex idx;

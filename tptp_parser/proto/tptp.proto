@@ -34,7 +34,7 @@ message Node {
   int32 id = 1;
   Type type = 2;
   int32 arity = 3; // present <=> type has custom arity
-  string name = 4; // optional
+  string name = 4; // present <=> name is significant (should be cleared for functors and predicated added by the problem translators)
 }
 
 // currently only FOF and CNF formulas are supported

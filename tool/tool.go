@@ -15,7 +15,7 @@ import (
 )
 
 const hs_tool_bin_path = "__main__/tptp_parser/src/tool"
-const cc_tool_bin_path = "__main__/lazyparam_prover/tool"
+const cc_tool_bin_path = "__main__/tool/tool"
 const tmp_prefix = "tptp_benchmark_go_"
 
 type Language string
@@ -27,6 +27,20 @@ func WriteTmp(data []byte) (path string, cleanup func(), err error) {
   if err!=nil { return "",nil,fmt.Errorf("ioutil.TempFile(): %v",err) }
   if _,err := tmpFile.Write(data); err!=nil { return "",nil,fmt.Errorf("tmpFile.Write(): %v",err) }
   return tmpFile.Name(),func(){ os.Remove(tmpFile.Name()) },nil
+}
+
+func ClearUnknownNames(f *tpb.File, known []*tpb.Node) {
+  type node struct { Type tpb.Type; Arity int32; Name string }
+  flatten := func(n *tpb.Node) node {
+    return node{n.GetType(),n.GetArity(),n.GetName()}
+  }
+  isKnown := map[node]bool{}
+  for _,n := range known {
+    if n.GetName()!="" { isKnown[flatten(n)] = true }
+  }
+  for _,n := range f.GetNodes() {
+    if !isKnown[flatten(n)] { n.Name = "" }
+  }
 }
 
 func ProtoToTptp(ctx context.Context, f *tpb.File) ([]byte,error) {

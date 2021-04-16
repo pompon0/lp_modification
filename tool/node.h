@@ -4,7 +4,7 @@
 #include "google/protobuf/repeated_field.h"
 #include "tptp.pb.h"
 
-namespace tableau {
+namespace tool {
 
 enum {
   CUSTOM_ARITY = -2,

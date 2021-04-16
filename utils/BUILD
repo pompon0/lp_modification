@@ -14,6 +14,7 @@ go_library(
         "enum_flag.h",
         "limit.go",
         "log.h",
+        "number_theory.h",
         "read_file.h",
         "short.h",
         "string.h",
@@ -41,6 +42,7 @@ cc_library(
         "ctx.h",
         "enum_flag.h",
         "log.h",
+        "number_theory.h",
         "read_file.h",
         "short.h",
         "string.h",
@@ -53,5 +55,14 @@ cc_library(
         "@abseil//absl/time:time",
         "@abseil//absl/types:optional",
         "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "number_theory_test",
+    srcs = ["number_theory_test.cc"],
+    deps = [
+        ":utils",
+        "@gtest//:gtest_main",
     ],
 )

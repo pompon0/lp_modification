@@ -16,11 +16,11 @@ http_archive(
 # LLVM
 
 http_archive(
-  # cannot change this name, because files in its workspace refer to it
-  name = "com_grail_bazel_toolchain",
-  strip_prefix = "bazel-toolchain-e608913c0e106da931234fdd37de9ee37e0b2541",
-  urls = ["https://github.com/pompon0/bazel-toolchain/archive/e608913c0e106da931234fdd37de9ee37e0b2541.tar.gz"],
-  sha256 = "e09e8ef8a5f97078da2961561e176a5bf461962683159bcbd81674052475cdd0",
+    # cannot change this name, because files in its workspace refer to it
+    name = "com_grail_bazel_toolchain",
+    strip_prefix = "bazel-toolchain-e608913c0e106da931234fdd37de9ee37e0b2541",
+    urls = ["https://github.com/pompon0/bazel-toolchain/archive/e608913c0e106da931234fdd37de9ee37e0b2541.tar.gz"],
+    sha256 = "e09e8ef8a5f97078da2961561e176a5bf461962683159bcbd81674052475cdd0",
 )
 
 load("@com_grail_bazel_toolchain//toolchain:deps.bzl", "bazel_toolchain_dependencies")
@@ -30,9 +30,9 @@ bazel_toolchain_dependencies()
 load("@com_grail_bazel_toolchain//toolchain:rules.bzl", "llvm_toolchain")
 
 llvm_toolchain(
-  name = "llvm_toolchain",
-  distribution = "clang+llvm-10.0.0-x86_64-linux-gnu-ubuntu-18.04.tar.xz",
-  llvm_version = "10.0.0",
+    name = "llvm_toolchain",
+    distribution = "clang+llvm-10.0.0-x86_64-linux-gnu-ubuntu-18.04.tar.xz",
+    llvm_version = "10.0.0",
 )
 
 load("@llvm_toolchain//:toolchains.bzl", "llvm_register_toolchains")
@@ -49,7 +49,9 @@ http_archive(
 )
 
 load("@io_bazel_rules_go//go:deps.bzl", "go_rules_dependencies", "go_register_toolchains")
+
 go_rules_dependencies()
+
 go_register_toolchains()
 
 http_archive(
@@ -57,10 +59,14 @@ http_archive(
     urls = ["https://github.com/bazelbuild/bazel-gazelle/releases/download/v0.19.1/bazel-gazelle-v0.19.1.tar.gz"],
     sha256 = "86c6d481b3f7aedc1d60c1c211c6f76da282ae197c3b3160f54bd3a8f847896f",
 )
+
 load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies", "go_repository")
+
 gazelle_dependencies()
+
 # gazelle:repository_macro gazelle_generated_rules.bzl%gazelle_generated
-load("//:gazelle_generated_rules.bzl","gazelle_generated")
+load("//:gazelle_generated_rules.bzl", "gazelle_generated")
+
 gazelle_generated()
 
 ################################
@@ -78,7 +84,9 @@ http_archive(
 )
 
 load("@rules_proto//proto:repositories.bzl", "rules_proto_dependencies", "rules_proto_toolchains")
+
 rules_proto_dependencies()
+
 rules_proto_toolchains()
 
 ################################
@@ -116,6 +124,7 @@ load(
 container_repositories()
 
 load("@io_bazel_rules_docker//go:image.bzl", _go_image_repos = "repositories")
+
 _go_image_repos()
 
 load("@io_bazel_rules_docker//container:container.bzl", "container_pull")
@@ -198,10 +207,10 @@ register_toolchains(":protobuf-toolchain")
 
 # Rule repository, note that it's recommended to use a pinned commit to a released version of the rules
 http_archive(
-  name = "rules_foreign_cc",
-  sha256 = "c2cdcf55ffaf49366725639e45dedd449b8c3fe22b54e31625eb80ce3a240f1e",
-  strip_prefix = "rules_foreign_cc-0.1.0",
-  url = "https://github.com/bazelbuild/rules_foreign_cc/archive/0.1.0.zip",
+    name = "rules_foreign_cc",
+    sha256 = "c2cdcf55ffaf49366725639e45dedd449b8c3fe22b54e31625eb80ce3a240f1e",
+    strip_prefix = "rules_foreign_cc-0.1.0",
+    url = "https://github.com/bazelbuild/rules_foreign_cc/archive/0.1.0.zip",
 )
 
 load("@rules_foreign_cc//:workspace_definitions.bzl", "rules_foreign_cc_dependencies")
@@ -212,35 +221,35 @@ rules_foreign_cc_dependencies()
 # XGBOOST
 
 http_archive(
-  name = "openmp",
-  strip_prefix = "llvm-project-llvmorg-11.0.0",
-  url = "https://github.com/llvm/llvm-project/archive/llvmorg-11.0.0.zip",
-  sha256 = "6db05aa39192950b73311672c074b3942aedbb92d5ff14e170323fc747ccb99f",
-  build_file = "//:third_party/openmp.BUILD",
+    name = "openmp",
+    strip_prefix = "llvm-project-llvmorg-11.0.0",
+    url = "https://github.com/llvm/llvm-project/archive/llvmorg-11.0.0.zip",
+    sha256 = "6db05aa39192950b73311672c074b3942aedbb92d5ff14e170323fc747ccb99f",
+    build_file = "//:third_party/openmp.BUILD",
 )
 
 http_archive(
-  name = "dmlc",
-  strip_prefix = "dmlc-core-5df8305fe699d3b503d10c60a231ab0223142407",
-  url = "https://github.com/dmlc/dmlc-core/archive/5df8305fe699d3b503d10c60a231ab0223142407.zip",
-  sha256 = "10a0c81866dbd2e4bd23da031ec44e05e56e6cd75506dd9b37cd64e83169c99c",
-  build_file = "//:third_party/dmlc.BUILD",
+    name = "dmlc",
+    strip_prefix = "dmlc-core-5df8305fe699d3b503d10c60a231ab0223142407",
+    url = "https://github.com/dmlc/dmlc-core/archive/5df8305fe699d3b503d10c60a231ab0223142407.zip",
+    sha256 = "10a0c81866dbd2e4bd23da031ec44e05e56e6cd75506dd9b37cd64e83169c99c",
+    build_file = "//:third_party/dmlc.BUILD",
 )
 
 http_archive(
-  name = "rabit",
-  strip_prefix = "rabit-4fb34a008db6437c84d1877635064e09a55c8553",
-  url = "https://github.com/dmlc/rabit/archive/4fb34a008db6437c84d1877635064e09a55c8553.zip",
-  sha256 = "9928f637c5d6d6f44512f95eb6ffa7ed878eb9b300a897514abc38bba3759dce",
-  build_file = "//:third_party/rabit.BUILD",
+    name = "rabit",
+    strip_prefix = "rabit-4fb34a008db6437c84d1877635064e09a55c8553",
+    url = "https://github.com/dmlc/rabit/archive/4fb34a008db6437c84d1877635064e09a55c8553.zip",
+    sha256 = "9928f637c5d6d6f44512f95eb6ffa7ed878eb9b300a897514abc38bba3759dce",
+    build_file = "//:third_party/rabit.BUILD",
 )
 
 http_archive(
-  name = "xgboost",
-  strip_prefix = "xgboost-34408a7fdcebc0e32142ed2f52156ea65d813400",
-  url = "https://github.com/dmlc/xgboost/archive/34408a7fdcebc0e32142ed2f52156ea65d813400.zip",
-  sha256 = "8baee6a5f4198803cf2623c4d1c3c1326f026309b289bc663c3e492a7f30d34a",
-  build_file = "//:third_party/xgboost.BUILD",
+    name = "xgboost",
+    strip_prefix = "xgboost-34408a7fdcebc0e32142ed2f52156ea65d813400",
+    url = "https://github.com/dmlc/xgboost/archive/34408a7fdcebc0e32142ed2f52156ea65d813400.zip",
+    sha256 = "8baee6a5f4198803cf2623c4d1c3c1326f026309b289bc663c3e492a7f30d34a",
+    build_file = "//:third_party/xgboost.BUILD",
 )
 
 ################################
@@ -298,4 +307,3 @@ http_file(
     urls = ["https://storage.googleapis.com/tptp/tptp_problems_long.zip"],
     sha256 = "7872e2032bdd06aa7857915305ec70663a17c3346f84bb50bf5155986d8c2c00",
 )
-

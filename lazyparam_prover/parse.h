@@ -15,8 +15,8 @@
 
 namespace tableau {
 
-struct ParseCtx {
-  Term parse_term(memory::Alloc &A, tool::NodeInputStream &s) {
+struct ProtoToSyntax {
+  static Term term(memory::Alloc &A, tool::node::InputStream &s) {
     FRAME("parse_term()");
     auto n = s.node();
     switch(n.type()){
@@ -24,7 +24,7 @@ struct ParseCtx {
       case tptp::TERM_FUN: {
         size_t ac = n.arity();
         Fun::Builder b(A,n.id(),ac);
-        for(size_t i=0; i<ac; ++i) b.set_arg(i,parse_term(A,s));
+        for(size_t i=0; i<ac; ++i) b.set_arg(i,term(A,s));
         return Term(b.build());
       }
       default:
@@ -32,20 +32,20 @@ struct ParseCtx {
     }
   }
 
-  Atom parse_atom(memory::Alloc &A, tool::NodeInputStream &s) {
+  static Atom atom(memory::Alloc &A, tool::node::InputStream &s) {
     FRAME("parse_atom()");
     auto n = s.node();
     switch(n.type()) {
-    case tptp::FORM_NEG: return parse_atom(A,s).neg();
+    case tptp::FORM_NEG: return atom(A,s).neg();
     case tptp::PRED_EQ: {
-      Term l = parse_term(A,s);
-      Term r = parse_term(A,s);
+      Term l = term(A,s);
+      Term r = term(A,s);
       return Atom::eq(A,true,l,r);
     }
     case tptp::PRED: {
       size_t ac = n.arity();
       Atom::Builder b(A,true,n.id(),ac,false);
-      for(size_t i=0; i<ac; ++i) b.set_arg(i,parse_term(A,s));
+      for(size_t i=0; i<ac; ++i) b.set_arg(i,term(A,s));
       return b.build();
     }
     default:
@@ -53,7 +53,7 @@ struct ParseCtx {
     }
   }
 
-  OrClause parse_orClause(memory::Alloc &A, tool::NodeInputStream &s) {
+  static OrClause orClause(memory::Alloc &A, tool::node::InputStream &s) {
     FRAME("parse_orClause(%)",show(s));
     size_t arity = 0;
     switch(s.node_peek().type()) {
@@ -62,14 +62,14 @@ struct ParseCtx {
       default: { arity = 1; break; }
     }
     AndClause::Builder b(A,arity);
-    for(size_t i=0; i<arity; ++i) b.set_atom(i,parse_atom(A,s).neg());
+    for(size_t i=0; i<arity; ++i) b.set_atom(i,atom(A,s).neg());
     return b.build().neg();
   }
 
-  OrForm parse_orForm(memory::Alloc &A, const tptp::File &file) {
+  static std::tuple<OrForm,tool::node::Index> orForm(memory::Alloc &A, const tptp::File &file) {
+    FRAME("ProtoToSyntax::orForm()");
+    tool::node::Index idx(file.nodes());
     OrForm form;
-    tool::NodeIndex idx(file.nodes());
-    FRAME("parse_orForm() idx = %",show(idx));
     for(const tptp::Input &input : file.input()) {
       if(input.language()!=tptp::Input::CNF)
         error("input.language() = %, want CNF",input.language());
@@ -77,8 +77,8 @@ struct ParseCtx {
       case tptp::Input::AXIOM:
       case tptp::Input::PLAIN:
       case tptp::Input::NEGATED_CONJECTURE: {
-        tool::NodeInputStream s(idx,input.formula());
-        OrClause cla = parse_orClause(A,s);
+        tool::node::InputStream s(idx,input.formula());
+        OrClause cla = orClause(A,s);
         form.and_clauses.push_back(DerAndClause(A,cla.atom_count()>1,cla.neg()));
         break;
       }
@@ -86,59 +86,51 @@ struct ParseCtx {
         error("unexpected input.role() = %",input.role());
       }
     }
-    return form;
+    return {form,idx};
   } 
 };
 
-struct ProtoCtx {
-  tool::RevNodeIndex idx;
-  ProtoCtx(const tool::RevNodeIndex &_idx) : idx(_idx) {
-    //idx.add_fun(Fun::EXTRA_CONST,0);
-    //idx.add_pred(Atom::EQ_TRANS_POS,2);
-    //idx.add_pred(Atom::EQ_TRANS_NEG,2);
-    //idx.add_pred(Atom::EQ_SYMM,2);
-  }
-
-  void proto_term(tool::NodeStream &s, Term t) { FRAME("proto_term()");
+struct SyntaxToProto {
+  static void term(tool::node::OutputStream &s, Term t) { FRAME("proto_term()");
     switch(t.type()) {
       case Term::VAR: {
-        s.add(idx.add_var(Var(t).id()));
+        s.add(s.idx.var(Var(t).id()));
         break;
       }
       case Term::FUN: {
         Fun f(t);
-        s.add(idx.add_fun(f.fun(),f.arg_count(),""));
-        for(size_t i=0; i<f.arg_count(); ++i) proto_term(s,f.arg(i));
+        s.add(s.idx.fun(f.fun(),f.arg_count(),""));
+        for(size_t i=0; i<f.arg_count(); ++i) term(s,f.arg(i));
         break;
       }
     }
   }
 
-  void proto_atom(tool::NodeStream &s, Atom a) { FRAME("proto_atom()");
-    if(!a.sign()) s.add(idx.add_standard(tptp::FORM_NEG));
+  static void atom(tool::node::OutputStream &s, Atom a) { FRAME("proto_atom()");
+    if(!a.sign()) s.add(s.idx.standard(tptp::FORM_NEG));
     if(a.pred()==Atom::EQ) {
-      s.add(idx.add_standard(tptp::PRED_EQ));
+      s.add(s.idx.standard(tptp::PRED_EQ));
     } else {
-      s.add(idx.add_pred(a.pred(),a.arg_count(),""));
+      s.add(s.idx.pred(a.pred(),a.arg_count(),""));
     }
-    for(size_t i=0; i<a.arg_count(); ++i) proto_term(s,a.arg(i));
+    for(size_t i=0; i<a.arg_count(); ++i) term(s,a.arg(i));
   }
 
-  void proto_orClause(tool::NodeStream &s, OrClause cla) { FRAME("proto_orClause()");
-    s.add(idx.add_standard(tptp::FORM_OR));
+  static void orClause(tool::node::OutputStream &s, OrClause cla) { FRAME("proto_orClause()");
+    s.add(s.idx.standard(tptp::FORM_OR));
     s.add(cla.atom_count());
-    for(size_t i=0; i<cla.atom_count(); ++i) proto_atom(s,cla.atom(i));
+    for(size_t i=0; i<cla.atom_count(); ++i) atom(s,cla.atom(i));
   }
 
-  solutions::Derivation proto_derAndClause(memory::Alloc &A, const DerAndClause &cla, const Valuation &val) { FRAME("proto_derAndClause()");
+  static solutions::Derivation derAndClause(memory::Alloc &A, tool::node::Index &idx, const DerAndClause &cla, const Valuation &val) { FRAME("proto_derAndClause()");
     solutions::Derivation d;
     d.set_cost(cla.cost());
     auto derived = d.mutable_derived();
     derived->set_name("derived");
     derived->set_role(tptp::Input::PLAIN);
     derived->set_language(tptp::Input::CNF);
-    tool::NodeStream s;
-    proto_orClause(s,ground(A,val.eval(A,cla.derived())).neg());
+    tool::node::OutputStream s(idx);
+    orClause(s,ground(A,val.eval(A,cla.derived())).neg());
     derived->mutable_formula()->Add(s.stream.begin(),s.stream.end());
     for(size_t i=0; i<cla.source_count(); ++i) {
       auto ps = d.add_sources();
@@ -146,33 +138,33 @@ struct ProtoCtx {
       pg->set_name("ground");
       pg->set_role(tptp::Input::PLAIN);
       pg->set_language(tptp::Input::CNF);
-      tool::NodeStream gs;
-      proto_orClause(gs,ground(A,val.eval(A,cla.source(i))).neg());
+      tool::node::OutputStream gs(idx);
+      orClause(gs,ground(A,val.eval(A,cla.source(i))).neg());
       pg->mutable_formula()->Add(gs.stream.begin(),gs.stream.end());
       auto pss = ps->mutable_source();
-      tool::NodeStream ss;
+      tool::node::OutputStream ss(idx);
       pss->set_name("source");
       pss->set_role(tptp::Input::PLAIN);
       pss->set_language(tptp::Input::CNF);
-      proto_orClause(ss,cla.source(i).neg());
+      orClause(ss,cla.source(i).neg());
       pss->mutable_formula()->Add(ss.stream.begin(),ss.stream.end());
     }
     return d;
   }
 
-  solutions::Proof proto_Proof(memory::Alloc &A, const OrForm &f, const Valuation &val) { FRAME("proto_Proof");
+  static solutions::Proof proof(memory::Alloc &A, tool::node::Index &idx, const OrForm &f, const Valuation &val) { FRAME("proto_Proof");
     solutions::Proof proof;
     size_t i=0;
     for(const auto &cla : f.and_clauses) {
       auto pcla = proof.add_clauses();
-      *pcla = proto_derAndClause(A,cla,val);
+      *pcla = derAndClause(A,idx,cla,val);
       pcla->mutable_derived()->set_name(util::fmt("a%",i++));
     }
-    proof.mutable_nodes()->CopyFrom(idx.nodes);
+    proof.mutable_nodes()->CopyFrom(idx.get_nodes());
     return proof;
   }
 
-  tptp::File proto_orForm(const OrForm &f) { FRAME("proto_orForm()");
+  static tptp::File orForm(tool::node::Index &idx, const OrForm &f) { FRAME("proto_orForm()");
     tptp::File file;
     size_t i = 0;
     for(const auto &cla : f.and_clauses) {
@@ -180,11 +172,11 @@ struct ProtoCtx {
       input->set_name(util::fmt("a%",i++));
       input->set_role(tptp::Input::PLAIN);
       input->set_language(tptp::Input::CNF);
-      tool::NodeStream s; 
-      proto_orClause(s,cla.derived().neg());
+      tool::node::OutputStream s(idx); 
+      orClause(s,cla.derived().neg());
       input->mutable_formula()->Add(s.stream.begin(),s.stream.end());
     }
-    file.mutable_nodes()->CopyFrom(idx.nodes);
+    file.mutable_nodes()->CopyFrom(idx.get_nodes());
     return file;
   }
 };

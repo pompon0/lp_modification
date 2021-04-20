@@ -1,10 +1,12 @@
-#ifndef NODE_H_
-#define NODE_H_
+#ifndef TOOL_NODE_H_
+#define TOOL_NODE_H_
 
 #include "google/protobuf/repeated_field.h"
 #include "tptp.pb.h"
 
-namespace tool {
+namespace tool::node {
+
+namespace {
 
 enum {
   CUSTOM_ARITY = -2,
@@ -31,69 +33,31 @@ const std::map<tptp::Type,int> TYPE_ARITY = {
   {tptp::EXISTS,2},
 };
 
-using NodeId = int32_t;
+} // namespace
 
-struct NodeIndex {
-  NodeIndex(google::protobuf::RepeatedPtrField<tptp::Node> _nodes) {
-    for(auto n : _nodes) {
-      auto a = TYPE_ARITY.at(n.type());
-      if(a!=CUSTOM_ARITY) n.set_arity(a);
-      nodes[n.id()] = n;
-    }
-  }
-  std::map<NodeId,tptp::Node> nodes;
+using Id = int32_t;
 
-  friend str show(const NodeIndex &idx) {
-    vec<str> v;
-    for(auto p : idx.nodes) {
-      v.push_back(util::fmt("% -> %",p.first,p.second.DebugString()));
-    }
-    return util::fmt("{ % }",util::join(", ",v));;
-  }
-};
-
-
-struct NodeInputStream {
-  const tptp::Node &node_peek() { return idx.nodes.at(stream[i]); }
-  const tptp::Node &node() { return idx.nodes.at(stream[i++]); }
-  size_t arity() { return stream[i++]; }
-  NodeInputStream(
-    const NodeIndex &_idx,
-    const google::protobuf::RepeatedField<NodeId> &_stream
-  ) : idx(_idx), stream(_stream) {}
-
-  friend str show(const NodeInputStream &s) {
-    vec<str> v;
-    for(size_t i=s.i; i<size_t(s.stream.size()); ++i) v.push_back(util::to_str(s.stream[i]));
-    return util::join(" ",v);
-  }
+struct Index { 
 private:
-  const NodeIndex &idx;
-  const google::protobuf::RepeatedField<NodeId> &stream;
-  size_t i=0;
-};
-
-
-
-struct RevNodeIndex {
-private:
-  std::map<tptp::Type,NodeId> standard_;
-  std::map<unsigned,NodeId> funs_,preds_,vars_;
-  std::set<NodeId> used;
-  NodeId next_ = 0;
-  NodeId next(){
-    while(used.count(next_)) next_++;
-    used.insert(next_);
+  std::map<tptp::Type,Id> standard_;
+  std::map<unsigned,Id> funs_,preds_,vars_;
+  std::map<Id,tptp::Node> nodes; 
+  Id next_ = 0;
+  Id add(tptp::Node n){
+    while(nodes.count(next_)) next_++;
+    n.set_id(next_);
+    nodes.insert({next_,n});
     return next_;
   }
 public:
-  RevNodeIndex(){}
-  INL RevNodeIndex(const RevNodeIndex &) = default;
-  ~RevNodeIndex(){}
-  RevNodeIndex(const google::protobuf::RepeatedPtrField<tptp::Node> &init) {
-    for(auto n : init) {
-      used.insert(n.id());
-      *nodes.Add() = n;
+  Index(){}
+  //Index(const Index&) = default;
+  Index(google::protobuf::RepeatedPtrField<tptp::Node> _nodes) { FRAME("InputIndex");
+    for(auto n : _nodes) {
+      auto a = TYPE_ARITY.at(n.type());
+      if(a!=CUSTOM_ARITY) n.set_arity(a);
+      if(nodes.count(n.id())) error("duplicate node %",n.id());
+      nodes.insert({n.id(),n});
       switch(n.type()) {
         case tptp::PRED: preds_[n.id()] = n.id(); break;
         case tptp::TERM_FUN: funs_[n.id()] = n.id(); break;
@@ -101,66 +65,102 @@ public:
         default: standard_[n.type()] = n.id();
       }
     }
+  } 
+  google::protobuf::RepeatedPtrField<tptp::Node> get_nodes() {
+    google::protobuf::RepeatedPtrField<tptp::Node> x;
+    for(auto &[_,n] : nodes) *x.Add() = n;
+    return x;
   }
-public:
-  google::protobuf::RepeatedPtrField<tptp::Node> nodes;
 
-  NodeId var(unsigned i) { return vars_[i]; }
-  NodeId fun(unsigned f) { return funs_[f]; }
-  NodeId pref(unsigned p) { return preds_[p]; }
-  NodeId standard(tptp::Type t){ return standard_[t]; }
+  const tptp::Node &get(Id id) const { return nodes.at(id); }
 
-  NodeId add_var(unsigned i) {
+  Id var(unsigned i) {
     if(vars_.count(i)) return vars_[i];
-    NodeId id = next();
-    vars_[i] = id;
-    auto n = nodes.Add();
-    n->set_type(tptp::TERM_VAR);
-    n->set_id(id);
-    return id;
+    tptp::Node n;
+    n.set_type(tptp::TERM_VAR);
+    return vars_[i] = add(n);
   }
 
-  NodeId add_fun(unsigned f, size_t arity, str name) {
-    if(funs_.count(f)) return funs_[f];
-    NodeId id = next();
-    funs_[f] = id;
-    auto n = nodes.Add();
-    n->set_type(tptp::TERM_FUN);
-    n->set_id(id);
-    n->set_arity(arity);
-    n->set_name(name);
-    return id;
+  Id fun(unsigned f, size_t arity, str name) {
+    if(funs_.count(f)) {
+      DEBUG if(auto want = get(funs_[f]).arity(); want!=arity)
+        error("arity = %, want %",arity,want);
+      return funs_[f];
+    }
+    tptp::Node n;
+    n.set_type(tptp::TERM_FUN);
+    n.set_arity(arity);
+    n.set_name(name);
+    return funs_[f] = add(n);
   }
 
-  NodeId add_pred(unsigned p, size_t arity, str name) {
-    if(preds_.count(p)) return preds_[p];
-    NodeId id = next();
-    preds_[p] = id;
-    auto n = nodes.Add();
-    n->set_type(tptp::PRED);
-    n->set_id(id);
-    n->set_arity(arity);
-    n->set_name(name);
-    return id;
+  Id pred(unsigned p, size_t arity, str name) {
+    if(preds_.count(p)) {
+      DEBUG if(auto want = get(preds_[p]).arity(); want!=arity)
+        error("arity = %, want %",arity,want);
+      return preds_[p];
+    }
+    tptp::Node n;
+    n.set_type(tptp::PRED);
+    n.set_arity(arity);
+    n.set_name(name);
+    return preds_[p] = add(n);
   }
 
-  NodeId add_standard(tptp::Type t) {
+  Id standard(tptp::Type t) {
     DEBUG if(TYPE_ARITY.at(t)==CUSTOM_ARITY) error("% is not a standard node type",t);
     if(standard_.count(t)) return standard_[t];
-    NodeId id = next();
-    standard_[t] = id;
-    auto n = nodes.Add();
-    n->set_type(t);
-    n->set_id(id);
-    return id;
+    tptp::Node n;
+    n.set_type(t);
+    return standard_[t] = add(n);
+  }
+
+  str pred_name(unsigned p) const {
+    if(!preds_.count(p)) return "";
+    return get(preds_.at(p)).name();
+  }
+
+  str fun_name(unsigned f) const {
+    if(!funs_.count(f)) return "";
+    return get(funs_.at(f)).name();
+  }
+
+  friend str show(const Index &idx) {
+    vec<str> v;
+    for(auto &[id,n] : idx.nodes) {
+      v.push_back(util::fmt("% -> %",id,n.DebugString()));
+    }
+    return util::fmt("{ % }",util::join(", ",v));;
   }
 };
 
-struct NodeStream {
-  vec<int32_t> stream;
-  void add(NodeId v){ stream.push_back(int32_t(v)); }
+struct InputStream {
+  const tptp::Node &node_peek() { return idx.get(stream[i]); }
+  const tptp::Node &node() { return idx.get(stream[i++]); }
+  size_t arity() { return stream[i++]; }
+  InputStream(
+    const Index &_idx,
+    const google::protobuf::RepeatedField<Id> &_stream
+  ) : idx(_idx), stream(_stream) {}
+
+  friend str show(const InputStream &s) {
+    vec<str> v;
+    for(size_t i=s.i; i<size_t(s.stream.size()); ++i) v.push_back(util::to_str(s.stream[i]));
+    return util::join(" ",v);
+  }
+private:
+  const Index &idx;
+  const google::protobuf::RepeatedField<Id> &stream;
+  size_t i=0;
 };
 
-} // namespace tableau
+struct OutputStream {
+  OutputStream(Index &_idx) : idx(_idx) {}
+  Index &idx;
+  vec<int32_t> stream;
+  void add(Id v){ stream.push_back(int32_t(v)); }
+};
 
-#endif  // NODE_H_
+} // namespace tool::node
+
+#endif  // TOOL_NODE_H_

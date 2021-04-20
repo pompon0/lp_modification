@@ -3,8 +3,6 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "go_default_library",
     srcs = [
-        "node.h",
-        "parse2.h",
         "tool.go",
     ],
     data = [
@@ -46,9 +44,9 @@ cc_library(
 )
 
 cc_library(
-    name = "parse2",
+    name = "conv",
     hdrs = [
-        "parse2.h",
+        "conv.h",
     ],
     deps = [
         ":node",
@@ -66,7 +64,8 @@ cc_binary(
     srcs = ["tool.cc"],
     deps = [
         "//tptp_parser/proto:tptp_cc_proto",
-        ":parse2",
+        ":node",
+        ":conv",
         "//utils:utils",
         "@abseil//absl/flags:parse",
         "@abseil//absl/flags:flag",

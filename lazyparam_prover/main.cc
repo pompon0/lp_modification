@@ -70,16 +70,13 @@ int main(int argc, char **argv) {
   auto input = proto_from_raw<solutions::ProverInput>(input_raw);
   
   memory::Alloc A;
-  OrForm f(ParseCtx().parse_orForm(A,input.problem()));
-  tool::RevNodeIndex idx(input.problem().nodes());
-
+  auto [f,idx] = ProtoToSyntax::orForm(A,input.problem());
   auto emergency_block = new char[1000*1000];
   try {
     solutions::ProverOutput outProto;
-    ProtoCtx pctx(idx);
     f = apply_trans(A,f);
     if(absl::GetFlag(FLAGS_trans_only)) {
-      auto proto_f = pctx.proto_orForm(f);
+      auto proto_f = SyntaxToProto::orForm(idx,f);
       // replace equality with a regular predicate.
       for(auto &n : *proto_f.mutable_nodes()) {
         if(n.type()==tptp::PRED_EQ) {
@@ -99,8 +96,8 @@ int main(int argc, char **argv) {
     auto method = absl::GetFlag(FLAGS_method);
     ProverOutput out;
     FunOrd fun_ord(input.fun_ord(),input.problem().nodes());
-    ClauseIndex idx(f);
-    SearchState state(idx,fun_ord);
+    ClauseIndex cla_idx(f);
+    SearchState state(cla_idx,fun_ord);
     switch(method.get()) {
       case prover::CONNECTION_TABLEAU:
         out = engine::balanced::schedule<connection_tableau::Cont>(ctx,A,state);
@@ -121,7 +118,7 @@ int main(int argc, char **argv) {
     *outProto.mutable_stats() = out.stats.to_proto();
     if(out.proof){
       outProto.set_solved(true);
-      *outProto.mutable_proof() = pctx.proto_Proof(A,*out.proof,out.val);
+      *outProto.mutable_proof() = SyntaxToProto::proof(A,idx,*out.proof,out.val);
     }
     if(!outProto.SerializeToOstream(&std::cout)) {
       error("outProto.SerializeToOstream() failed");  

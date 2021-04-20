@@ -1,6 +1,7 @@
 #include "absl/flags/flag.h"
 #include "absl/flags/parse.h"
-#include "tool/parse2.h"
+#include "tool/conv.h"
+#include "tool/node.h"
 
 #include <iostream>
 #include "utils/log.h"
@@ -14,8 +15,8 @@ int main(int argc, char **argv) {
   absl::ParseCommandLine(argc, argv);
 
   tptp::ToolOutput out;
-  ParseCtx ctx;
-  ctx.parse_file(out.mutable_file(),std::cin);
+  node::Index idx;
+  conv::TptpToProto::file(idx,out.mutable_file(),std::cin);
   out.set_has_equality(has_equality(out.file()));
   out.SerializeToOstream(&std::cout);
   //inline_imports(std::cout,std::cin);

@@ -21,8 +21,9 @@ public:
     auto file = tptp_to_proto(tptp_cnf(tptp_fof));
     auto p = own(new Problem());
     p->A = make<memory::Alloc>();
-    auto f = tableau::ParseCtx().parse_orForm(*p->A,file);
+    auto [f,idx] = tableau::ProtoToSyntax::orForm(*p->A,file);
     p->idx = make<tableau::ClauseIndex>(tableau::lpmod::conv(*p->A,f));
+    p->node_idx = make<tool::node::Index>(idx);
     return p;
   }
   friend class RawProver;
@@ -30,6 +31,7 @@ private:
   Problem() = default;
   ptr<memory::Alloc> A;
   ptr<tableau::ClauseIndex> idx;
+  ptr<const tool::node::Index> node_idx;
 
   static str tptp_cnf(const str &tptp_fof) {
     tool::Request req;
@@ -45,12 +47,16 @@ private:
 };
 
 struct Div {
-  struct Features : tableau::Features {
-    void set_new_goals(memory::List<tableau::Atom> goals) {
-      for(; goals; goals = goals.tail()) {
-        auto a = goals.head();
-      }
-    }
+  struct Alt : tableau::Features {
+    Div *div;
+    Cont _and;
+    
+    ActionVec av;
+
+    template<typename F> INL void task(F f){ _and.push(A,Task(A,f)); }
+    INL void done(){ div->next.push_back(Action{f,_and}); }
+    
+    void feature_goal(tableau::Atom goal){ av.add(goal); }
   };
 
   using Task = memory::function<void(Div*)>;
@@ -63,9 +69,9 @@ struct Div {
   enum { size_limit = 1000000 };
   memory::Alloc &A;
   tableau::SearchState *state;
-  template<typename F> INL void or_(tableau::Features x, F f){ next.push_back(Action{x,_and.add(A,Task(A,f))}); }
-  template<typename F> INL void and_(F f){ _and.push(A,Task(A,f)); }
-  INL void done(tableau::Features f){ next.push_back(Action{f,_and}); }
+  // TODO pass by pointer, track lifecycle, to avoid copying/reusal
+  template<typename F> INL Alt alt(){ return Alt{div,_and}; }
+  
   
   INL static vec<Action> Run(memory::Alloc &A, tableau::SearchState *state, Cont cont) { FRAME("Div::Run");
     DEBUG if(cont.empty()) error("empty cont");
@@ -136,7 +142,22 @@ public:
 
   static ptr<RawProver> New(Problem::Ptr problem) {
     auto p = own(new RawProver());
+    p->A = make<memory::Alloc>();UG_ONLY({
+      if(s->prover!=this) error("Save of a different prover");
+      if(s->id>=saves.size()) error("s.id = %, want < %",s->id,saves.size());
+      if(s->serial_id!=saves[s->id]) error("s.serial_id = %, want %",s->serial_id,saves[s->id]);
+      saves.erase(saves.begin()+s->id+1,saves.end());
+    })
+    A->restore(s->A);
+    state->restore(s->state);
+    current = s->current;
+    next = s->next;
+  }
+
+  static ptr<RawProver> New(Problem::Ptr problem) {
+    auto p = own(new RawProver());
     p->A = make<memory::Alloc>();
+
     p->state = make<tableau::SearchState>(*problem->idx,FunOrd());
     p->current = Div::Cont(*p->A,Div::Task(*p->A,[](Div *d){ tableau::connection_tableau::Cont::start(d); }));
     p->next = Div::Run(*p->A,p->state.get(),p->current);
@@ -156,7 +177,7 @@ public:
       .open_branches = current.size(),
     };
   }
-  INL ActionFeaturesVec action_features(size_t i) const {
+  INL features::ActionVec action_features(size_t i) const {
     DEBUG if(i>=next.size()) error("there are % actions",i,next.size());
     return {
       .mcts_node = next[i].features.mcts_node,

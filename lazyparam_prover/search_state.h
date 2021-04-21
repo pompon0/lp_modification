@@ -50,19 +50,6 @@ inline str show(Branch b) {
 
 using Val = ConstrainedValuation<LPO>;
 
-// Features of a continuation.
-struct Features {
-  template<typename F> INL void set_depth(F f){ depth = f(); }
-  INL void set_mcts_node(bool x){ mcts_node = x; }
-  INL void set_new_goals(memory::List<Atom> goals){}
-
-  size_t depth;
-  // mctx_node is true iff continuation should be treated as a node in MCTS.
-  // Otherwise, the head of the continuation should be executed immediately in search of MCTS nodes.
-  // Current interpretation: mctx_node <=> just finished some unification.
-  bool mcts_node = true; 
-};
-
 struct SearchState {
   SearchState(
     const ClauseIndex &_cla_index,

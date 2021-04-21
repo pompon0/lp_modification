@@ -111,13 +111,13 @@ struct ArityCtx {
   void traverse(const OrForm &f) { for(const auto &c : f.and_clauses) traverse(c); }
 };
 
-bool has_equality(OrForm f) {
+static bool has_equality(OrForm f) {
   ArityCtx ctx; ctx.traverse(f);
   return ctx.pred_count[Atom::EQ]>0;
 }
 
 // every (a!=a /\ ...) is subsumed by (a!=a)
-OrForm add_refl_constraints(memory::Alloc &A, OrForm f) {
+static OrForm add_refl_constraints(memory::Alloc &A, OrForm f) {
   for(auto &c : f.and_clauses) {
     auto b = c.to_builder(A);
     auto d = c.derived();
@@ -133,7 +133,7 @@ OrForm add_refl_constraints(memory::Alloc &A, OrForm f) {
 }
 
 
-OrForm append_eq_axioms(memory::Alloc &A, OrForm _f) {
+static OrForm append_eq_axioms(memory::Alloc &A, OrForm _f) {
   // 383/2003 don't use equality axioms (my CNF)
   // 516/2003 use reflexivity only (my CNF)
   // 549/2003 use refl + symm only (my CNF)
@@ -339,7 +339,7 @@ static OrForm append_restricted_transitivity_axioms(memory::Alloc &A, OrForm f) 
 }
 
 
-OrForm append_eq_axioms_with_restricted_transitivity(memory::Alloc &A, OrForm f) {
+static OrForm append_eq_axioms_with_restricted_transitivity(memory::Alloc &A, OrForm f) {
   ArityCtx ctx; ctx.traverse(f);
   for(auto [pred,arity] : ctx.pred_arity) if(pred!=Atom::EQ && arity) f.and_clauses.push_back(neg_cong_pred_axiom(A,pred,arity));
   for(auto [fun,arity] : ctx.fun_arity) if(arity) f.and_clauses.push_back(neg_cong_fun_axiom(A,fun,arity));

@@ -6,6 +6,9 @@
 
 namespace features {
 
+namespace {
+namespace encoding {
+
 struct Hash {
   Hash() : val(0), mul(1) {}
   Hash(uint64_t _val) : val(_val), mul(c) {}
@@ -14,24 +17,21 @@ struct Hash {
 private:
   // SBDM hashing function.
   enum : uint64_t { c = (1<<6)+(1<<16)-1 };
-  uint64_t mul;
-  uint64_t val;
+  uint64_t val,mul;
 };
 
-namespace symbols {
-  enum : uint64_t {
-    var = 1,
-    fun = 2,
-    pred = 3,
-    eq = 5,
-    sign = 4,
+// symbols for encoding features as strings
+enum : uint64_t {
+  var_begin = 1,
+  fun_begin = 2,
+  pred_begin = 3,
+  eq_begin = 5,
+  sign_begin = 4,
+  end = 5,
 
-    separator = 5,
-    horizontal = 6,
-    vertical = 7,
-  };
+  horizontal_begin = 6,
+  vertical_begin = 7,
 };
-
 
 template<size_t n> struct Window {
   Window& push(Hash v){ data[next++%n] = v; return *this; }
@@ -51,71 +51,82 @@ private:
 // and sort the items according to that evaluation. But that would have to be
 // trained on resulting search space size.
 
-static INL Hash term_symbol(const tool::node::Index &idx, tableau::Term t) {
+INL Hash term_head(const tool::node::Index &idx, tableau::Term t) { FRAME("term_head");
   switch(t.type()) {
   case tableau::Term::VAR:
-    return Hash(symbol::var).push(separator);
-  case tableau::Term::FUN:
-    Hash h(symbol::fun);
+    return Hash(var_begin).push(end);
+  case tableau::Term::FUN: {
+    Hash h(fun_begin);
     // Skolem (and other artificial functors) are expected to have an empty name.
-    for(auto x : idx.fun_name(Fun(t).fun())) h.push(x);
-    return h.push(separator);
+    for(auto x : idx.fun_name(tableau::Fun(t).fun())) h.push(x);
+    return h.push(end);
+  }
   default:
     error("t.type() = %",t.type());
   }
 }
 
-static INL Hash pred_symbol(const tool::node::Index &idx, tableau::Atom a) {
+INL Hash pred_head(const tool::node::Index &idx, tableau::Atom a) { FRAME("pred_head");
   //TODO probably also distinguish the special symbols introduced by LPMOD etc.
-  if(a.pred()==Atom::EQ) return Hash(symbol::eq).push(separator);
-  Hash h(symbol::pred);
+  if(a.pred()==tableau::Atom::EQ) return Hash(eq_begin).push(end);
+  Hash h(pred_begin);
   for(auto x : idx.pred_name(a.pred())) h.push(x);
-  return h.push(separator);
+  return h.push(end);
 }
 
-static INL Hash sign_symbol(bool sign) {
-  return Hash(symbol::sign).push(sign).push(separator);
+INL Hash sign(bool sign) {
+  return Hash(sign_begin).push(sign).push(end);
 }
 
-static INL uint64_t vertical_feature(Window<3> w) {
-  return Hash(symbol::vertical).push(w.hash()).sum();
+INL uint64_t vertical_feature(Window<3> w) {
+  return Hash(vertical_begin).push(w.hash()).push(end).sum();
 }
 
-static INL uint64_t horizontal_feature(Hash h) {
-  return Hash(symbol::horizontal).push(h).sum();
+INL uint64_t horizontal_feature(Hash h) {
+  return Hash(horizontal_begin).push(h).push(end).sum();
 }
+
+}  // namespace encoding
+}  // namespace
 
 // shouldn't this be rather a state diff? IMO it should summarize all new branches
 struct ActionVec {
+  ActionVec() : ActionVec(16) {}
+  explicit ActionVec(size_t hashed_size) : hashed(hashed_size,0) {}
+
+  // mctx_node is true iff continuation should be treated as a node in MCTS.
+  // Otherwise, the head of the continuation should be executed immediately in search of MCTS nodes.
+  // Current interpretation: mctx_node <=> just finished some unification.
   bool mcts_node = true;
   size_t positive_atoms = 0;
   size_t negative_atoms = 0;
 
   vec<size_t> hashed;
 
-  void add(const tool::node::Index &idx, tableau::Atom a) {
+  void add(const tool::node::Index &idx, tableau::Atom a) { FRAME("ActionVec::add(%)",show(a));
     if(a.sign()) positive_atoms++; else negative_atoms++;
-    auto ss = sign_symbol(a.sign()); 
-    auto ps = pred_symbol(idx,a);
-    Window<3> w;
-    w.push(ss).push(ps);
-    Hash h(ps);
+    auto ss = encoding::sign(a.sign()); 
+    auto ps = encoding::pred_head(idx,a);
+    encoding::Window<3> w; w.push(ss).push(ps);
+    encoding::Hash h(ps);
     for(size_t i=0; i<a.arg_count(); i++) h.push(add(idx,w,a.arg(i)));
-    hashed[horizontal_feature(h)%hashed.size()]++;
+    hashed[encoding::horizontal_feature(h)%hashed.size()]++;
   }
 
-  // Returns the root symbol. Accumulates all the vertical features.
-  Hash add(const tool::node::Index &idx, Window<3> path, tableau::Term t) {
-    auto ts = term_symbol(idx,t);
+  // Returns the head symbol. Accumulates all the vertical features.
+  encoding::Hash add(const tool::node::Index &idx, encoding::Window<3> path, tableau::Term t) { FRAME("ActionVec::add(%)",show(t));
+    auto ts = encoding::term_head(idx,t);
     path.push(ts);
-    hashed[vertical_feature(path)%hashed.size()]++;
-    Hash h(ts);
+    hashed[encoding::vertical_feature(path)%hashed.size()]++;
     switch(t.type()) {
       case tableau::Term::VAR: return ts;
-      case tableau::Term::FUN:
-        for(size_t i=0; i<Fun(t).arg_count(); i++) h.push(add(idx,path,Fun(t).arg(i)));
-        hashed[horizontal_feature(h)%hashed.size()]++;
+      case tableau::Term::FUN: {
+        tableau::Fun f(t);
+        encoding::Hash h(ts);
+        for(size_t i=0; i<f.arg_count(); i++) h.push(add(idx,path,f.arg(i)));
+        hashed[encoding::horizontal_feature(h)%hashed.size()]++;
         return ts;
+      }
       default:
         error("t.type() = %",t.type());
     }

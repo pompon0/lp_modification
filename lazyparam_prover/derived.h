@@ -101,7 +101,7 @@ struct OrForm {
   vec<DerAndClause> and_clauses;
 };
 
-str show(const DerAndClause &cla) {
+static str show(const DerAndClause &cla) {
   vec<str> source;
   for(size_t i=0; i<cla.source_count(); ++i) source.push_back(show(cla.source(i)));
   vec<str> constraints;
@@ -109,7 +109,7 @@ str show(const DerAndClause &cla) {
   return util::fmt("%   [%] [%]",show(cla.derived()),util::join(", ",constraints),util::join(", ",source));
 }
 
-str show(const OrForm &f) {
+static str show(const OrForm &f) {
   vec<str> clauses;
   for(auto c : f.and_clauses) clauses.push_back(show(c) + "\n");
   return util::join("",clauses);

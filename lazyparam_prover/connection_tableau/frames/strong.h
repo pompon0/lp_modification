@@ -1,7 +1,7 @@
 #ifndef CONNECTION_TABLEAU_FRAMES_STRONG_H_
 #define CONNECTION_TABLEAU_FRAMES_STRONG_H_
 
-template<typename DState> INL static void strong(DState *d, Branch branch, DerAndClause dcla, ssize_t strong_id) {
+template<typename Div> INL static void strong(Div *d, Branch branch, DerAndClause dcla, ssize_t strong_id) {
   STATE_FRAME(d->A,d->state,"strong(%,%)",show(dcla),strong_id);
   d->state->stats.strong_steps++;
   auto mcla = d->state->allocate(d->A,dcla);
@@ -11,21 +11,21 @@ template<typename DState> INL static void strong(DState *d, Branch branch, DerAn
 
   memory::List<Atom> todo;
   for(ssize_t i=cla.atom_count(); i--;) if(i!=strong_id) todo.push(d->A,cla.atom(i));
-  auto matoms = strong_resolution(d->A,d->state,todo,d->size_limit);
+  auto matoms = strong_resolution(d->A,d->state,todo,d->size_limit());
   if(!matoms) return;
 
-  for(auto atoms = matoms.get(); !atoms.empty(); atoms = atoms.tail()) {
-    auto w = _WeakFrame{};
-    w.branch = branch;
-    w.branch.false_.push(d->A,atoms.head());
-    branch.true_.push(d->A,atoms.head());
-    d->and_([w](DState *d)INLL{ w.run(d); });
-  }
-  typename DState::Features f;
-  f.set_depth([&]{ return branch.false_.size()+1; });
-  f.set_mcts_node(true);
-  f.set_new_goals(matoms.get());
-  d->done(f);
+  d->alt([&](typename Div::Alt *x)INLL{
+    for(auto atoms = matoms.get(); !atoms.empty(); atoms = atoms.tail()) {
+      auto w = _WeakFrame{};
+      w.branch = branch;
+      w.branch.false_.push(d->A,atoms.head());
+      branch.true_.push(d->A,atoms.head());
+      x->feature_goal(atoms.head());
+      x->task([w](Div *d)INLL{ w.run(d); });
+    }
+    x->feature_branch(branch);
+    x->feature_mcts_node(true);
+  });
 }
 
 INL static memory::Maybe<memory::List<Atom>> strong_resolution(memory::Alloc &A, SearchState *state, memory::List<Atom> todo, size_t size_limit) { FRAME("strong_resolution()");

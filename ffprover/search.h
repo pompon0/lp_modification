@@ -3,6 +3,7 @@
 
 #include <functional>
 #include "lazyparam_prover/controller.h"
+#include "lazyparam_prover/features.h"
 #include "ffprover/tree.h"
 #include "utils/log.h"
 
@@ -12,8 +13,8 @@ struct Result {
   enum Status { SOLVED, DEADEND, CANCELLED };
   Status status;
   struct Node {
-    controller::StateFeaturesVec state;
-    vec<controller::ActionFeaturesVec> actions;
+    features::StateVec state;
+    vec<features::ActionVec> actions;
     Tree::Ptr tree;
   };
   vec<Node> path;
@@ -24,8 +25,8 @@ struct Search {
     bool one_expansion_per_playout;
     size_t playouts_per_bigstep;
     size_t playout_depth;
-    std::function<double(controller::StateFeaturesVec)> base_reward; // [0,1]
-    std::function<double(controller::ActionFeaturesVec)> base_priority; 
+    std::function<double(features::StateVec)> base_reward; // [0,1]
+    std::function<double(features::ActionVec)> base_priority; 
     std::function<double(Tree::Ptr,size_t)> child_priority;
     std::function<size_t(Tree::Ptr)> bigstep_selector;
   };

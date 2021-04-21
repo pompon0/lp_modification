@@ -4,7 +4,7 @@ struct _LazyPreWeakConnectionFrame {
   Atom lr;
 
   template<typename Div> INL void run(Div *d) const { STATE_FRAME(d->A,d->state,"lazy_pre_weak_connection(L=%,lr=%)",show(L),show(lr));
-    if(++d->state->nodes_used>d->size_limit) return;
+    if(++d->state->nodes_used>d->size_limit()) return;
     DEBUG if(lr.pred()!=Atom::EQ || lr.sign()) error("lr = %",show(lr));
     auto l = lr.arg(0);
     auto r = lr.arg(1);
@@ -13,18 +13,22 @@ struct _LazyPreWeakConnectionFrame {
       lr.neg(),
       Atom::eq(d->A,lr.sign(),r,l)
     )}));
-
-    typename Div::Features f;
-    f.set_depth([&]()INLL{ return branch.false_.size()+1; });
     Var w = d->state->val.allocate(Var(d->A,0));
+
     for(auto apl = paths(d->A,L); !apl.empty(); apl = apl.tail()) {
       _LazyWeakConnectionFrame::Base base {
         .branch = branch,
         .w = w,
         .L = apl.head(),
       };
-      d->or_(f,[base,l,r](Div *d)INLL{ _LazyWeakConnectionFrame{.base = base, .l=l, .r=r}.run(d); });
-      d->or_(f,[base,l,r](Div *d)INLL{ _LazyWeakConnectionFrame{.base = base, .l=r, .r=l}.run(d); });
+      d->alt([&](typename Div::Alt *x)INLL{
+        x->feature_branch(branch);
+        x->task([base,l,r](Div *d)INLL{ _LazyWeakConnectionFrame{.base = base, .l=l, .r=r}.run(d); });
+      });
+      d->alt([&](typename Div::Alt *x)INLL{
+        x->feature_branch(branch);
+        x->task([base,l,r](Div *d)INLL{ _LazyWeakConnectionFrame{.base = base, .l=r, .r=l}.run(d); });
+      });
     }
   }
 };

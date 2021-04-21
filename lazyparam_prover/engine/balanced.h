@@ -83,32 +83,32 @@ struct Div {
 // - that (and_()+done) and or_() exclude each other
 // - that search state can be updated only until done()/or() is called
 struct Proxy {
-  using Features = tableau::Features;
+  struct Alt {
+    Proxy *p;
+    memory::List<Task> new_tasks;
+    template<typename F> INL void task(F f){ new_tasks.push(p->A,Task(p->A,f)); }
+
+    INL void feature_branch(Branch) {}
+    INL void feature_mcts_node(bool){}
+    INL void feature_goal(Atom){}
+  };
 
   memory::Alloc &A;
   SearchState *state;
-  size_t size_limit;
+  size_t size_limit_;
+  INL size_t size_limit(){ return size_limit_; }
   
-  template<typename F> INL void or_(Features x, F f){
-    div->save(cont.add(A,Spec(SpecTask::alloc(A,[&](_SpecTask &st)INLL{
-      st.min = 0;
-      st.max = size_limit;
-      st.task = Task(A,f);
-    }))));
-  }
-  template<typename F> INL void and_(F f){
-    new_tasks.push(A,Task(A,f));
-  }
-  INL void done(Features f){
+  template<typename F> INL void alt(F f) {
+    Alt alt{this};
+    f(&alt);
     div->save(cont.add(A,Spec(SpecTaskSet::alloc(A,[&](_SpecTaskSet &sts)INLL{
-      sts.max = size_limit;
-      sts.task_set = new_tasks;
+      sts.max = size_limit_;
+      sts.task_set = alt.new_tasks;
     }))));
   }
   
   Div *div;
   Cont cont;
-  memory::List<Task> new_tasks;
 };
 
 INL bool Div::step() {
@@ -131,7 +131,7 @@ INL bool Div::step() {
       Proxy P{
         .A = A,
         .state = state,
-        .size_limit = st->max,
+        .size_limit_ = st->max,
         .div = this,
         .cont = c,
       };

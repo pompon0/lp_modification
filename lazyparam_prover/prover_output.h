@@ -34,7 +34,7 @@ struct Stats {
   }
 };
 
-Stats & operator+=(Stats &a, Stats b){
+static Stats & operator+=(Stats &a, Stats b){
   a.strong_steps += b.strong_steps;
   a.strong_only_steps += b.strong_only_steps;
   a.weak_connections_steps += b.weak_connections_steps;
@@ -46,7 +46,7 @@ Stats & operator+=(Stats &a, Stats b){
   return a;
 }
 
-Stats operator+(Stats a, Stats b) { return a += b; }
+static Stats operator+(Stats a, Stats b) { return a += b; }
 
 struct ProverOutput {
   size_t cont_count;

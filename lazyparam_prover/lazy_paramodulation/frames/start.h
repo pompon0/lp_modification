@@ -5,9 +5,13 @@ struct _StartFrame {
     // make it more explicit.
     auto dcla = d->state->cla_index.next_starting_clause();
     if(!dcla) return;
-    typename Div::Features f;
-    f.set_depth([&]{ return 0; });
-    d->or_(f,[dcla](Div *d)INLL{ strong(d,Branch(),dcla.get(),-1); });
-    d->or_(f,[](Div *d)INLL{ _StartFrame{}.run(d); });
+    d->alt([&](typename Div::Alt *x)INLL{
+      x->feature_branch(Branch());
+      x->task([dcla](Div *d)INLL{ strong(d,Branch(),dcla.get(),-1); });
+    });
+    d->alt([&](typename Div::Alt *x)INLL{
+      x->feature_branch(Branch());
+      x->task([](Div *d)INLL{ _StartFrame{}.run(d); });
+    });
   }
 };

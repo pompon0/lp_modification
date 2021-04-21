@@ -1,9 +1,11 @@
-// #define DEBUG_MODE
+//#define DEBUG_MODE
+//#define VERBOSE
 #include "gtest/gtest.h"
 #include "utils/ctx.h"
 #include "utils/log.h"
 #include "problems/sample/sample.h"
 #include "lazyparam_prover/controller.h"
+#include "lazyparam_prover/features.h"
 #include "ffprover/search.h"
 #include "ffprover/tree.h"
 #include "absl/time/time.h"
@@ -16,8 +18,8 @@ Search::Config cfg {
   .one_expansion_per_playout = false,
   .playouts_per_bigstep = 100,
   .playout_depth = 40,
-  .base_reward = [](controller::StateFeaturesVec f){ return 0.3; },
-  .base_priority = [](controller::ActionFeaturesVec f){ return 1.; },
+  .base_reward = [](features::StateVec f){ return 0.3; },
+  .base_priority = [](features::ActionVec f){ return 1.; },
   .child_priority = [](Tree::Ptr t, size_t i) {
     return -double(t.child(i).visits());
   },

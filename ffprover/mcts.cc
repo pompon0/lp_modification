@@ -9,6 +9,7 @@
 #include "utils/types.h"
 #include "utils/read_file.h"
 #include "lazyparam_prover/controller.h"
+#include "lazyparam_prover/features.h"
 #include "ffprover/xgboost.h"
 #include "ffprover/search.h"
 #include "ffprover/tree.h"
@@ -22,12 +23,13 @@ std::uniform_real_distribution dist(0.,1.);
 
 using namespace ff;
 
-INL static inline FeatureVec action_features(controller::ActionFeaturesVec a) {
+INL static inline FeatureVec action_features(features::ActionVec a) {
   FeatureVec v;
-  v.push(0,a.new_branches);
+  v.push(0,a.positive_atoms);
+  v.push(0,a.negative_atoms);
   return v;
 }
-INL static inline FeatureVec state_features(controller::StateFeaturesVec a) {
+INL static inline FeatureVec state_features(features::StateVec a) {
   FeatureVec v;
   v.push(0,a.proof_size);
   v.push(1,a.open_branches);
@@ -52,11 +54,11 @@ Search::Config cfg {
   .one_expansion_per_playout = true,
   .playouts_per_bigstep = 10000,
   .playout_depth = 100,
-  .base_reward = [](controller::StateFeaturesVec f) {
+  .base_reward = [](features::StateVec f) {
     const auto value_factor = 0.3;
     return reward_model ? logistic(reward_model->predict(state_features(f))) : value_factor;
   },
-  .base_priority = [](controller::ActionFeaturesVec f) {
+  .base_priority = [](features::ActionVec f) {
     const auto policy_temp = 2.;
     return priority_model ? exp(priority_model->predict(action_features(f)))/policy_temp : 1.;
   },

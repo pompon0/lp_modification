@@ -6,12 +6,32 @@
 namespace tableau::engine::depth {
 
 struct Div {
-  using Features = tableau::Features;
-
   using Task = memory::function<void(Div*)>;
   using Cont = memory::List<Task>;
-  enum { size_limit = 100000 };
-  
+  struct Alt {
+    Div *d;
+    Cont cont;
+    template<typename F> INL void task(F f){ cont.push(d->A,Task(d->A,f)); }
+    
+    size_t depth = 0;
+    INL void feature_branch(Branch b) { depth = b.false_.size(); }
+    INL void feature_mcts_node(bool){}
+    INL void feature_goal(Atom){}
+  };
+
+  memory::Alloc &A;
+  SearchState *state;
+  INL size_t size_limit(){ return 100000; }
+  bool cut;
+  size_t depth_limit;
+  Cont current;
+
+  template<typename F> INL void alt(F f){ FRAME("or_");
+    Alt alt{this,current};
+    f(&alt);
+    if(alt.depth<=depth_limit) save(alt.cont);
+  }
+
   template<typename F> INL Div(memory::Alloc &_A, SearchState *_state, bool _cut, size_t _depth_limit, F f)
     : A(_A), state(_state), cut(_cut), depth_limit(_depth_limit) { save(Cont(A,Task(A,f))); }
 
@@ -21,20 +41,10 @@ struct Div {
     A.restore(s.As);
     state->restore(s.ss);
     if(s.cont.empty()){ return true; }
-    _and = s.cont.tail();
+    current = s.cont.tail();
     s.cont.head()(this);
     return false;
   }
-
-  memory::Alloc &A;
-  SearchState *state;
-  bool cut;
-  size_t depth_limit;
-
-  Cont _and;
-  template<typename F> INL void or_(Features x, F f){ FRAME("or_"); if(x.depth<=depth_limit) save(_and.add(A,Task(A,f))); }
-  template<typename F> INL void and_(F f){ FRAME("and_"); _and.push(A,Task(A,f)); }
-  INL void done(Features f){ if(f.depth<=depth_limit) save(_and); }
 
   INL void save(Cont cont) {
     if(cut) {

@@ -10,7 +10,7 @@ struct _LazyPreStrongConnectionFrame {
     auto cla = mcla.get();
     STATE_FRAME(d->A,d->state,"lazy_pre_strong_connection(strong_id=%,cla=%)",strong_id,show(cla));
     if(dcla.cost()==0) d->state->nodes_used++; // this implementation doesn't check regularity, so it doesn't have halting property with free clauses.
-    if(d->state->nodes_used>d->size_limit) return;
+    if(d->state->nodes_used>d->size_limit()) return;
 
     BranchSet bs{.branch = branch};
     for(size_t i=cla.atom_count(); i--;) if(i!=strong_id) bs.push(d->A,cla.atom(i));
@@ -27,8 +27,6 @@ struct _LazyPreStrongConnectionFrame {
     )}));
 
     Var w = d->state->val.allocate(Var(d->A,0));
-    typename Div::Features f;
-    f.set_depth([&]()INLL{ return branch.false_.size()+1; });
     for(auto apl = paths(d->A,L); !apl.empty(); apl = apl.tail()) {
       _LazyStrongConnectionFrame::Base base {
         .branch_set = bs,
@@ -36,11 +34,17 @@ struct _LazyPreStrongConnectionFrame {
         .L = apl.head(),
         .branch_lr = branch_lr,
       };
-      d->or_(f,[base,l,r](Div *d)INLL{
-        _LazyStrongConnectionFrame{.base=base, .l=l, .r=r}.run(d);
+      d->alt([&](typename Div::Alt *x)INLL{
+        x->feature_branch(branch);
+        x->task([base,l,r](Div *d)INLL{
+          _LazyStrongConnectionFrame{.base=base, .l=l, .r=r}.run(d);
+        });
       });
-      d->or_(f,[base,l,r](Div *d)INLL{
-        _LazyStrongConnectionFrame{.base=base, .l=r, .r=l}.run(d);
+      d->alt([&](typename Div::Alt *x)INLL{
+        x->feature_branch(branch);
+        x->task([base,l,r](Div *d)INLL{
+          _LazyStrongConnectionFrame{.base=base, .l=r, .r=l}.run(d);
+        });
       });
     }
   }

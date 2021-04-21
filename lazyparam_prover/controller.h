@@ -7,6 +7,7 @@
 #include "lazyparam_prover/lpmod.h"
 #include "lazyparam_prover/parse.h"
 #include "lazyparam_prover/search_state.h"
+#include "lazyparam_prover/features.h"
 #include "lazyparam_prover/connection_tableau/cont.h"
 #include "tool/bin/wrapper.h"
 
@@ -30,7 +31,7 @@ public:
 private:
   Problem() = default;
   ptr<memory::Alloc> A;
-  ptr<tableau::ClauseIndex> idx;
+  ptr<tableau::ClauseIndex> idx; // TODO: should it be const?
   ptr<const tool::node::Index> node_idx;
 
   static str tptp_cnf(const str &tptp_fof) {
@@ -47,45 +48,48 @@ private:
 };
 
 struct Div {
-  struct Alt : tableau::Features {
-    Div *div;
-    Cont _and;
-    
-    ActionVec av;
-
-    template<typename F> INL void task(F f){ _and.push(A,Task(A,f)); }
-    INL void done(){ div->next.push_back(Action{f,_and}); }
-    
-    void feature_goal(tableau::Atom goal){ av.add(goal); }
-  };
-
   using Task = memory::function<void(Div*)>;
   using Cont = memory::List<Task>; 
-  struct Action {
-    tableau::Features features;
+  struct Action { 
+    features::ActionVec av;
     Cont cont;
   };
 
-  enum { size_limit = 1000000 };
+  struct Alt {
+    Div *div;
+    Action action;
+    template<typename F> INL void task(F f){ action.cont.push(div->A,Task(div->A,f)); }
+
+    INL void feature_branch(tableau::Branch){}
+    INL void feature_mcts_node(bool x){ action.av.mcts_node = x; }
+    INL void feature_goal(tableau::Atom goal){ FRAME("feature_goal"); action.av.add(*(div->idx),goal); }
+  };
+
+  INL size_t size_limit(){ return 1000000; }
   memory::Alloc &A;
   tableau::SearchState *state;
-  // TODO pass by pointer, track lifecycle, to avoid copying/reusal
-  template<typename F> INL Alt alt(){ return Alt{div,_and}; }
+  template<typename F> INL void alt(F f){ FRAME("Div::alt");
+    Alt alt{this,Action{.cont = _and}};
+    f(&alt);
+    next.push_back(alt.action); 
+  }
   
-  
-  INL static vec<Action> Run(memory::Alloc &A, tableau::SearchState *state, Cont cont) { FRAME("Div::Run");
+  INL static vec<Action> Run(memory::Alloc &A, const tool::node::Index *idx, tableau::SearchState *state, Cont cont) { FRAME("Div::Run");
     DEBUG if(cont.empty()) error("empty cont");
-    Div d{A,state,cont.tail()};
+    Div d{A,state,idx,cont.tail()};
     cont.head()(&d);
     return d.next;
   }
+
+  const tool::node::Index *idx;
   Cont _and;
   vec<Action> next;
 };
 
-class RawProver {  
+class RawProver {
   RawProver() = default;
 
+  Problem::Ptr problem;
   ptr<memory::Alloc> A;
   ptr<tableau::SearchState> state;
   Div::Cont current; // (state + current) define state features
@@ -142,25 +146,12 @@ public:
 
   static ptr<RawProver> New(Problem::Ptr problem) {
     auto p = own(new RawProver());
-    p->A = make<memory::Alloc>();UG_ONLY({
-      if(s->prover!=this) error("Save of a different prover");
-      if(s->id>=saves.size()) error("s.id = %, want < %",s->id,saves.size());
-      if(s->serial_id!=saves[s->id]) error("s.serial_id = %, want %",s->serial_id,saves[s->id]);
-      saves.erase(saves.begin()+s->id+1,saves.end());
-    })
-    A->restore(s->A);
-    state->restore(s->state);
-    current = s->current;
-    next = s->next;
-  }
-
-  static ptr<RawProver> New(Problem::Ptr problem) {
-    auto p = own(new RawProver());
+    p->problem = problem;
     p->A = make<memory::Alloc>();
 
     p->state = make<tableau::SearchState>(*problem->idx,FunOrd());
     p->current = Div::Cont(*p->A,Div::Task(*p->A,[](Div *d){ tableau::connection_tableau::Cont::start(d); }));
-    p->next = Div::Run(*p->A,p->state.get(),p->current);
+    p->next = Div::Run(*p->A,problem->node_idx.get(),p->state.get(),p->current);
     return p;
   }
 
@@ -171,25 +162,22 @@ public:
     return next.size(); 
   }
 
-  INL StateFeaturesVec state_features() const {
+  INL features::StateVec state_features() const {
     return {
       .proof_size = state->nodes_used,
       .open_branches = current.size(),
     };
   }
   INL features::ActionVec action_features(size_t i) const {
-    DEBUG if(i>=next.size()) error("there are % actions",i,next.size());
-    return {
-      .mcts_node = next[i].features.mcts_node,
-      .new_branches = next[i].cont.size()-current.size(),
-    };
+    DEBUG if(i>=next.size()) error("i=%, but there are % actions",i,next.size());
+    return next[i].av;
   }
 
   INL void apply_action(size_t i) { FRAME("apply_action(%)",i);
     DEBUG if(done()) error("already done");
     DEBUG if(i>=next.size()) error("i=%, but there are % actions",i,next.size());
     current = next[i].cont;
-    if(!current.empty()) next = Div::Run(*A,state.get(),current);
+    if(!current.empty()) next = Div::Run(*A,problem->node_idx.get(),state.get(),current);
   }
 };
 
@@ -198,7 +186,7 @@ class Prover {
 
   struct Action {
     vec<size_t> raw_actions;
-    ActionFeaturesVec features; 
+    features::ActionVec features; 
   };
 
   ptr<RawProver> p;
@@ -238,8 +226,8 @@ public:
     return actions.size(); 
   }
 
-  INL StateFeaturesVec state_features() const { return p->state_features(); }
-  INL ActionFeaturesVec action_features(size_t i) const {
+  INL features::StateVec state_features() const { return p->state_features(); }
+  INL features::ActionVec action_features(size_t i) const {
     DEBUG if(i>=actions.size()) error("there are % actions",i,actions.size());
     return actions[i].features;
   }

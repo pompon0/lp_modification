@@ -77,7 +77,8 @@ private:
   std::future<void> timeout_task;
 };
 
-Ctx::Ptr Ctx::with_timeout(Ctx::Ptr base, absl::Duration timeout) {
+inline Ctx::Ptr Ctx::with_timeout(Ctx::Ptr base, absl::Duration timeout) {
   return Ptr(new CtxWithTimeout(base,timeout));
 }
+
 #endif  // CTX_H_

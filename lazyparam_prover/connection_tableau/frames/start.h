@@ -4,15 +4,22 @@
 #include "lazyparam_prover/connection_tableau/frames/strong.h"
 
 struct _StartFrame {
-  template<typename DState> INL void run(DState *d) const {
+  template<typename Div> INL void run(Div *d) const {
     STATE_FRAME(d->A,d->state,"start");
-    //TODO: next_starting_clause() has a side effect on state
+    // TODO: next_starting_clause() has a side effect on state
     // make it more explicit.
     auto dcla = d->state->cla_index.next_starting_clause();
     if(!dcla) return;
-    Features f{.depth = 0, .mcts_node = false};
-    d->or_(f,[dcla](DState *d)INLL{ strong(d,Branch(),dcla.get(),-1); });
-    d->or_(f,[](DState *d)INLL{ _StartFrame{}.run(d); });
+    d->alt([&](typename Div::Alt *x)INLL{
+      x->feature_branch(Branch());
+      x->feature_mcts_node(false);
+      x->task([dcla](Div *d)INLL{ strong(d,Branch(),dcla.get(),-1); });
+    });
+    d->alt([&](typename Div::Alt *x)INLL{
+      x->feature_branch(Branch());
+      x->feature_mcts_node(false);
+      x->task([](Div *d)INLL{ _StartFrame{}.run(d); });
+    });
   }
 };
 

@@ -119,6 +119,7 @@ cc_test(
     srcs = ["controller_test.cc"],
     deps = [
         ":controller",
+        "//lazyparam_prover/engine:engine",
         "//utils:utils",
         "@gtest//:gtest_main",
     ],

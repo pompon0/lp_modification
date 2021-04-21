@@ -4,21 +4,23 @@ struct _WeakFrame {
   template<typename Div> INL void run(Div *d) const { STATE_FRAME(d->A,d->state,"weak(%)",show(branch.false_.head())); 
     d->state->stats.weak_steps++;
     COUNTER("expand");
-    typename Div::Features f;
-    f.set_depth([&]()INLL{ return branch.false_.size(); });
     // match lemma
     if(matches_lemma(*d->state,branch)){ 
       STATE_FRAME(d->A,d->state,"matches_lemma");
-      d->done(f);
+      d->alt([&](typename Div::Alt *x){ x->feature_branch(branch); });
       return;
     }
     auto a = branch.false_.head();
     // reduce
     if(a.pred()==Atom::EQ && a.sign()) {
-      d->or_(f,[f,a](Div *d)INLL{
-        if(!d->state->val.unify(d->A,a.arg(0),a.arg(1))) return;
-        d->state->lazy_clauses_used.push(d->A,lazy(d->A,AxiomClause{AndClause::make(d->A,a.neg())}));
-        d->done(f);
+      d->alt([&](typename Div::Alt *x){
+        auto br = branch;
+        x->feature_branch(br);
+        x->task([br,a](Div *d)INLL{
+          if(!d->state->val.unify(d->A,a.arg(0),a.arg(1))) return;
+          d->state->lazy_clauses_used.push(d->A,lazy(d->A,AxiomClause{AndClause::make(d->A,a.neg())}));
+          d->alt([&](typename Div::Alt *x){ x->feature_branch(br); });
+        });
       });
     }
     // weak connections
@@ -27,7 +29,7 @@ struct _WeakFrame {
       try_weak_param(d,a,b.head());
       try_weak_param(d,b.head(),a);
     }
-    auto budget = d->size_limit - d->state->nodes_used;
+    auto budget = d->size_limit() - d->state->nodes_used;
     // strong connections
     // P(r),-P(s)
     if(a.pred()!=Atom::EQ) {
@@ -38,8 +40,11 @@ struct _WeakFrame {
       while(auto mca = matches.next()) {
         auto ca = mca.get();
         DEBUG if(ca.cla.cost()>budget) error("ca.cla.cost()>budget");
-        auto br = branch;
-        d->or_(f,[br,ca](Div *d)INLL{ strong(d,br,ca.cla,ca.i); });
+        d->alt([&](typename Div::Alt *x){
+          auto br = branch;
+          x->feature_branch(br);
+          x->task([br,ca](Div *d)INLL{ strong(d,br,ca.cla,ca.i); });
+        });
       }
     }
     // L[p],l/=r
@@ -47,14 +52,17 @@ struct _WeakFrame {
     while(auto mca = matches.next()) {
       auto ca = mca.get();
       DEBUG if(ca.cla.cost()>budget) error("ca.cla.cost()>budget");
-      auto br = branch;
-      d->or_(f,[ca,br](Div *d)INLL{
-        _LazyPreStrongConnectionFrame{
-          .branch = br,
-          .dcla = ca.cla,
-          .strong_id = ca.i,
-          .branch_lr = false,
-        }.run(d);
+      d->alt([&](typename Div::Alt *x){
+        auto br = branch;
+        x->feature_branch(br);
+        x->task([ca,br](Div *d)INLL{
+          _LazyPreStrongConnectionFrame{
+            .branch = br,
+            .dcla = ca.cla,
+            .strong_id = ca.i,
+            .branch_lr = false,
+          }.run(d);
+        });
       });
     }
     if(a.pred()==Atom::EQ && !a.sign()) {
@@ -63,14 +71,17 @@ struct _WeakFrame {
       while(auto mca = matches.next()) {
         auto ca = mca.get();
         DEBUG if(ca.cla.cost()>budget) error("ca.cla.cost()>budget");
-        auto br = branch;
-        d->or_(f,[br,ca](Div *d)INLL{
-          _LazyPreStrongConnectionFrame{
-            .branch = br,
-            .dcla = ca.cla,
-            .strong_id = ca.i,
-            .branch_lr = true,
-          }.run(d);
+        d->alt([&](typename Div::Alt *x){
+          auto br = branch;
+          x->feature_branch(br);
+          x->task([ca,br](Div *d)INLL{
+            _LazyPreStrongConnectionFrame{
+              .branch = br,
+              .dcla = ca.cla,
+              .strong_id = ca.i,
+              .branch_lr = true,
+            }.run(d);
+          });
         });
       }
     }
@@ -80,13 +91,15 @@ struct _WeakFrame {
   template<typename Div> INL void try_weak_param(Div *d, Atom lr, Atom L) const {
     if(lr.pred()!=Atom::EQ || lr.sign()) return;
     auto br = branch;
-    Features f{.depth=br.false_.size()};
-    d->or_(f,[br,lr,L](Div *d)INLL{
-      _LazyPreWeakConnectionFrame{
-        .branch=br,
-        .L = L,
-        .lr = lr,
-      }.run(d);
+    d->alt([&](typename Div::Alt *x)INLL{
+      x->feature_branch(br);
+      x->task([br,lr,L](Div *d)INLL{
+        _LazyPreWeakConnectionFrame{
+          .branch=br,
+          .L = L,
+          .lr = lr,
+        }.run(d);
+      });
     });
   }
 
@@ -94,11 +107,16 @@ struct _WeakFrame {
   template<typename Div> INL void try_weak_match(Div *d, Atom x, Atom y) const {
     if(x.pred()==Atom::EQ) return;
     if(Index::atom_hash(x)!=(Index::atom_hash(y)^1)) return;
-    Features f{.depth=branch.false_.size()};
-    d->or_(f,[f,x,y](Div *d)INLL{
-      d->state->stats.weak_unify_steps++;
-      if(!d->state->val.unify(d->A,x,y)) return;
-      d->done(f);
+    auto br = branch;
+    d->alt([&](typename Div::Alt *a)INLL{
+      a->feature_branch(br);
+      a->task([br,x,y](Div *d)INLL{
+        d->state->stats.weak_unify_steps++;
+        if(!d->state->val.unify(d->A,x,y)) return;
+        d->alt([&](typename Div::Alt *a)INLL{
+          a->feature_branch(br);
+        });
+      });
     });
   }
 };

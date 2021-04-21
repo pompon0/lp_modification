@@ -6,14 +6,14 @@ template<typename Div> INL static void strong(Div *d, Branch branch, DerAndClaus
   STATE_FRAME(d->A,d->state,"strong(strong_id=%,cla=%)",strong_id,show(cla));
   if(strong_id>=0) if(!d->state->val.unify(d->A,branch.false_.head(),cla.atom(strong_id))) return;
 
-  for(ssize_t i=cla.atom_count(); i--;) if(i!=strong_id) {
-    auto w = _WeakFrame{};
-    w.branch = branch;
-    w.branch.false_.push(d->A,cla.atom(i));
-    branch.true_.push(d->A,cla.atom(i));
-    d->and_([w](Div *d)INLL{ w.run(d); });
-  }
-  typename Div::Features f;
-  f.set_depth([&]()INLL{ return branch.false_.size()+1; });
-  d->done(f); 
+  d->alt([&](typename Div::Alt *x) {
+    for(ssize_t i=cla.atom_count(); i--;) if(i!=strong_id) {
+      auto w = _WeakFrame{};
+      w.branch = branch;
+      w.branch.false_.push(d->A,cla.atom(i));
+      branch.true_.push(d->A,cla.atom(i));
+      x->task([w](Div *d)INLL{ w.run(d); });
+    }
+    x->feature_branch(branch);
+  });
 }

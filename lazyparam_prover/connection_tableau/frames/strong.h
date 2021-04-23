@@ -14,6 +14,8 @@ template<typename Div> INL static void strong(Div *d, Branch branch, DerAndClaus
   auto matoms = strong_resolution(d->A,d->state,todo,d->size_limit());
   if(!matoms) return;
 
+  //TODO(gprusak): add constraints preventing the new clause from being contradictory
+
   d->alt([&](typename Div::Alt *x)INLL{
     for(auto atoms = matoms.get(); !atoms.empty(); atoms = atoms.tail()) {
       auto w = _WeakFrame{};

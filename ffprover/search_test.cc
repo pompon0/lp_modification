@@ -46,7 +46,7 @@ TEST(SEARCH,simple) {
   for(auto [n,tptp] : problems::sample::sample_problems()) {
     info("n = %",n);
     auto problem = controller::Problem::New(tptp);
-    auto prover = controller::Prover::New(problem);
+    auto prover = controller::Prover::New(problem,32);
     auto tree = Tree::New();
     Search search(cfg);
     auto ctx = Ctx::with_timeout(Ctx::background(),absl::Seconds(5));

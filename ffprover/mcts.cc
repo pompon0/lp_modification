@@ -26,7 +26,8 @@ using namespace ff;
 INL static inline FeatureVec action_features(features::ActionVec a) {
   FeatureVec v;
   v.push(0,a.positive_atoms);
-  v.push(0,a.negative_atoms);
+  v.push(1,a.negative_atoms);
+  for(size_t i = 0; i<a.hashed.size(); i++) v.push(2+i,a.hashed[i]);
   return v;
 }
 INL static inline FeatureVec state_features(features::StateVec a) {
@@ -107,6 +108,7 @@ ABSL_FLAG(str,priority_model_path,"","path to priority model");
 ABSL_FLAG(str,reward_model_path,"","path to reward model");
 ABSL_FLAG(str,priority_training_path,"","output path for priority training data");
 ABSL_FLAG(str,reward_training_path,"","output path for reward training data");
+ABSL_FLAG(size_t,features_space_size,1024,"size of the space that features will be hashed into. Should be <50k");
 
 void save_result(Result res) {
   DataSet priority_data;
@@ -142,7 +144,7 @@ int main(int argc, char **argv) {
   auto ctx = Ctx::with_timeout(Ctx::background(),absl::GetFlag(FLAGS_timeout));
   auto tptp_fof = bytes_str(util::read_file(absl::GetFlag(FLAGS_problem_path)));
   auto problem = controller::Problem::New(tptp_fof);
-  auto prover = controller::Prover::New(problem);
+  auto prover = controller::Prover::New(problem,absl::GetFlag(FLAGS_features_space_size));
   info("loaded problem");
   auto priority_model = Model::New(absl::GetFlag(FLAGS_priority_model_path));
   auto reward_model = Model::New(absl::GetFlag(FLAGS_reward_model_path));

@@ -31,7 +31,7 @@ public:
 private:
   Problem() = default;
   ptr<memory::Alloc> A;
-  ptr<tableau::ClauseIndex> idx; // TODO: should it be const?
+  ptr<const tableau::ClauseIndex> idx;
   ptr<const tool::node::Index> node_idx;
 
   static str tptp_cnf(const str &tptp_fof) {
@@ -51,7 +51,11 @@ struct Div {
   using Task = memory::function<void(Div*)>;
   using Cont = memory::List<Task>; 
   struct Action { 
-    features::ActionVec av;
+    // mcts_node is true iff continuation should be treated as a node in MCTS.
+    // Otherwise, the head of the continuation should be executed immediately in search of MCTS nodes.
+    // Current interpretation: mctx_node <=> just finished some unification.
+    bool mcts_node = true;
+    vec<tableau::Atom> goals;
     Cont cont;
   };
 
@@ -61,8 +65,8 @@ struct Div {
     template<typename F> INL void task(F f){ action.cont.push(div->A,Task(div->A,f)); }
 
     INL void feature_branch(tableau::Branch){}
-    INL void feature_mcts_node(bool x){ action.av.mcts_node = x; }
-    INL void feature_goal(tableau::Atom goal){ FRAME("feature_goal"); action.av.add(*(div->idx),goal); }
+    INL void feature_mcts_node(bool x){ action.mcts_node = x; }
+    INL void feature_goal(tableau::Atom goal){ action.goals.push_back(goal); }
   };
 
   INL size_t size_limit(){ return 1000000; }
@@ -74,14 +78,13 @@ struct Div {
     next.push_back(alt.action); 
   }
   
-  INL static vec<Action> Run(memory::Alloc &A, const tool::node::Index *idx, tableau::SearchState *state, Cont cont) { FRAME("Div::Run");
+  INL static vec<Action> Run(memory::Alloc &A, tableau::SearchState *state, Cont cont) { FRAME("Div::Run");
     DEBUG if(cont.empty()) error("empty cont");
-    Div d{A,state,idx,cont.tail()};
+    Div d{A,state,cont.tail()};
     cont.head()(&d);
     return d.next;
   }
 
-  const tool::node::Index *idx;
   Cont _and;
   vec<Action> next;
 };
@@ -151,7 +154,7 @@ public:
 
     p->state = make<tableau::SearchState>(*problem->idx,FunOrd());
     p->current = Div::Cont(*p->A,Div::Task(*p->A,[](Div *d){ tableau::connection_tableau::Cont::start(d); }));
-    p->next = Div::Run(*p->A,problem->node_idx.get(),p->state.get(),p->current);
+    p->next = Div::Run(*p->A,p->state.get(),p->current);
     return p;
   }
 
@@ -168,16 +171,24 @@ public:
       .open_branches = current.size(),
     };
   }
-  INL features::ActionVec action_features(size_t i) const {
+
+  INL bool action_is_mcts_node(size_t i) { FRAME("action_is_mcts_node");
     DEBUG if(i>=next.size()) error("i=%, but there are % actions",i,next.size());
-    return next[i].av;
+    return next[i].mcts_node;
+  }
+
+  INL features::ActionVec action_features(size_t i, size_t hashed_size) const {
+    DEBUG if(i>=next.size()) error("i=%, but there are % actions",i,next.size());
+    features::ActionVec av(hashed_size);
+    for(auto g : next[i].goals) av.add(*(problem->node_idx.get()),g);
+    return av;
   }
 
   INL void apply_action(size_t i) { FRAME("apply_action(%)",i);
     DEBUG if(done()) error("already done");
     DEBUG if(i>=next.size()) error("i=%, but there are % actions",i,next.size());
     current = next[i].cont;
-    if(!current.empty()) next = Div::Run(*A,problem->node_idx.get(),state.get(),current);
+    if(!current.empty()) next = Div::Run(*A,state.get(),current);
   }
 };
 
@@ -191,6 +202,7 @@ class Prover {
 
   ptr<RawProver> p;
   vec<Action> actions;
+  size_t features_space_size;
 
 public:
   struct Save {
@@ -210,9 +222,10 @@ public:
     actions = s->actions;
   }
 
-  static ptr<Prover> New(Problem::Ptr problem) {
+  static ptr<Prover> New(Problem::Ptr problem, size_t features_space_size) {
     auto p = own(new Prover());
     p->p = RawProver::New(problem);
+    p->features_space_size = features_space_size;
     //TODO: ugly, fix it.
     vec<size_t> i;
     p->find_actions(i);
@@ -249,8 +262,8 @@ private:
     //TODO: perhaps replace i with a persistent list (requires additional alloc).
     i.push_back(0);
     for(; i.back()<ac; i.back()++) {
-      if(auto af = p->action_features(i.back()); af.mcts_node) {
-        actions.push_back({i,af});
+      if(p->action_is_mcts_node(i.back())) {
+        actions.push_back({i,p->action_features(i.back(),features_space_size)});
       } else {
         p->apply_action(i.back());
         find_actions(i);

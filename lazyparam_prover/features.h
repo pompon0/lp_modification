@@ -91,16 +91,10 @@ INL uint64_t horizontal_feature(Hash h) {
 
 // shouldn't this be rather a state diff? IMO it should summarize all new branches
 struct ActionVec {
-  ActionVec() : ActionVec(16) {}
   explicit ActionVec(size_t hashed_size) : hashed(hashed_size,0) {}
 
-  // mctx_node is true iff continuation should be treated as a node in MCTS.
-  // Otherwise, the head of the continuation should be executed immediately in search of MCTS nodes.
-  // Current interpretation: mctx_node <=> just finished some unification.
-  bool mcts_node = true;
   size_t positive_atoms = 0;
   size_t negative_atoms = 0;
-
   vec<size_t> hashed;
 
   void add(const tool::node::Index &idx, tableau::Atom a) { FRAME("ActionVec::add(%)",show(a));

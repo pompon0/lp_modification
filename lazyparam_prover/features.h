@@ -31,17 +31,21 @@ enum : uint64_t {
 
   horizontal_begin = 6,
   vertical_begin = 7,
-  goal_atom = 8,
-  path_atom = 9,
+  goal = 8,
+  path = 9,
+  length = 10,
+  occurences = 11,
+  max_depth = 12,
 };
 
 template<size_t n> struct Window {
-  Window& push(Hash v){ data[next++%n] = v; return *this; }
-  Hash hash() const {
+  INL Window& push(Hash v){ data[next++%n] = v; return *this; }
+  INL Hash hash() const {
     Hash h;
     for(size_t i=0; i<n; i++) h.push(data[(next+i)%n]);
     return h;
   }
+  INL size_t length() const { return next; }
 private:
   size_t next = 0;
   Hash data[n] = {};
@@ -69,9 +73,10 @@ INL Hash term_head(const tool::node::Index &idx, tableau::Term t) { FRAME("term_
 }
 
 INL Hash pred_head(const tool::node::Index &idx, tableau::Atom a) { FRAME("pred_head");
-  //TODO probably also distinguish the special symbols introduced by LPMOD etc.
+  //TODO: probably also distinguish the special symbols introduced by LPMOD etc.
   if(a.pred()==tableau::Atom::EQ) return Hash(eq_begin).push(end);
   Hash h(pred_begin);
+  //TODO: cache it somewhere, recomputation takes way too much time
   for(auto x : idx.pred_name(a.pred())) h.push(x);
   return h.push(end);
 }
@@ -99,8 +104,8 @@ struct Space {
 struct SubSpace {
   INL SubSpace(Space *s) : space(s) {}
   INL SubSpace sub(encoding::Hash x){ return SubSpace(space,encoding::Hash(pref).push(x)); }
-  INL void add(encoding::Hash x, size_t val){
-    space->v[encoding::Hash(pref).push(x).sum()%space->v.size()] += val;
+  INL size_t & at(encoding::Hash x){
+    return space->v[encoding::Hash(pref).push(x).sum()%space->v.size()];
   }
 private:
   INL SubSpace(Space *s, encoding::Hash p) : space(s), pref(p) {}
@@ -108,38 +113,43 @@ private:
   encoding::Hash pref;
 };
 
-// shouldn't this be rather a state diff? IMO it should summarize all new branches
+// TODO: this definitely deserves more structure
 struct ActionVec {
   explicit ActionVec(size_t space_size) : features(space_size) {}
   
   Space features;
 
-  void add_goal(const tool::node::Index &idx, const tableau::Val &val, tableau::Atom a){ add(SubSpace(&features).sub(encoding::goal_atom),idx,val,a); }
-  void add_path(const tool::node::Index &idx, const tableau::Val &val, tableau::Atom a){ add(SubSpace(&features).sub(encoding::path_atom),idx,val,a); }
+  void set_goal_count(size_t x) { SubSpace(&features).sub(encoding::goal).at(encoding::length) = x; }
+  void set_path_length(size_t x){ SubSpace(&features).sub(encoding::path).at(encoding::length) = x; }
+  void add_goal(const tool::node::Index &idx, const tableau::Val &val, tableau::Atom a){ add(SubSpace(&features).sub(encoding::goal),idx,val,a); }
+  void add_path(const tool::node::Index &idx, const tableau::Val &val, tableau::Atom a){ add(SubSpace(&features).sub(encoding::path),idx,val,a); }
 
 private:
   static void add(SubSpace s, const tool::node::Index &idx, const tableau::Val &val, tableau::Atom a) { FRAME("ActionVec::add(%)",show(a));
-    s.sub(encoding::sign_begin).add(a.sign(),1);
     auto ss = encoding::sign(a.sign()); 
     auto ps = encoding::pred_head(idx,a);
+    s.sub(encoding::sign_begin).at(a.sign()) += 1;
+    s.sub(encoding::occurences).at(ps) += 1;
     encoding::Window<3> w; w.push(ss).push(ps);
     encoding::Hash h(ps);
     for(size_t i=0; i<a.arg_count(); i++) h.push(add(s,idx,val,w,a.arg(i)));
-    s.sub(encoding::horizontal_begin).add(h,1);
+    s.sub(encoding::horizontal_begin).at(h) += 1;
   }
 
   // Returns the head symbol. Accumulates all the vertical features.
   static encoding::Hash add(SubSpace s, const tool::node::Index &idx, const tableau::Val &val, encoding::Window<3> path, tableau::Term t) { FRAME("ActionVec::add(%)",show(t));
     auto ts = encoding::term_head(idx,val.shallow_eval(t));
     path.push(ts);
-    s.sub(encoding::vertical_begin).add(path.hash(),1);
+    s.sub(encoding::occurences).at(ts) += 1;
+    util::maxi(s.sub(encoding::max_depth).at(ts),path.length());
+    s.sub(encoding::vertical_begin).at(path.hash()) += 1;
     switch(t.type()) {
       case tableau::Term::VAR: return ts;
       case tableau::Term::FUN: {
         tableau::Fun f(t);
         encoding::Hash h(ts);
         for(size_t i=0; i<f.arg_count(); i++) h.push(add(s,idx,val,path,f.arg(i)));
-        s.sub(encoding::horizontal_begin).add(h,1);
+        s.sub(encoding::horizontal_begin).at(h) += 1;
         return ts;
       }
       default:

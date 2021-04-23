@@ -181,6 +181,8 @@ public:
   INL features::ActionVec action_features(size_t i, size_t hashed_size) const {
     DEBUG if(i>=next.size()) error("i=%, but there are % actions",i,next.size());
     features::ActionVec av(hashed_size);
+    av.set_goal_count(next[i].goals.size());
+    av.set_path_length(next[i].branch.false_.size());
     for(auto p = next[i].branch.false_; !p.empty(); p = p.tail()) av.add_path(*(problem->node_idx.get()),state->val,p.head());
     for(auto g : next[i].goals) av.add_goal(*(problem->node_idx.get()),state->val,g);
     return av;

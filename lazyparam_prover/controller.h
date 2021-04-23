@@ -55,6 +55,7 @@ struct Div {
     // Otherwise, the head of the continuation should be executed immediately in search of MCTS nodes.
     // Current interpretation: mctx_node <=> just finished some unification.
     bool mcts_node = true;
+    tableau::Branch branch;
     vec<tableau::Atom> goals;
     Cont cont;
   };
@@ -64,7 +65,7 @@ struct Div {
     Action action;
     template<typename F> INL void task(F f){ action.cont.push(div->A,Task(div->A,f)); }
 
-    INL void feature_branch(tableau::Branch){}
+    INL void feature_branch(tableau::Branch b){ action.branch = b; }
     INL void feature_mcts_node(bool x){ action.mcts_node = x; }
     INL void feature_goal(tableau::Atom goal){ action.goals.push_back(goal); }
   };
@@ -180,7 +181,8 @@ public:
   INL features::ActionVec action_features(size_t i, size_t hashed_size) const {
     DEBUG if(i>=next.size()) error("i=%, but there are % actions",i,next.size());
     features::ActionVec av(hashed_size);
-    for(auto g : next[i].goals) av.add(*(problem->node_idx.get()),g);
+    for(auto p = next[i].branch.false_; !p.empty(); p = p.tail()) av.add_path(*(problem->node_idx.get()),state->val,p.head());
+    for(auto g : next[i].goals) av.add_goal(*(problem->node_idx.get()),state->val,g);
     return av;
   }
 

@@ -25,9 +25,7 @@ using namespace ff;
 
 INL static inline FeatureVec action_features(features::ActionVec a) {
   FeatureVec v;
-  v.push(0,a.positive_atoms);
-  v.push(1,a.negative_atoms);
-  for(size_t i = 0; i<a.hashed.size(); i++) v.push(2+i,a.hashed[i]);
+  for(size_t i = 0; i<a.features.v.size(); i++) v.push(i,a.features.v[i]);
   return v;
 }
 INL static inline FeatureVec state_features(features::StateVec a) {

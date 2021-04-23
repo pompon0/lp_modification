@@ -31,6 +31,8 @@ enum : uint64_t {
 
   horizontal_begin = 6,
   vertical_begin = 7,
+  goal_atom = 8,
+  path_atom = 9,
 };
 
 template<size_t n> struct Window {
@@ -89,36 +91,55 @@ INL uint64_t horizontal_feature(Hash h) {
 }  // namespace encoding
 }  // namespace
 
+struct Space {
+  INL Space(size_t size) : v(size,0) { if(size<1) error("size = %, want >=1",size); }
+  vec<size_t> v;
+};
+
+struct SubSpace {
+  INL SubSpace(Space *s) : space(s) {}
+  INL SubSpace sub(encoding::Hash x){ return SubSpace(space,encoding::Hash(pref).push(x)); }
+  INL void add(encoding::Hash x, size_t val){
+    space->v[encoding::Hash(pref).push(x).sum()%space->v.size()] += val;
+  }
+private:
+  INL SubSpace(Space *s, encoding::Hash p) : space(s), pref(p) {}
+  Space *space;
+  encoding::Hash pref;
+};
+
 // shouldn't this be rather a state diff? IMO it should summarize all new branches
 struct ActionVec {
-  explicit ActionVec(size_t hashed_size) : hashed(hashed_size,0) {}
+  explicit ActionVec(size_t space_size) : features(space_size) {}
+  
+  Space features;
 
-  size_t positive_atoms = 0;
-  size_t negative_atoms = 0;
-  vec<size_t> hashed;
+  void add_goal(const tool::node::Index &idx, const tableau::Val &val, tableau::Atom a){ add(SubSpace(&features).sub(encoding::goal_atom),idx,val,a); }
+  void add_path(const tool::node::Index &idx, const tableau::Val &val, tableau::Atom a){ add(SubSpace(&features).sub(encoding::path_atom),idx,val,a); }
 
-  void add(const tool::node::Index &idx, tableau::Atom a) { FRAME("ActionVec::add(%)",show(a));
-    if(a.sign()) positive_atoms++; else negative_atoms++;
+private:
+  static void add(SubSpace s, const tool::node::Index &idx, const tableau::Val &val, tableau::Atom a) { FRAME("ActionVec::add(%)",show(a));
+    s.sub(encoding::sign_begin).add(a.sign(),1);
     auto ss = encoding::sign(a.sign()); 
     auto ps = encoding::pred_head(idx,a);
     encoding::Window<3> w; w.push(ss).push(ps);
     encoding::Hash h(ps);
-    for(size_t i=0; i<a.arg_count(); i++) h.push(add(idx,w,a.arg(i)));
-    hashed[encoding::horizontal_feature(h)%hashed.size()]++;
+    for(size_t i=0; i<a.arg_count(); i++) h.push(add(s,idx,val,w,a.arg(i)));
+    s.sub(encoding::horizontal_begin).add(h,1);
   }
 
   // Returns the head symbol. Accumulates all the vertical features.
-  encoding::Hash add(const tool::node::Index &idx, encoding::Window<3> path, tableau::Term t) { FRAME("ActionVec::add(%)",show(t));
-    auto ts = encoding::term_head(idx,t);
+  static encoding::Hash add(SubSpace s, const tool::node::Index &idx, const tableau::Val &val, encoding::Window<3> path, tableau::Term t) { FRAME("ActionVec::add(%)",show(t));
+    auto ts = encoding::term_head(idx,val.shallow_eval(t));
     path.push(ts);
-    hashed[encoding::vertical_feature(path)%hashed.size()]++;
+    s.sub(encoding::vertical_begin).add(path.hash(),1);
     switch(t.type()) {
       case tableau::Term::VAR: return ts;
       case tableau::Term::FUN: {
         tableau::Fun f(t);
         encoding::Hash h(ts);
-        for(size_t i=0; i<f.arg_count(); i++) h.push(add(idx,path,f.arg(i)));
-        hashed[encoding::horizontal_feature(h)%hashed.size()]++;
+        for(size_t i=0; i<f.arg_count(); i++) h.push(add(s,idx,val,path,f.arg(i)));
+        s.sub(encoding::horizontal_begin).add(h,1);
         return ts;
       }
       default:

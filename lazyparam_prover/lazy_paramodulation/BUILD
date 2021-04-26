@@ -24,8 +24,8 @@ cc_test(
     name = "cont_test",
     srcs = ["cont_test.cc"],
     deps = [
-      ":prover",
-      "//lazyparam_prover/engine:engine",
-      "@gtest//:gtest_main",
+        ":prover",
+        "//lazyparam_prover/engine:engine",
+        "@gtest//:gtest_main",
     ],
 )

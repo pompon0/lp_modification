@@ -5,7 +5,7 @@ import "solutions.proto";
 import "google/protobuf/duration.proto";
 
 enum Prover{
-  UNKNOWN = 0;
+  Prover_UNKNOWN = 0;
   VAMPIRE = 1;
   VAMPIRE_NO_EQ = 11;
   EPROVER = 2;
@@ -18,6 +18,18 @@ enum Prover{
   GPRUSAK_LAZY_PARAMODULATION = 8;
   GPRUSAK_NO_EQ = 10;
 }
+
+enum ProblemSet {
+  ProblemSet_UNKNOWN = 0;
+  MIZAR = 1;
+  TPTP = 2;
+}
+
+enum ProblemFilter {
+  ALL = 0;
+  WITH_EQ_LITERALS = 1;
+  REQUIRE_EQ_AXIOMS = 2;
+};
 
 message Req {
   string commit = 4;

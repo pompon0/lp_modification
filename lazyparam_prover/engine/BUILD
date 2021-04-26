@@ -23,12 +23,12 @@ cc_library(
 cc_test(
     name = "test",
     srcs = [
-      "test_test.cc",
-      "balanced_test.cc",
-      "depth_test.cc",
+        "test_test.cc",
+        "balanced_test.cc",
+        "depth_test.cc",
     ],
     deps = [
-      "//lazyparam_prover/engine:engine",
-      "@gtest//:gtest_main",
+        "//lazyparam_prover/engine:engine",
+        "@gtest//:gtest_main",
     ],
 )

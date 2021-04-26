@@ -8,7 +8,6 @@ import (
   "time"
   "os"
   "sort"
-  "strings"
   "sync/atomic"
 
   "google.golang.org/grpc"
@@ -47,7 +46,6 @@ var problemLimit = flag.Int("problem_limit",-1,"number of problems to solve (-1 
 var timeout = flag.Duration("timeout",16*time.Second,"timeout per problem")
 
 var validateProof = flag.Bool("validate_proof",true,"")
-var equalityOnly = flag.Bool("equality_only",false,"")
 
 const (
   problemSetMizar = "mizar"
@@ -55,11 +53,11 @@ const (
 )
 
 var inFlight int64
-var problemSets = []string{problemSetMizar,problemSetTptp}
 
 var commit = flag.String("commit","","current version")
-var problemSet = flag.String("problem_set",problemSetMizar,strings.Join(problemSets,"|"))
-var prover = (*pb.Prover)(utils.NewEnumFlag("prover",pb.Prover_UNKNOWN))
+var problemSet = (*pb.ProblemSet)(utils.NewEnumFlag("problem_set",pb.ProblemSet_ProblemSet_UNKNOWN))
+var problemFilter = (*pb.ProblemFilter)(utils.NewEnumFlag("problem_filter",pb.ProblemFilter_ALL))
+var prover = (*pb.Prover)(utils.NewEnumFlag("prover",pb.Prover_Prover_UNKNOWN))
 
 type ConnPool struct {
   conn []*grpc.ClientConn
@@ -126,19 +124,19 @@ func run(ctx context.Context) error {
     Date: date,
     Commit: *commit,
     Labels: []string {
-      fmt.Sprintf("--problem_set=%s",*problemSet),
+      fmt.Sprintf("--problem_set=%s",problemSet),
       fmt.Sprintf("--prover=%s",prover),
     },
   }
 
   var prob map[string]*problems.Problem
   switch *problemSet {
-  case problemSetMizar:
+  case pb.ProblemSet_MIZAR:
     x,cancel,err := problems.MizarProblems()
     if err!=nil { return fmt.Errorf("problems.MizarProblems(): %v",err) }
     defer cancel()
     prob = x
-  case problemSetTptp:
+  case pb.ProblemSet_TPTP:
     x,cancel,err := problems.TptpProblems()
     if err!=nil { return fmt.Errorf("problems.TptpProblems(): %w",err) }
     defer cancel()
@@ -160,35 +158,39 @@ func run(ctx context.Context) error {
 
   timeoutProto := ptypes.DurationProto(*timeout)
   inFlightSem := semaphore.NewWeighted(int64(*maxInFlight))
-  processSem := semaphore.NewWeighted(int64(100))
+
+  has_equality := func(name string, tptp []byte) bool {
+    for {
+      if has,err := tool.TptpHasEquality(gCtx,tptp); err!=nil {
+        log.Printf("tool.TptpHasEquality(%q): %v",name,err)
+      } else {
+        return has
+      }
+    }
+  }
+
   for _,name := range probNames {
     name := name
     group.Go(func() error {
       tptp,err := prob[name].Get()
       if err!=nil { return fmt.Errorf("prob[%q].Get(): %v",err) }
-
-      if *equalityOnly {
-        if err:=processSem.Acquire(gCtx,1); err!=nil {
-          return fmt.Errorf("processSem.Acquire(): %v",err)
+      ok := true
+      switch f := *problemFilter; f {
+      case pb.ProblemFilter_ALL:
+      case pb.ProblemFilter_WITH_EQ_LITERALS:
+        ok = has_equality(name,tptp)
+      case pb.ProblemFilter_REQUIRE_EQ_AXIOMS:
+        ok = !problems.SolvedByVampireWithoutEquality[name] && has_equality(name,tptp)
+      default:
+        return fmt.Errorf("unknown problem_filter %v",f)
+      }
+      if !ok {
+        // send to signal that case has been filtered out.
+        select {
+        case <-gCtx.Done(): return nil
+        case resultsChan <- nil: return nil
         }
-        has := false
-        for {
-          var err error
-          has,err = tool.TptpHasEquality(gCtx,tptp)
-          if err==nil { break }
-        }
-        processSem.Release(1)
-        if err!=nil {
-          return fmt.Errorf("tool.HasEquality(%q): %v",name,err)
-        }
-        if !has {
-          // send to signal that case has been filtered out.
-          select {
-          case <-gCtx.Done(): return nil
-          case resultsChan <- nil: return nil
-          }
-          return nil
-        }
+        return nil
       }
 
       // throttle in-flight operations

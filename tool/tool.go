@@ -8,6 +8,8 @@ import (
   "io/ioutil"
   "os/exec"
 
+  "golang.org/x/sync/semaphore"
+
   "github.com/pompon0/tptp_benchmark_go/utils"
   tpb "github.com/pompon0/tptp_benchmark_go/tptp_parser/proto/tptp_go_proto"
   spb "github.com/pompon0/tptp_benchmark_go/tptp_parser/proto/solutions_go_proto"
@@ -21,6 +23,12 @@ const tmp_prefix = "tptp_benchmark_go_"
 type Language string
 const FOF Language = "fof"
 const CNF Language = "cnf"
+
+// limits the number of concurrently executed subprocesses
+// TODO make it customizable
+// TODO make the tool a long running server, so that spawning
+//   a process at each call is not needed.
+var processSem = semaphore.NewWeighted(int64(100))
 
 func WriteTmp(data []byte) (path string, cleanup func(), err error) {
   tmpFile,err := ioutil.TempFile("",tmp_prefix)
@@ -44,6 +52,11 @@ func ClearUnknownNames(f *tpb.File, known []*tpb.Node) {
 }
 
 func ProtoToTptp(ctx context.Context, f *tpb.File) ([]byte,error) {
+  if err:=processSem.Acquire(ctx,1); err!=nil {
+    return nil,fmt.Errorf("processSem.Acquire(): %v",err)
+  }
+  processSem.Release(1)
+
   fBytes,err := proto.Marshal(f)
   if err!=nil { return nil,fmt.Errorf("proto.Marshal(): %v",err) }
   tmp,cleanup,err := WriteTmp(fBytes)
@@ -70,6 +83,11 @@ func ProofToTptp(ctx context.Context, proof *spb.Proof) ([]byte,error) {
 }
 
 func TptpToProto(ctx context.Context, lang Language, tptp []byte) (*tpb.File,error) {
+  if err:=processSem.Acquire(ctx,1); err!=nil {
+    return nil,fmt.Errorf("processSem.Acquire(): %v",err)
+  }
+  processSem.Release(1)
+
   var inBuf,outBuf bytes.Buffer
   if _,err := inBuf.Write(tptp); err!=nil {
     return nil,fmt.Errorf("inbuf.Write(): %v",err)
@@ -90,6 +108,11 @@ func TptpToProto(ctx context.Context, lang Language, tptp []byte) (*tpb.File,err
 }
 
 func TptpHasEquality(ctx context.Context, tptp []byte) (bool,error) {
+  if err:=processSem.Acquire(ctx,1); err!=nil {
+    return false,fmt.Errorf("processSem.Acquire(): %v",err)
+  }
+  processSem.Release(1)
+
   var inBuf,outBuf bytes.Buffer
   if _,err := inBuf.Write(tptp); err!=nil {
     return false,fmt.Errorf("inbuf.Write(): %v",err)
@@ -111,6 +134,11 @@ func TptpHasEquality(ctx context.Context, tptp []byte) (bool,error) {
 }
 
 func ValidateProof(ctx context.Context, sol *spb.CNF) (*spb.Stats,error) {
+  if err:=processSem.Acquire(ctx,1); err!=nil {
+    return nil,fmt.Errorf("processSem.Acquire(): %v",err)
+  }
+  processSem.Release(1)
+
   solBytes,err := proto.Marshal(sol)
   if err!=nil { return nil,fmt.Errorf("proto.Marshal(): %v",err) }
   tmpSol,cleanup,err := WriteTmp(solBytes)

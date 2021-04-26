@@ -3,6 +3,8 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "go_default_library",
     srcs = [
+        "conv.h",
+        "node.h",
         "tool.go",
     ],
     data = [
@@ -16,6 +18,7 @@ go_library(
         "//tptp_parser/proto:tptp_go_proto",
         "//utils:go_default_library",
         "@com_github_golang_protobuf//proto:go_default_library",
+        "@org_golang_x_sync//semaphore:go_default_library",
     ],
 )
 

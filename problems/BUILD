@@ -5,6 +5,7 @@ go_library(
     srcs = [
         "problems.go",
         "proofs.go",
+        "vampire_no_eq.go",
     ],
     data = [
         "@tptp_problems//file",

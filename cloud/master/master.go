@@ -120,13 +120,14 @@ func run(ctx context.Context) error {
   if err!=nil {
     return fmt.Errorf("ptypes.TimestampProto(): %v",err)
   }
+  var labels []string
+  flag.VisitAll(func (f *flag.Flag){
+    labels = append(labels,fmt.Sprintf("--%s=%v",f.Name,f.Value))
+  })
   report := &spb.Report {
     Date: date,
     Commit: *commit,
-    Labels: []string {
-      fmt.Sprintf("--problem_set=%s",problemSet),
-      fmt.Sprintf("--prover=%s",prover),
-    },
+    Labels: labels,
   }
 
   var prob map[string]*problems.Problem

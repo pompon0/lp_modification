@@ -130,7 +130,18 @@ func TptpHasEquality(ctx context.Context, tptp []byte) (bool,error) {
     return false,fmt.Errorf("proto.Unmarshal(): %v",err)
   }
   return out.HasEquality,nil
+}
 
+// Replaces equality predicate with an ordinary predicate.
+func ReplaceEquality(f *tpb.File) *tpb.File {
+  f = proto.Clone(f).(*tpb.File)
+  for _,n := range f.Nodes {
+    if n.Type==tpb.Type_PRED_EQ {
+      n.Type = tpb.Type_PRED
+      n.Arity = 2
+    }
+  }
+  return f
 }
 
 func ValidateProof(ctx context.Context, sol *spb.CNF) (*spb.Stats,error) {

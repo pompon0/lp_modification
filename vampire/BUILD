@@ -7,6 +7,7 @@ go_library(
     importpath = "github.com/pompon0/tptp_benchmark_go/vampire",
     visibility = ["//visibility:public"],
     deps = [
+        "//tool:go_default_library",
         "//tptp_parser/proto:solutions_go_proto",
         "//utils:go_default_library",
     ],

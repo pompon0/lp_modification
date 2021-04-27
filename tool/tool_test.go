@@ -79,6 +79,36 @@ func TestClearUnknownNames(t *testing.T) {
   }
 }
 
+func TestReplaceEquality(t *testing.T) {
+  ctx := context.Background()
+  for k,v := range sample.SampleProblems() {
+    fof,err := TptpToProto(ctx,FOF,v)
+    if err!=nil { t.Fatalf("TptpToProto(%q): %v",k,err) }
+    // under test
+    fofNoEq := ReplaceEquality(fof)
+
+    tptpNoEq,err := ProtoToTptp(ctx,fofNoEq)
+    if err!=nil { t.Fatalf("ProtoToTptp(%q): %v",k,err) }
+
+    before,err := TptpHasEquality(ctx,v)
+    if err!=nil { t.Fatalf("TptpHasEquality(%q): %v",k,err) }
+    after,err := TptpHasEquality(ctx,tptpNoEq)
+    if err!=nil { t.Fatalf("TptpHasEquality(%q): %v",k,err) }
+
+    if after {
+      t.Errorf("tptpNoEq[%q] still has equality predicate = %q",k,tptpNoEq)
+    }
+
+    if !before {
+      tptp,err := ProtoToTptp(ctx,fof)
+      if err!=nil { t.Fatalf("ProtoToTptp(%q): %v",k,err) }
+      if !bytes.Equal(tptpNoEq,tptp) {
+        t.Errorf("tptpNoEq[%q] = %q, want %q",k,tptpNoEq,tptp)
+      }
+    }
+  }
+}
+
 func TestTptpToProto(t *testing.T) {
   for k,v := range parsingTestCases() {
     _,err := TptpToProto(context.Background(),FOF,v)

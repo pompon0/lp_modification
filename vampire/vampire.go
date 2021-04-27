@@ -10,6 +10,7 @@ import (
   "strings"
 
   "github.com/pompon0/tptp_benchmark_go/utils"
+  "github.com/pompon0/tptp_benchmark_go/tool"
   spb "github.com/pompon0/tptp_benchmark_go/tptp_parser/proto/solutions_go_proto"
 )
 
@@ -22,17 +23,22 @@ const statusContradictoryAxioms = "ContradictoryAxioms"
 // refuted
 const statusCounterSatisfiable = "CounterSatisfiable"
 // failed
+const statusSatisfiable = "Satisfiable"
 const refutationNotFound = "% Refutation not found"
 
 func Prove(ctx context.Context, tptpFOFProblem []byte) (*spb.ProverOutput,error) {
-  return Run(ctx,tptpFOFProblem,true)
+  return Run(ctx,tptpFOFProblem)
 }
 
 func ProveNoEq(ctx context.Context, tptpFOFProblem []byte) (*spb.ProverOutput,error) {
-  return Run(ctx,tptpFOFProblem,false)
+  fof,err := tool.TptpToProto(ctx,tool.FOF,tptpFOFProblem)
+  if err!=nil { return nil,fmt.Errorf("tool.TptpToProto(): %v",err) }
+  tptpFOFProblem,err = tool.ProtoToTptp(ctx,tool.ReplaceEquality(fof))
+  if err!=nil { return nil,fmt.Errorf("tool.ProtoToTptp(): %v",err) }
+  return Run(ctx,tptpFOFProblem)
 }
 
-func Run(ctx context.Context, tptpFOFProblem []byte, eqAxioms bool) (*spb.ProverOutput,error) {
+func Run(ctx context.Context, tptpFOFProblem []byte) (*spb.ProverOutput,error) {
   const memLimitBytes = 2000000000 // 2GB
   var inBuf,outBuf bytes.Buffer
   if _,err := inBuf.Write(tptpFOFProblem); err!=nil {
@@ -43,9 +49,9 @@ func Run(ctx context.Context, tptpFOFProblem []byte, eqAxioms bool) (*spb.Prover
     "--proof","off",
     "--mode","casc",
   }
-  if !eqAxioms {
+  /*if !eqAxioms {
     args = append(args,"-ep","R")
-  }
+  }*/
   cmd := exec.Command(utils.Runfile(vampireBinPath),args...)
   cmd.Stdin = &inBuf
   cmd.Stdout = &outBuf
@@ -67,6 +73,8 @@ func Run(ctx context.Context, tptpFOFProblem []byte, eqAxioms bool) (*spb.Prover
   for _,l := range strings.Split(strings.TrimSpace(outBuf.String()),"\n") {
     if strings.HasPrefix(l,statusPrefix) {
       switch status := strings.Split(strings.TrimPrefix(l,statusPrefix)," ")[0]; status {
+      case statusSatisfiable:
+        return &spb.ProverOutput{Solved:false},nil
       case statusTheorem:
       case statusUnsatisfiable:
       case statusContradictoryAxioms:

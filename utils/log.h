@@ -13,6 +13,7 @@
 #include <ctime>
 #include <unistd.h>
 #include <errno.h>
+#include <x86intrin.h>
 #include <map>
 
 #define INL [[gnu::always_inline]]
@@ -128,7 +129,7 @@ using util::error;
 using util::info;
 using util::StreamLogger;
 
-static inline double realtime_sec() {
+INL static inline double realtime_sec() {
   timespec tv;
   if(clock_gettime(CLOCK_REALTIME, &tv)==-1)
     error("%",strerror(errno));
@@ -136,13 +137,58 @@ static inline double realtime_sec() {
 }
 
 struct Profile {
-  struct Scope { size_t count = 0; double time = 0; };
-  struct Visit {
-    Visit(Scope &_scope) : scope(_scope), start_time(realtime_sec()) {}
-    ~Visit(){ scope.count++; scope.time += realtime_sec()-start_time; } 
+  struct Scope {
+    size_t count = 0;
+    uint64_t cycles = 0;
+    double time = 0;
+  };
+  struct MeasureTime {
+    INL MeasureTime(Scope &_scope) : scope(_scope), start_time(realtime_sec()) {}
+    INL ~MeasureTime(){ scope.time += realtime_sec()-start_time; } 
     Scope &scope;
     double start_time;
   };
+
+  struct MeasureCyclesSimple {
+    Scope &scope;
+    uint64_t start_cycles;
+    INL MeasureCyclesSimple(Scope &_scope) : scope(_scope), start_cycles(__rdtsc()) {}
+    INL ~MeasureCyclesSimple(){ scope.cycles += __rdtsc()-start_cycles; }
+  };
+
+  // Implemented according to:
+  // https://www.intel.com/content/dam/www/public/us/en/documents/white-papers/ia-32-ia-64-benchmark-code-execution-paper.pdf
+  struct MeasureCycles {
+    Scope &scope;
+    uint64_t start_cycles;
+    
+    INL MeasureCycles(Scope &_scope) : scope(_scope) {
+      unsigned h32,l32;
+      asm volatile(
+          "CPUID\n\t"
+          "RDTSC\n\t"
+          "mov %%edx, %0\n\t"
+          "mov %%eax, %1\n\t"
+          : "=r" (h32), "=r" (l32)
+          :: "%rax", "%rbx", "%rcx", "%rdx"
+      );
+      start_cycles = uint64_t(h32)<<32 | uint64_t(l32);
+    }
+    INL ~MeasureCycles(){
+      unsigned h32,l32;
+      asm volatile(
+          "RDTSCP\n\t"
+          "mov %%edx, %0\n\t"
+          "mov %%eax, %1\n\t"
+          "CPUID\n\t"
+          : "=r" (h32), "=r" (l32)
+          :: "%rax", "%rbx", "%rcx", "%rdx"
+      );
+      auto stop_cycles = uint64_t(h32)<<32 | uint64_t(l32);
+      scope.cycles += stop_cycles-start_cycles;
+    }  
+  };
+
   std::map<str,Scope> scopes;
   str show() {
     vec<str> lines;
@@ -154,11 +200,13 @@ struct Profile {
 extern Profile profile;
 
 #ifdef PROFILE
-  #define SCOPE(name) static Profile::Scope &_scope = profile.scopes[name]; Profile::Visit _visit(_scope);
-  #define COUNTER(name) { static Profile::Scope &_scope = profile.scopes[name]; _scope.count++; }
+  #define PROF_COUNT(name)  static auto &_scope = profile.scopes[name]; _scope.count++;
+  #define PROF_CYCLES(name) static auto &_scope = profile.scopes[name]; _scope.count++; Profile::MeasureCyclesSimple _visit(_scope);
+  #define PROF_TIME(name)   static auto &_scope = profile.scopes[name]; _scope.count++; Profile::MeasureTime _visit(_scope);
 #else
-  #define SCOPE(name)
-  #define COUNTER(name)
+  #define PROF_COUNT(name)
+  #define PROF_CYCLES(name)
+  #define PROF_TIME(name)
 #endif
 
 #ifdef VERBOSE

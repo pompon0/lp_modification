@@ -14,7 +14,9 @@ template<typename Div> INL static void strong(Div *d, Branch branch, DerAndClaus
   auto matoms = strong_resolution(d->A,d->state,todo,d->size_limit());
   if(!matoms) return;
 
-  //TODO(gprusak): add constraints preventing the new clause from being contradictory
+  //TODO(gprusak): add constraints preventing the new clause from becoming a tautology
+  //TODO(gprusak): add constraint preventing other connections to the parent clause
+  //  NOTE: check if this is not a subcase of the folding-up optimization.
 
   d->alt([&](typename Div::Alt *x)INLL{
     for(auto atoms = matoms.get(); !atoms.empty(); atoms = atoms.tail()) {

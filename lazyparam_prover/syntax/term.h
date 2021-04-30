@@ -91,7 +91,7 @@ public:
     PTR ptr;
   public:
     template<typename Alloc> INL Builder(Alloc &a, u64 _fun, u64 _arg_count) : ptr(PTR::alloc(a,_arg_count)) {
-      COUNTER("Fun::Builder");
+      PROF_COUNT("Fun::Builder");
       ptr.VAR_RANGE::ref() = {0,0};
       ptr.Term::TYPE::ref() = Term::FUN;
       ptr.FUN::ref() = _fun;

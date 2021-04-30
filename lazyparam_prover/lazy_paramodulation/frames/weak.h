@@ -3,7 +3,7 @@ struct _WeakFrame {
 
   template<typename Div> INL void run(Div *d) const { STATE_FRAME(d->A,d->state,"weak(%)",show(branch.false_.head())); 
     d->state->stats.weak_steps++;
-    COUNTER("expand");
+    PROF_COUNT("expand");
     // match lemma
     if(matches_lemma(*d->state,branch)){ 
       STATE_FRAME(d->A,d->state,"matches_lemma");

@@ -6,7 +6,13 @@
 
 namespace tableau {
 
+// Called "constraint kernel" in "Handbook of Automated Reasoning"
 struct OrderAtom {
+  // TODO: disequality constraints don't need ordering (just unification).
+  //   which means that they can be satisfied earlier (you can drop the constraint),
+  //   They won't be violated earlier though, as long as CMP is reflexive.
+  // Disequality constraints can be maintained in a mgu form {var_i != term_i}
+  //   which may improve the efficiency as well.
   enum Relation { L = 1, G = 2, E = 4, LE = L|E, GE = G|E, NE = L|G, U = L|G|E };
 
   enum Status { TRUE, FALSE, UNKNOWN };

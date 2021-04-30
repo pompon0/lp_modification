@@ -16,7 +16,7 @@ namespace tableau {
 
 struct Valuation {
 private:
-  // there is NO cycles in valuation, even x -> x
+  // there is NO cycles in the valuation, even x -> x
   memory::RewindArray<Term> val;
 public:
   INL Valuation(){}
@@ -77,8 +77,8 @@ public:
   }
 
   bool equal(Term x, Term y) const {
-    for(memory::Maybe<Term> mxv; x.type()==Term::VAR && (mxv = val[Var(x).id()]);) x = mxv.get();
-    for(memory::Maybe<Term> myv; y.type()==Term::VAR && (myv = val[Var(y).id()]);) y = myv.get();
+    x = shallow_eval(x);
+    y = shallow_eval(y);
     if(x.type()!=y.type()) return 0;
     switch(x.type()) {
       case Term::VAR: return Var(x).id()==Var(y).id();
@@ -88,9 +88,9 @@ public:
         for(size_t i=fx.arg_count(); i--;) if(!equal(fx.arg(i),fy.arg(i))) return 0;
         return 1;
       }
+      default:
+        error("equal(<type=%>,y)",x.type());
     }
-    error("equal(<type=%>,y)",x.type());
-    return 0;
   }
 
   INL bool equal_mod_sign(Atom x, Atom y) {
@@ -102,6 +102,7 @@ public:
   }
 
   bool mgu(Term x, Term y) { FRAME("mgu(%,%) %",show(x),show(y),DebugString());
+    // TODO: add some memoization to bound the unification complexity
     // TODO: add this iff hash consing is implemented
     // if(t1==t2) return 1;
     if(x.type()==Term::FUN && y.type()==Term::FUN) {
@@ -116,7 +117,7 @@ public:
     if(x.type()==Term::VAR) {
       Var xv(x);
       if(auto mx = val[xv.id()]) return mgu(mx.get(),y);
-      SCOPE("Valuation::assign");
+      PROF_CYCLES("Valuation::assign");
       return assign(xv.id(),y);
     }
     error("unhandled case (type %, type %)",x.type(),y.type());
@@ -125,7 +126,7 @@ public:
 
   // unifies atoms ignoring the sign
   INL bool mgu(Atom x, Atom y) { FRAME("opposite()");
-    SCOPE("Valuation::mgu(Atom)");
+    PROF_CYCLES("Valuation::mgu(Atom)");
     if(x.pred()!=y.pred()) return 0;
     DEBUG if(x.arg_count()!=y.arg_count()) error("arg_count() mismatch: %, %",show(x),show(y));
     auto s = save();

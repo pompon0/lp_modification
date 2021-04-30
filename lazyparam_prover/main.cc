@@ -120,6 +120,14 @@ int main(int argc, char **argv) {
       outProto.set_solved(true);
       *outProto.mutable_proof() = SyntaxToProto::proof(A,idx,*out.proof,out.val);
     }
+    auto prof = outProto.mutable_profiler();
+    for(auto &[n,s] : profile.scopes) {
+      auto e = prof->add_entries();
+      e->set_label(n);
+      e->set_count(s.count);
+      e->set_cycles(s.cycles);
+      e->set_time_s(s.time);
+    }
     if(!outProto.SerializeToOstream(&std::cout)) {
       error("outProto.SerializeToOstream() failed");  
     }

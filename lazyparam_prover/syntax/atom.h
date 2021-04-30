@@ -69,7 +69,7 @@ public:
   public:
     template<typename Alloc> Builder(Alloc &a, bool _sign, u64 _pred, u64 _arg_count, bool _strong_only)
         : sign_(_sign), ptr(PTR::alloc(a,_arg_count)), strong_only_(_strong_only) {
-      COUNTER("Atom::Builder");
+      PROF_COUNT("Atom::Builder");
       ptr.VAR_RANGE::ref() = {0,0};
       ptr.PRED::ref() = _pred;
       //DEBUG for(size_t i=0; i<_arg_count; ++i) ARGS::ref(ptr,i) = 0;

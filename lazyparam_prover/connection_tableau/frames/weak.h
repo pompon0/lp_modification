@@ -47,6 +47,9 @@ struct _WeakFrame {
       x->task([a,br](Div *d)INLL{
         if(!a.strong_only()) {
           // add constraints (wrt path)
+          // Note that we are ignoring the sign here, since
+          // - opposite literals should have been unified using the strong connection.
+          // - equal literals are not allowed by the regularity constraint.
           for(auto b = br.false_.tail(); !b.empty(); b = b.tail()) {
             if(!d->state->val.push_constraint(d->A,OrderAtom::neq(d->A,a,b.head()))) return;
           }

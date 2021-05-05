@@ -5,7 +5,7 @@
 #include "lazyparam_prover/syntax/term.h"
 #include "lazyparam_prover/syntax/atom.h"
 #include "lazyparam_prover/memory/list.h"
-#include "lazyparam_prover/mgu.h"
+#include "lazyparam_prover/valuation.h"
 #include "lazyparam_prover/fun_ord.h"
 #include "utils/log.h"
 

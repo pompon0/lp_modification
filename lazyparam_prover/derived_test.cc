@@ -1,4 +1,4 @@
-#define DEBUG
+#define DEBUG_MODE
 #include "lazyparam_prover/derived.h"
 #include "lazyparam_prover/syntax/term.h"
 #include "utils/log.h"

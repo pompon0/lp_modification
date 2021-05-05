@@ -71,6 +71,7 @@ struct SearchState {
   Stats stats;
 
   memory::Maybe<AndClause> allocate(memory::Alloc &A, DerAndClause dcla) { FRAME("SearchState::allocate()");
+    PROF_CYCLES("SearchState::allocate()");
     dcla = val.allocate(dcla);
     clauses_used.push(A,dcla);
     nodes_used += dcla.cost();
@@ -83,6 +84,7 @@ struct SearchState {
   // cannot return the proto, because parsing context is not available.
   // This means that Valuation has to be included in the ProverOutput.
   ptr<OrForm> get_proof(memory::Alloc &A) {
+    PROF_TIME("SearchState::get_proof()");
     auto proof = make<OrForm>();
     for(auto l=clauses_used; !l.empty(); l = l.tail()) {
       proof->and_clauses.push_back(l.head());

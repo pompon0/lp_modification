@@ -141,28 +141,31 @@ struct Profile {
     size_t count = 0;
     uint64_t cycles = 0;
     double time = 0;
-  };
-  struct MeasureTime {
-    INL MeasureTime(Scope &_scope) : scope(_scope), start_time(realtime_sec()) {}
-    INL ~MeasureTime(){ scope.time += realtime_sec()-start_time; } 
+  }; 
+
+  struct MeasureCount {
     Scope &scope;
-    double start_time;
+    INL MeasureCount(Scope &_scope) : scope(_scope) { scope.count++; }
   };
 
-  struct MeasureCyclesSimple {
-    Scope &scope;
+  struct MeasureCyclesSimple : MeasureCount {
     uint64_t start_cycles;
-    INL MeasureCyclesSimple(Scope &_scope) : scope(_scope), start_cycles(__rdtsc()) {}
+    INL MeasureCyclesSimple(Scope &_scope) : MeasureCount(_scope), start_cycles(__rdtsc()) {}
     INL ~MeasureCyclesSimple(){ scope.cycles += __rdtsc()-start_cycles; }
+  };
+  
+  struct MeasureTime : MeasureCyclesSimple {
+    double start_time;
+    INL MeasureTime(Scope &_scope) : MeasureCyclesSimple(_scope), start_time(realtime_sec()) {}
+    INL ~MeasureTime(){ scope.time += realtime_sec()-start_time; } 
   };
 
   // Implemented according to:
   // https://www.intel.com/content/dam/www/public/us/en/documents/white-papers/ia-32-ia-64-benchmark-code-execution-paper.pdf
-  struct MeasureCycles {
-    Scope &scope;
+  struct MeasureCycles : MeasureCount {
     uint64_t start_cycles;
     
-    INL MeasureCycles(Scope &_scope) : scope(_scope) {
+    INL MeasureCycles(Scope &_scope) : MeasureCount(_scope) {
       unsigned h32,l32;
       asm volatile(
           "CPUID\n\t"
@@ -192,7 +195,7 @@ struct Profile {
   std::map<str,Scope> scopes;
   str show() {
     vec<str> lines;
-    for(auto p : scopes) lines.push_back(util::fmt("% : % : %\n",p.first,p.second.count,p.second.time));
+    for(auto &[name,s] : scopes) lines.push_back(util::fmt("% : count = %, cycles = %, time = %\n",name,s.count,s.cycles,s.time));
     return util::join("",lines);
   }
 };
@@ -200,9 +203,9 @@ struct Profile {
 extern Profile profile;
 
 #ifdef PROFILE
-  #define PROF_COUNT(name)  static auto &_scope = profile.scopes[name]; _scope.count++;
-  #define PROF_CYCLES(name) static auto &_scope = profile.scopes[name]; _scope.count++; Profile::MeasureCyclesSimple _visit(_scope);
-  #define PROF_TIME(name)   static auto &_scope = profile.scopes[name]; _scope.count++; Profile::MeasureTime _visit(_scope);
+  #define PROF_COUNT(name)  static auto &_scope = profile.scopes[name]; Profile::MeasureCount _visit(_scope);
+  #define PROF_CYCLES(name) static auto &_scope = profile.scopes[name]; Profile::MeasureCyclesSimple _visit(_scope);
+  #define PROF_TIME(name)   static auto &_scope = profile.scopes[name]; Profile::MeasureTime _visit(_scope);
 #else
   #define PROF_COUNT(name)
   #define PROF_CYCLES(name)

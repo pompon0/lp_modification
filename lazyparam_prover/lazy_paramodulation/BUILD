@@ -15,7 +15,7 @@ cc_library(
         "//lazyparam_prover:parse",
         "//lazyparam_prover:prover",
         "//lazyparam_prover/syntax:syntax",
-        "//lazyparam_prover:mgu",
+        "//lazyparam_prover:valuation",
         "//utils:utils",
     ],
 )

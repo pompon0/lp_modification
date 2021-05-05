@@ -8,7 +8,8 @@ template<typename SEARCH> INL ProverOutput iterative_deepening(
   memory::Alloc &A,
   SearchState &s,
   SEARCH search
-) { FRAME("prove_loop()");
+) { FRAME("iterative_deepening()");
+  PROF_TIME("iterative_deepening");
   static_assert(memory::has_sig<SEARCH,bool(const Ctx&, memory::Alloc&, SearchState&, size_t limit)>());
   ProverOutput out;
   out.cost = 0; 

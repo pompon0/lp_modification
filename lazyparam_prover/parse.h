@@ -68,6 +68,7 @@ struct ProtoToSyntax {
 
   static std::tuple<OrForm,tool::node::Index> orForm(memory::Alloc &A, const tptp::File &file) {
     FRAME("ProtoToSyntax::orForm()");
+    PROF_CYCLES("ProtoToSyntax::orForm");
     tool::node::Index idx(file.nodes());
     OrForm form;
     for(const tptp::Input &input : file.input()) {

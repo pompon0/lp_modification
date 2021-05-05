@@ -1,6 +1,6 @@
 //#define DEBUG_MODE
 //#define VERBOSE
-//#define PROFILE
+#define PROFILE
 
 #include <csignal>
 #include <iostream>
@@ -52,6 +52,7 @@ OrForm apply_trans(memory::Alloc &A, OrForm f) {
 }
 
 template<typename Proto> inline static Proto proto_from_raw(const str &file_raw) { FRAME("proto_from_raw()");
+  PROF_CYCLES("proto_from_raw");
   Proto proto;
   auto stream = new google::protobuf::io::CodedInputStream((const uint8_t*)(&file_raw[0]),file_raw.size());
   stream->SetRecursionLimit(100000000);
@@ -111,7 +112,7 @@ int main(int argc, char **argv) {
       default:
         error("method = %",show(method));
     }
-    std::cerr << profile.show(); 
+    // std::cerr << profile.show(); 
     
     outProto.set_cost(out.cost);
     outProto.set_continuation_count(out.cont_count);
@@ -125,6 +126,10 @@ int main(int argc, char **argv) {
       auto e = prof->add_entries();
       e->set_label(n);
       e->set_count(s.count);
+      //TODO: account for cycle measuring overhead:
+      // - count the measurements within the measurement
+      // - measure probabilistically the overhead of the measurement
+      // - measure probabilistically the overhead of the nested measurement
       e->set_cycles(s.cycles);
       e->set_time_s(s.time);
     }

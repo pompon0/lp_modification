@@ -60,9 +60,9 @@ cc_library(
 )
 
 cc_library(
-    name = "mgu",
+    name = "valuation",
     hdrs = [
-        "mgu.h",
+        "valuation.h",
         "kbo.h",
         "lpo.h",
         "fun_ord.h",
@@ -93,7 +93,7 @@ cc_library(
         "//tptp_parser/proto:solutions_cc_proto",
         ":parse",
         "//lazyparam_prover/syntax:syntax",
-        ":mgu",
+        ":valuation",
         "//utils:utils",
         "@com_google_protobuf//:protobuf",
     ],
@@ -126,10 +126,10 @@ cc_test(
 )
 
 cc_test(
-    name = "mgu_test",
-    srcs = ["mgu_test.cc"],
+    name = "valuation_test",
+    srcs = ["valuation_test.cc"],
     deps = [
-        ":mgu",
+        ":valuation",
         "//utils:utils",
         "@gtest//:gtest_main",
     ],
@@ -139,7 +139,7 @@ cc_test(
     name = "kbo_test",
     srcs = ["kbo_test.cc"],
     deps = [
-        ":mgu",
+        ":valuation",
         "//utils:utils",
         "@gtest//:gtest_main",
     ],
@@ -149,7 +149,7 @@ cc_test(
     name = "lpo_test",
     srcs = ["lpo_test.cc"],
     deps = [
-        ":mgu",
+        ":valuation",
         "//utils:utils",
         "@gtest//:gtest_main",
     ],

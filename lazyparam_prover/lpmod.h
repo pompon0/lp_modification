@@ -7,7 +7,7 @@
 #include "lazyparam_prover/syntax/show.h"
 #include "lazyparam_prover/derived.h"
 #include "lazyparam_prover/eq_axioms.h"
-#include "lazyparam_prover/mgu.h"
+#include "lazyparam_prover/valuation.h"
 
 namespace tableau {
 namespace lpmod {
@@ -153,7 +153,7 @@ struct SplitBuilder {
         if(l.type()==Term::VAR) {
           // x=y /\ C
           // ==> C[x=y]
-          if(!val.mgu(l,r)) error("trivial unification failed");
+          if(!val.unify(l,r)) error("trivial unification failed");
         } else if(r.type()==Term::VAR) { 
           // f(x)=y /\ C
           // ==> f(x)->y /\ C  [f(x)>=y]

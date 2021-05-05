@@ -10,7 +10,7 @@
 #include "lazyparam_prover/syntax/atom.h"
 #include "lazyparam_prover/syntax/clause.h"
 #include "lazyparam_prover/constraint.h"
-#include "lazyparam_prover/mgu.h"
+#include "lazyparam_prover/valuation.h"
 #include "lazyparam_prover/fun_ord.h"
 #include <algorithm>
 
@@ -56,27 +56,30 @@ public:
   };
   
   INL Save save(){
+    PROF_CYCLES("ConstrainedValuation::save");
     return {
       val.save(),
       ord.save(),
       constraints
     };
   }
-  void restore(Save s){
+  INL void restore(Save s){
+    PROF_CYCLES("ConstrainedValuation::restore");
     val.restore(s.val);
     ord.restore(s.ord);
     constraints = s.constraints;
   }
   
-  inline bool equal(Term x, Term y){ return val.equal(x,y); }
-  inline bool equal_mod_sign(Atom x, Atom y) { return val.equal_mod_sign(x,y); } 
-  template<typename T> T eval(memory::Alloc &A, T t) const { return val.eval(A,t); }
-  Term shallow_eval(Term t) const { return val.shallow_eval(t); }
+  INL inline bool equal(Term x, Term y){ return val.equal(x,y); }
+  INL inline bool equal_mod_sign(Atom x, Atom y) { return val.equal_mod_sign(x,y); } 
+  template<typename T> INL T eval(memory::Alloc &A, T t) const { return val.eval(A,t); }
+  INL Term shallow_eval(Term t) const { return val.shallow_eval(t); }
   
   // unifies values, validates constraints afterwards.
-  template<typename T> [[nodiscard]] bool unify(memory::Alloc &A, T x, T y) { FRAME("mgu()");
+  template<typename T> [[nodiscard]] INL bool unify(memory::Alloc &A, T x, T y) { FRAME("unify()");
+    PROF_CYCLES("ConstrainedValuation::unify()");
     stats.unifications++;
-    if(!val.mgu(x,y)){
+    if(!val.unify(x,y)){
       stats.failed_unifications++;
       return 0;
     }
@@ -96,11 +99,13 @@ public:
 
   // returning false invalidates the object 
   [[nodiscard]] INL bool push_constraint(memory::Alloc &A, OrderAtom c) {
+    PROF_CYCLES("ConstrainedValuation::push_constraint()");
     if(c.status()==OrderAtom::TRUE) return 1;
     return check_and_push_constraint(A,constraints,c);
   }
 
   [[nodiscard]] INL bool check_constraints(memory::Alloc &A) {
+    PROF_CYCLES("ConstrainedValuation::check_constraints()");
     memory::List<OrderAtom> c2;
     for(auto c = constraints; !c.empty(); c = c.tail()) {
       if(!check_and_push_constraint(A,c2,c.head())) return false;

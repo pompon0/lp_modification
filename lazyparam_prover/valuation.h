@@ -101,7 +101,7 @@ public:
     return 1;
   }
 
-  bool mgu(Term x, Term y) { FRAME("mgu(%,%) %",show(x),show(y),DebugString());
+  bool unify(Term x, Term y) { FRAME("unify(%,%) %",show(x),show(y),DebugString());
     // TODO: add some memoization to bound the unification complexity
     // TODO: add this iff hash consing is implemented
     // if(t1==t2) return 1;
@@ -110,13 +110,13 @@ public:
       if(xf.fun()!=yf.fun()) return 0;
       auto ac = xf.arg_count();
       for(size_t i=0; i<ac; ++i)
-        if(!mgu(xf.arg(i),yf.arg(i))) return 0;
+        if(!unify(xf.arg(i),yf.arg(i))) return 0;
       return 1;
     }
     if(x.type()!=Term::VAR && y.type()==Term::VAR) swap(x,y);
     if(x.type()==Term::VAR) {
       Var xv(x);
-      if(auto mx = val[xv.id()]) return mgu(mx.get(),y);
+      if(auto mx = val[xv.id()]) return unify(mx.get(),y);
       PROF_CYCLES("Valuation::assign");
       return assign(xv.id(),y);
     }
@@ -125,13 +125,13 @@ public:
   }
 
   // unifies atoms ignoring the sign
-  INL bool mgu(Atom x, Atom y) { FRAME("opposite()");
-    PROF_CYCLES("Valuation::mgu(Atom)");
+  INL bool unify(Atom x, Atom y) { FRAME("opposite()");
+    PROF_CYCLES("Valuation::unify(Atom)");
     if(x.pred()!=y.pred()) return 0;
     DEBUG if(x.arg_count()!=y.arg_count()) error("arg_count() mismatch: %, %",show(x),show(y));
     auto s = save();
     for(size_t i=x.arg_count(); i--;)
-      if(!mgu(x.arg(i),y.arg(i))){ restore(s); return 0; }
+      if(!unify(x.arg(i),y.arg(i))){ restore(s); return 0; }
     return 1;
   }
 

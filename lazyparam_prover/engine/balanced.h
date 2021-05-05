@@ -78,9 +78,6 @@ struct Div {
 };
 
 //TODO: add runtime checks in proxy
-// - that after and_(), done_() is required
-// - that done() can be called only once
-// - that (and_()+done) and or_() exclude each other
 // - that search state can be updated only until done()/or() is called
 struct Proxy {
   struct Alt {
@@ -112,6 +109,7 @@ struct Proxy {
 };
 
 INL bool Div::step() {
+  PROF_CYCLES("engine::balanced::Div::step");
   state->stats.steps++;
   auto s = saves.back(); saves.pop_back();
   A.restore(s.As);
@@ -174,7 +172,7 @@ INL bool Div::step() {
 // Search takes alloc as an argument to be able to return result in its memory.
 // TODO: generalize search and test it to find random test trees - to make sure that is doesn't skip any part of search space.
 template<typename Cont> INL bool search(const Ctx &ctx, memory::Alloc &A, SearchState &state, bool cut, size_t size_limit) { FRAME("connection_tableau::balanced_search()");
-  PROF_CYCLES("connection_tableau::balanced_search");
+  PROF_CYCLES("engine::balanced::search");
   Div d(A,&state,cut,size_limit,[](Proxy *p){ Cont::start(p); });
   size_t steps = 0;
   for(; d.saves.size(); steps++) {

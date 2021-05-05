@@ -8,7 +8,7 @@
 #include "lazyparam_prover/syntax/clause.h"
 #include "lazyparam_prover/syntax/show.h"
 #include "lazyparam_prover/memory/stack.h"
-#include "lazyparam_prover/mgu.h"
+#include "lazyparam_prover/valuation.h"
 #include "utils/ctx.h"
 
 namespace tableau {
@@ -103,6 +103,7 @@ public:
   };
 
   ClauseIndex(const OrForm &f) : and_clauses(f.and_clauses) { FRAME("ClauseIndex");
+    PROF_TIME("ClauseIndex() [construction]");
     std::stable_sort(and_clauses.begin(),and_clauses.end(),
       [](const DerAndClause &a, const DerAndClause &b){ return a.cost()<b.cost(); });
     is_starting_clause.resize(and_clauses.size());
@@ -153,7 +154,7 @@ public:
             auto c2 = val.allocate(and_clauses[x.clause_id]).derived();
             // unify
             if(c1.atom(i1).sign()==c2.atom(x.atom_id).sign()) continue;
-            if(!val.mgu(c1.atom(i1),c2.atom(x.atom_id))) continue;
+            if(!val.unify(c1.atom(i1),c2.atom(x.atom_id))) continue;
             sets.back().push_back(x);
           }
         }

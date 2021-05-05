@@ -28,11 +28,11 @@ public:
   INL void restore(Save _state){ state = _state; }
 
   INL u8* alloc_bytes(size_t s) {
-    PROF_COUNT("alloc_bytes");
+    PROF_COUNT("memory::alloc_bytes");
     DEBUG if(s>BLOCK) error("% = s > BLOCK = %",s,BLOCK);
     if(state.begin+s>state.end){
       if(blocks.size()==state.blocks_used){
-        PROF_COUNT("allocated_blocks");
+        PROF_COUNT("memory::allocated_blocks");
         blocks.push_back(new u8[BLOCK]);
       }
       state.begin = blocks[state.blocks_used++];
@@ -42,7 +42,7 @@ public:
   }
 
   template<typename T> INL T* alloc_init(const T &v) {
-    PROF_COUNT("alloc_init");
+    PROF_COUNT("memory::alloc_init");
     return new(alloc_bytes(sizeof(T)))T(v);
   }
   

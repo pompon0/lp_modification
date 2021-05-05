@@ -10,7 +10,7 @@
 #include "lazyparam_prover/syntax/atom.h"
 #include "lazyparam_prover/syntax/clause.h"
 #include "lazyparam_prover/constraint.h"
-#include "lazyparam_prover/mgu.h"
+#include "lazyparam_prover/valuation.h"
 #include "lazyparam_prover/fun_ord.h"
 #include <algorithm>
 

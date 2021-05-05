@@ -87,6 +87,15 @@ func prove(ctx context.Context, tptp []byte, funOrd *spb.FunOrd) error {
   tptpProof,err := tool.ProofToTptp(ctx,out.Proof)
   if err!=nil { return fmt.Errorf("tool.ProofToTptp(%q): %v",*caseName,err) }
   fmt.Printf("-- PROOF BEGIN --\n%s-- PROOF END--\n",tptpProof)
+  es := out.Profiler.Entries
+  sort.Slice(es,func(i,j int) bool {
+    if a,b := es[i].Cycles,es[j].Cycles; a!=b { return a>b }
+    if a,b := es[i].Count,es[j].Count; a!=b { return a>b }
+    return false
+  })
+  for _,e := range es {
+    log.Printf("profiler :: %v",e)
+  }
   //log.Printf("out = %v",out)
   _,err = tool.ValidateProof(ctx,&spb.CNF{Problem:out.CnfProblem,Proof:out.Proof})
   if err!=nil { return fmt.Errorf("tool.Validate(%q): %v",*caseName,err) }

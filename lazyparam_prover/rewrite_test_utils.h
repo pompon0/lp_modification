@@ -96,7 +96,7 @@ template<typename V> void random_valuate(TestCtx &ctx, V &val, size_t max_depth,
     if(val.eval(ctx.A,x).type()==Term::VAR) {
       if(!ground && ctx.rnd()%2==0) continue;
       if(!val.unify(ctx.A,x,make_term(ctx,val,true,max_depth))) {
-        error("val.mgu() failed");
+        error("val.unify() failed");
       }
     }
   }

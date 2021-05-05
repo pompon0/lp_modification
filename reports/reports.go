@@ -23,8 +23,9 @@ const (
   cmdDiff = "diff"
   cmdMultiDiff = "multidiff"
   cmdList = "list"
+  cmdProfiler = "profiler"
 )
-var cmds = []string{cmdSummary,cmdPrint,cmdDiff,cmdMultiDiff,cmdList}
+var cmds = []string{cmdSummary,cmdPrint,cmdDiff,cmdMultiDiff,cmdList,cmdProfiler}
 
 var reportDir = flag.String("report_dir","","")
 var reportPath = flag.String("report_path","","")
@@ -32,7 +33,7 @@ var reportPath2 = flag.String("report_path_2","","")
 var cmd = flag.String("cmd",cmdSummary,strings.Join(cmds,"|"))
 var caseName = flag.String("case_name","","")
 
-var filterOutPath = flag.String("filter_out_path","","")
+var profilerLabel = flag.String("profiler_label","","label used as a reference unit of the number of cycles")
 
 type Rec struct {
   caseCount int
@@ -105,24 +106,16 @@ func diff(ctx context.Context) error {
   if err!=nil { return fmt.Errorf("problems.ReadReport(report_path=%q): %v",*reportPath,err) }
   report2,err := problems.ReadReport(*reportPath2)
   if err!=nil { return fmt.Errorf("problems.ReadReport(report_path=%q): %v",*reportPath2,err) }
-  var filterRep *spb.Report
-  if *filterOutPath!="" {
-    filterRep,err = problems.ReadReport(*filterOutPath)
-    if err!=nil {
-      return fmt.Errorf("problem.ReadReport(%q): %w",*filterOutPath,err)
-    }
-  }
-  filter := makeFilter(filterRep)
 
   reports := []*spb.Report{report1,report2}
   var results []map[string]*Result
   for i,r := range reports {
     fmt.Printf("[%d] commit = %q, labes = %v\n",i,r.Commit,r.Labels)
-    res,err := accumByPrefix(r,filter)
+    res,err := accumByPrefix(r)
     if err!=nil { return err }
     results = append(results,res)
   }
-  calcUnique(reports,results,filter)
+  calcUnique(reports,results)
   lines := map[string]string{}
   total := map[string]int{}
   for _,res := range results {
@@ -152,24 +145,9 @@ type Result struct {
 
 func (r *Result) String() string { return fmt.Sprintf("%3d/%3d",r.solved,r.total) }
 
-func makeFilter(filter *spb.Report) func(string) bool {
-  filteredCases := map[string]bool{}
-  if filter!=nil {
-    for _,c := range filter.GetCases() {
-      if c.GetOutput().GetSolved() {
-        filteredCases[c.GetName()] = true
-      }
-    }
-  }
-  return func(name string) bool {
-    return filteredCases[name]
-  }
-}
-
-func accumByPrefix(r *spb.Report, filter func(string) bool) (map[string]*Result,error) {
+func accumByPrefix(r *spb.Report) (map[string]*Result,error) {
   res := map[string]*Result{}
   for _,c := range r.Cases {
-    if filter(c.GetName()) { continue }
     labels := strings.Split(c.Name,"/")
     for i:=0; i<=len(labels); i++ {
       p := strings.Join(labels[:i],"/")
@@ -184,10 +162,9 @@ func accumByPrefix(r *spb.Report, filter func(string) bool) (map[string]*Result,
   return res,nil
 }
 
-func calcUnique(r []*spb.Report, m []map[string]*Result, filter func(string) bool) {
+func calcUnique(r []*spb.Report, m []map[string]*Result) {
   for ri:=0; ri<len(r); ri++ {
     for _,c := range r[ri].Cases {
-      if filter(c.GetName()) { continue }
       if m[ri][c.Name].solved==0 { continue }
       unique := true
       for rj:=0; rj<len(m); rj++ {
@@ -216,22 +193,11 @@ func multidiff(ctx context.Context) error {
   if len(reports)==0 {
     return fmt.Errorf("no reports found under %q",*reportDir)
   }
-  // Read report with cases to filter out.
-  var err error
-  var filterRep *spb.Report
-  if *filterOutPath!="" {
-    filterRep,err = problems.ReadReport(*filterOutPath)
-    if err!=nil {
-      return fmt.Errorf("problem.ReadReport(%q): %w",*filterOutPath,err)
-    }
-  }
-  filter := makeFilter(filterRep)
-
   lines := map[string]string{}
   total := map[string]int{}
   for i,r := range reports {
     fmt.Printf("[%d] commit = %q, labes = %v\n",i,r.Commit,r.Labels)
-    res,err := accumByPrefix(r,filter)
+    res,err := accumByPrefix(r)
     if err!=nil { return err }
     for k,v := range res {
       if v.total==1 { continue
@@ -291,6 +257,85 @@ func list(ctx context.Context) error {
   return nil
 }
 
+type ProfileEntry struct {
+  Count uint64
+  Cycles uint64
+  TimeSec float64
+}
+
+func NewProfileEntry(e *spb.Profiler_Entry) ProfileEntry {
+  return ProfileEntry{e.Count,e.Cycles,e.TimeS}
+}
+
+func (e ProfileEntry) Less(b ProfileEntry) bool {
+  if x,y := e.Cycles,b.Cycles; x!=y { return x>y }
+  if x,y := e.Count,b.Count; x!=y { return x>y }
+  return false
+}
+
+func (e ProfileEntry) Add(b ProfileEntry) ProfileEntry {
+  e.Count += b.Count
+  e.Cycles += b.Cycles
+  e.TimeSec += b.TimeSec
+  return e
+}
+
+type Profile struct {
+  Total int
+  Entries map[string]ProfileEntry
+}
+
+func NewProfile() *Profile {
+  return &Profile{Total:0,Entries:map[string]ProfileEntry{}}
+}
+
+func (p *Profile) Acc(pp *spb.Profiler) {
+  p.Total++
+  for _,e := range pp.Entries {
+    p.Entries[e.Label] = p.Entries[e.Label].Add(NewProfileEntry(e))
+  }
+}
+
+type ProfileByPrefix map[string]*Profile
+
+func (bp ProfileByPrefix) Acc(c *spb.Case) {
+  labels := strings.Split(c.Name,"/")
+  for i:=0; i<len(labels); i++ {
+    p := strings.Join(labels[:i],"/")
+    if bp[p]==nil { bp[p] = NewProfile() }
+    bp[p].Acc(c.GetOutput().GetProfiler())
+  }
+}
+
+func profiler(ctx context.Context) error {
+  report,err := problems.ReadReport(*reportPath)
+  if err!=nil { return fmt.Errorf("problems.ReadReport(report_path=%q): %v",*reportPath,err) }
+
+  pbp := ProfileByPrefix{}
+  for _,c := range report.Cases {
+    if c.GetOutput().GetSolved() { pbp.Acc(c) }
+  }
+  for n,p := range pbp {
+    fmt.Printf("\n[%s] %v\n",n,p.Total)
+    type LabelEntry struct{ label string; e ProfileEntry }
+    var es []LabelEntry
+    for l,e := range p.Entries {
+      es = append(es,LabelEntry{l,e})
+    }
+    sort.Slice(es,func(i,j int) bool { return es[i].e.Less(es[j].e) })
+    if unit := p.Entries[*profilerLabel].Cycles; unit>0 {
+      for _,e := range es {
+        fmt.Printf("\t%.5f :: %s\n",float64(e.e.Cycles)/float64(unit),e.label)
+      }
+    } else {
+      for _,e := range es {
+        fmt.Printf("\t%s :: %+v\n",e.label,e.e)
+      }
+    }
+  }
+  return nil
+}
+
 func run(ctx context.Context) error {
   switch *cmd {
     case cmdSummary: return summary(ctx)
@@ -298,6 +343,7 @@ func run(ctx context.Context) error {
     case cmdDiff: return diff(ctx)
     case cmdMultiDiff: return multidiff(ctx)
     case cmdList: return list(ctx)
+    case cmdProfiler: return profiler(ctx)
     default: return fmt.Errorf("unknown command = %q",*cmd)
   }
 }

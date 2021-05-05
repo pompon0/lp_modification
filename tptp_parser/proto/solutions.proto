@@ -36,7 +36,7 @@ message Profiler {
     string label = 1;
     uint64 count = 2;
     uint64 cycles = 3;
-    float time_s = 4;
+    double time_s = 4;
   }
   repeated Entry entries = 1;
 };

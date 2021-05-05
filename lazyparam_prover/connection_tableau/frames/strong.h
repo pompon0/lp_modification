@@ -3,6 +3,7 @@
 
 template<typename Div> INL static void strong(Div *d, Branch branch, DerAndClause dcla, ssize_t strong_id) {
   STATE_FRAME(d->A,d->state,"strong(%,%)",show(dcla),strong_id);
+  PROF_CYCLES("connection_tableau::strong");
   d->state->stats.strong_steps++;
   auto mcla = d->state->allocate(d->A,dcla);
   if(!mcla) return; 

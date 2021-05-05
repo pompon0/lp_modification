@@ -8,6 +8,7 @@ struct _WeakFrame {
 
   template<typename Div> INL void run(Div *d) const {
     STATE_FRAME(d->A,d->state,"weak(%)",show(branch.false_.head()));
+    PROF_CYCLES("connection_tableau::weak");
     d->state->stats.weak_steps++;
     // try to match with lemma
     auto a = branch.false_.head();

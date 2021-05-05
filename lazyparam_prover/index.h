@@ -38,7 +38,7 @@ public:
       return memory::Maybe<AndClauseWithAtom>(); 
     }
 
-    Filter(
+    INL Filter(
         memory::Maybe<size_t> _cost_limit,
         const vec<AtomClauseId> *_atoms,
         size_t _starting_clause_id,
@@ -57,9 +57,9 @@ public:
   };
 
   struct State {
-    explicit State(const ClauseIndex *_index) : index(_index), next_starting_clause_id(0) {}
+    INL explicit State(const ClauseIndex *_index) : index(_index), next_starting_clause_id(0) {}
 
-    memory::Maybe<DerAndClause> next_starting_clause() {
+    INL memory::Maybe<DerAndClause> next_starting_clause() {
       for(auto &i = next_starting_clause_id; i<index->and_clauses.size(); i++) {
         if(index->is_starting_clause[i])
           return memory::just(index->and_clauses[i++]);
@@ -69,7 +69,7 @@ public:
     // gets all atoms which are matchable with atom.neg().
     // WARNING: Use only if atom comes from the fixed initial set.
     // TODO: mark the atoms, so that upon change, this function raises an exception.
-    Filter get_matches(Atom atom, memory::Maybe<size_t> cost_limit) {
+    INL Filter get_matches(Atom atom, memory::Maybe<size_t> cost_limit) {
       DEBUG if(next_starting_clause_id==0) error("next_starting_clause == 0");
       return Filter(
         cost_limit,
@@ -78,7 +78,7 @@ public:
         index);
     }
     // gets all atoms with a given pred and sign.
-    Filter get_matches(size_t pred, bool sign, size_t cost_limit) {
+    INL Filter get_matches(size_t pred, bool sign, size_t cost_limit) {
       DEBUG if(next_starting_clause_id==0) error("next_starting_clause == 0");
       return Filter(
         memory::just(cost_limit),
@@ -87,7 +87,7 @@ public:
         index);
     }
     // get all atoms.
-    Filter get_all(size_t cost_limit) {
+    INL Filter get_all(size_t cost_limit) {
       DEBUG if(next_starting_clause_id==0) error("next_starting_clause == 0");
       return Filter(
         memory::just(cost_limit),

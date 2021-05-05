@@ -133,9 +133,13 @@ INL bool Div::step() {
         .div = this,
         .cont = c,
       };
-      st->task(&P);
+      {
+        PROF_CYCLES("engine::balanced::Div::step_SpecTask_task");
+        st->task(&P);
+      }
     },
     [&](SpecTaskSet sts)INLL{
+      PROF_CYCLES("engine::balanced::Div::step_SpecTaskSet");
       if(sts->task_set.empty()){ save(s.cont.tail()); return; }
       size_t budget = sts->max-state->nodes_used;
       size_t head_budget = budget/sts->task_set.size();

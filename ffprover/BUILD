@@ -1,3 +1,5 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
 cc_library(
     name = "mcts_lib",
     hdrs = [
@@ -48,4 +50,29 @@ cc_binary(
     ],
     srcs = ["mcts.cc"],
     features = ["fully_static_link"],
+)
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "mcts.go",
+        "search.h",
+        "tree.h",
+        "xgboost.h",
+    ],
+    data = [":mcts"],
+    importpath = "github.com/pompon0/tptp_benchmark_go/ffprover",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//problems:go_default_library",
+        "//tool:go_default_library",
+        "//utils:go_default_library",
+        "@com_github_google_uuid//:go_default_library",
+    ],
+)
+
+go_binary(
+    name = "ffprover",
+    embed = [":go_default_library"],
+    visibility = ["//visibility:public"],
 )

@@ -83,3 +83,10 @@ def gazelle_generated():
         sum = "h1:Khx7svrCpmxxtHBq5j2mp/xVjsi8hQMfNLvJFAlrGgU=",
         version = "v0.5.5",
     )
+    
+    go_repository(
+        name = "com_github_google_uuid",
+        importpath = "github.com/google/uuid",
+        sum = "h1:qJYtXnJRWmpe7m/3XlyhrsLrEURqHRM2kxzoxXqyUDs=",
+        version = "v1.2.0",
+    )

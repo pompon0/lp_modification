@@ -17,5 +17,8 @@ go_test(
     name = "go_default_test",
     srcs = ["vampire_test.go"],
     embed = [":go_default_library"],
-    deps = ["//problems/sample:go_default_library"],
+    deps = [
+        "//problems/sample:go_default_library",
+        "//tool:go_default_library",
+    ],
 )

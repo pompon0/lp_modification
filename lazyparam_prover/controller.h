@@ -119,6 +119,7 @@ public:
   };
   
   Save::Ptr save() {
+    PROF_CYCLES("RawProver::save");
     DEBUG_ONLY({
       saves.push_back(serial_counter++);
     })
@@ -136,6 +137,7 @@ public:
   }
 
   void restore(Save::Ptr s) {
+    PROF_CYCLES("RawProver::restore");
     DEBUG_ONLY({
       if(s->prover!=this) error("Save of a different prover");
       if(s->id>=saves.size()) error("s.id = %, want < %",s->id,saves.size());
@@ -167,6 +169,7 @@ public:
   }
 
   INL features::StateVec state_features() const {
+    PROF_CYCLES("RawProver::state_features");
     return {
       .proof_size = state->nodes_used,
       .open_branches = current.size(),
@@ -179,6 +182,7 @@ public:
   }
 
   INL features::ActionVec action_features(size_t i, size_t hashed_size) const {
+    PROF_CYCLES("RawProver::action_features");
     DEBUG if(i>=next.size()) error("i=%, but there are % actions",i,next.size());
     features::ActionVec av(hashed_size);
     av.set_goal_count(next[i].goals.size());
@@ -189,6 +193,7 @@ public:
   }
 
   INL void apply_action(size_t i) { FRAME("apply_action(%)",i);
+    PROF_CYCLES("RawProver::apply_action");
     DEBUG if(done()) error("already done");
     DEBUG if(i>=next.size()) error("i=%, but there are % actions",i,next.size());
     current = next[i].cont;
@@ -216,12 +221,14 @@ public:
   };
 
   Save::Ptr save() {
+    PROF_CYCLES("Prover::save");
     return own(new Save{
       .p = p->save(),
       .actions = actions,
     });
   }
   void restore(Save::Ptr s) {
+    PROF_CYCLES("Prover::restore");
     p->restore(s->p);
     actions = s->actions;
   }
@@ -245,11 +252,13 @@ public:
 
   INL features::StateVec state_features() const { return p->state_features(); }
   INL features::ActionVec action_features(size_t i) const {
+    PROF_CYCLES("Prover::action_features");
     DEBUG if(i>=actions.size()) error("there are % actions",i,actions.size());
     return actions[i].features;
   }
 
   INL void apply_action(size_t i) { FRAME("apply_action(%)",i);
+    PROF_CYCLES("Prover::apply_action");
     DEBUG if(done()) error("already done");
     DEBUG if(i>=actions.size()) error("i=%, but there are % actions",i,actions.size());
     for(auto ra : actions[i].raw_actions) p->apply_action(ra);

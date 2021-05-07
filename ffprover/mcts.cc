@@ -1,5 +1,6 @@
 //#define DEBUG_MODE
 //#define VERBOSE
+#define PROFILE
 
 #include <iostream>
 #include <algorithm>
@@ -52,7 +53,7 @@ INL static inline double logistic(double v){ return 1./(1.+exp(-v)); }
 Search::Config cfg {
   .one_expansion_per_playout = true,
   .playouts_per_bigstep = 10000,
-  .playout_depth = 100,
+  .playout_depth = 20,
   .base_reward = [](features::StateVec f) {
     const auto value_factor = 0.3;
     return reward_model ? logistic(reward_model->predict(state_features(f))) : value_factor;
@@ -169,7 +170,9 @@ int main(int argc, char **argv) {
     default:
       error("search.run() = %",res.status);
   }
-
+  for(auto &[n,s] : profile.scopes) {
+    info("[prof] % :: count=%, cycles=%, time=%",n,s.count,s.cycles,s.time);
+  }
   info("Bigsteps: % Inf: %",search.stats.bigsteps,search.stats.inferences);
   save_result(res);
   return 0;

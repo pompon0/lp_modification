@@ -42,6 +42,7 @@ struct Search {
   Stats stats;
 
   Result run(Ctx::Ptr ctx, Tree::Ptr t, controller::Prover &p) { FRAME("Search::run");
+    PROF_CYCLES("Search::run");
     Result res;
     while(!ctx->done()) {
       if(stats.bigsteps%1==0) info("bigsteps = %",stats.bigsteps);
@@ -102,6 +103,7 @@ private:
   }
 
   void playout(Tree::Ptr t, controller::Prover &p) {
+    PROF_CYCLES("Search::playout");
     size_t expansions = 0;
     //str path = "";
     for(size_t d = cfg.playout_depth; d--;) {

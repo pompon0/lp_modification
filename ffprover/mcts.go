@@ -8,6 +8,7 @@ import (
   "bytes"
   "time"
   "os"
+  "sort"
   "strings"
   "path"
   "os/exec"
@@ -20,11 +21,12 @@ import (
 
 const mcts_bin_path = "__main__/ffprover/mcts"
 
-var timeout = flag.Duration("timeout",time.Hour,"")
+var timeout = flag.Duration("timeout",time.Minute,"")
 var priorityModelPath = flag.String("priority_model_path","","")
 var rewardModelPath = flag.String("reward_model_path","","")
-var caseNamePrefix = flag.String("case_name","","")
+var caseNamePrefix = flag.String("case_name_prefix","","")
 var outputDir = flag.String("output_dir","","")
+var solvedInReportPath = flag.String("solved_in_report_path","","")
 
 func outPriorityDir() string { return path.Join(*outputDir,"priority") }
 func outRewardDir() string { return path.Join(*outputDir,"reward") }
@@ -48,7 +50,7 @@ func MCTS(ctx context.Context, tptpFOFProblem []byte, out Output) error {
   cmd.Stdout = &outBuf
   cmd.Stderr = os.Stderr
   const memLimitBytes = 2*1000*1000*1000
-  gracefulExitTimeout := 200*time.Millisecond
+  gracefulExitTimeout := 10*time.Second
   cmdCtx,cancel := context.WithTimeout(ctx,*timeout+gracefulExitTimeout)
   defer cancel()
   if err := utils.RunWithMemLimit(cmdCtx,cmd,memLimitBytes); err!=nil {
@@ -70,8 +72,6 @@ func process(ctx context.Context, name string, p *problems.Problem, out Output) 
     return nil
   }
   log.Printf("solving %q",name)
-  // TODO: only solved cases
-  // TODO: print only non-zero features (make is sparse)
   if err:=MCTS(ctx,tptp,out); err!=nil {
     return fmt.Errorf("MCTS(): %w",err)
   }
@@ -105,6 +105,19 @@ type Output struct {
 }
 
 func run(ctx context.Context) error {
+  filter := func(name string) bool { return true }
+  if p := *solvedInReportPath; p!="" {
+    report,err := problems.ReadReport(*solvedInReportPath)
+    if err!=nil {
+      return fmt.Errorf("problems.ReadReport(): %w",err)
+    }
+    m := map[string]bool{}
+    for _,c := range report.Cases {
+      m[c.Name] = c.GetOutput().GetSolved()
+    }
+    filter = func(name string) bool { return m[name] }
+  }
+
   outPriorityDir,err:=NewDir(*outputDir,"priority")
   if err!=nil { return fmt.Errorf("NewDir(): %w",err) }
   outRewardDir,err:=NewDir(*outputDir,"reward")
@@ -123,14 +136,20 @@ func run(ctx context.Context) error {
   if err!=nil { return fmt.Errorf("problems.TptpProblems(): %w",err) }
   defer cancel()
 
+  type namedProblem struct { name string; p *problems.Problem }
+  var ps []namedProblem
   for name,p := range mp {
-    if err:=process(ctx,name,p,out); err!=nil {
-      return fmt.Errorf("process(%q): %w",name,err)
-    }
+    ps = append(ps,namedProblem{name,p})
   }
   for name,p := range tp {
-    if err:=process(ctx,name,p,out); err!=nil {
-      return fmt.Errorf("process(%q): %w",name,err)
+    ps = append(ps,namedProblem{name,p})
+  }
+  // Fix the order for determinism.
+  sort.Slice(ps,func(i,j int)bool{ return ps[i].name<ps[j].name })
+  for _,p := range ps {
+    if !filter(p.name) { continue }
+    if err:=process(ctx,p.name,p.p,out); err!=nil {
+      return fmt.Errorf("process(%q): %w",p.name,err)
     }
   }
   return nil

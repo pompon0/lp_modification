@@ -19,7 +19,8 @@ struct FeatureVec {
   }
   str show() const {
     vec<str> fs;
-    for(size_t i=0; i<indices.size(); i++) fs.push_back(util::fmt("%:%",indices[i],std::to_string(values[i])));
+    for(size_t i=0; i<indices.size(); i++)
+      if(values[i]!=0.) fs.push_back(util::fmt("%:%",indices[i],std::to_string(values[i])));
     return util::join(" ",fs);
   }
 private:

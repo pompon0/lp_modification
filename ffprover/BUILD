@@ -56,9 +56,6 @@ go_library(
     name = "go_default_library",
     srcs = [
         "mcts.go",
-        "search.h",
-        "tree.h",
-        "xgboost.h",
     ],
     data = [":mcts"],
     importpath = "github.com/pompon0/tptp_benchmark_go/ffprover",

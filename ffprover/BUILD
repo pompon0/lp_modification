@@ -73,3 +73,18 @@ go_binary(
     embed = [":go_default_library"],
     visibility = ["//visibility:public"],
 )
+
+# NOTE: rules_pkg is builtin. If you want to import rules_pkg in WORKSPACE
+#   use a different package name, like "rules_pkg2".
+load("@rules_pkg//:pkg.bzl", "pkg_tar")
+
+pkg_tar(
+    name = "ffprover_tar",
+    srcs = [":ffprover"],
+    strip_prefix = "/",
+    include_runfiles = 1,
+    remap_paths = {
+        "external/": "",
+        "": "__main__/",
+    }
+)

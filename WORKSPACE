@@ -141,9 +141,9 @@ container_pull(
 
 http_archive(
     name = "rules_haskell",
-    strip_prefix = "rules_haskell-51f854748cd634b30001c49b6fe4c1574c0a3da0",
-    urls = ["https://github.com/pompon0/rules_haskell/archive/51f854748cd634b30001c49b6fe4c1574c0a3da0.tar.gz"],
-    sha256 = "75b2b48ec147cc162a22538466e876d83f0936281a188119ccce5a83c60bc934",
+    strip_prefix = "rules_haskell-6bff155511917a8b462132600bb2c0ebfa076a30",
+    urls = ["https://github.com/pompon0/rules_haskell/archive/6bff155511917a8b462132600bb2c0ebfa076a30.tar.gz"],
+    sha256 = "adb108d07be3944b9cabb4c14a69ad3ff10082f4c2bd133061e1d6a9f934d539",
 )
 
 load("@rules_haskell//haskell:repositories.bzl", "rules_haskell_dependencies")

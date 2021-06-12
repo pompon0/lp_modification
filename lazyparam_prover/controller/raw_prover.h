@@ -12,7 +12,7 @@ struct Div {
   struct Action { 
     // mcts_node is true iff continuation should be treated as a node in MCTS.
     // Otherwise, the head of the continuation should be executed immediately in search of MCTS nodes.
-    // Current interpretation: mctx_node <=> just finished some unification.
+    // Current interpretation: mcts_node <=> just finished some unification.
     bool mcts_node = true;
     tableau::Branch branch;
     vec<tableau::Atom> goals;

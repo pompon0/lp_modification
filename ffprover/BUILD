@@ -8,7 +8,7 @@ cc_library(
         "search.h",
     ],
     deps = [
-        "//lazyparam_prover:controller",
+        "//lazyparam_prover/controller:controller",
         "//utils:utils",
         "@abseil//absl/flags:parse",
         "@abseil//absl/flags:flag",

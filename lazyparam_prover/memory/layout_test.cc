@@ -24,5 +24,5 @@ TEST(layout,simple) {
   using Any = Coprod<X,Y,Z>;
   auto x = X::Builder(M);
   *x = 5;
-  auto z = X(Any(x.build()));
+  [[maybe_unused]] auto z = X(Any(x.build()));
 }

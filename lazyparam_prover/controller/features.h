@@ -1,8 +1,10 @@
 #ifndef FEATURES_H_
 #define FEATURES_H_
 
+#include "lazyparam_prover/search_state.h"
 #include "lazyparam_prover/syntax/atom.h"
 #include "lazyparam_prover/syntax/term.h"
+#include "tool/node.h"
 
 namespace features {
 

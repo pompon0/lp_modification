@@ -2,8 +2,8 @@
 #define FFPROVER_SEARCH_H_
 
 #include <functional>
-#include "lazyparam_prover/controller.h"
-#include "lazyparam_prover/features.h"
+#include "lazyparam_prover/controller/features.h"
+#include "lazyparam_prover/controller/prover.h"
 #include "ffprover/tree.h"
 #include "utils/log.h"
 

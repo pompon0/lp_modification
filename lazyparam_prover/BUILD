@@ -99,32 +99,6 @@ cc_library(
     ],
 )
 
-cc_library(
-    name = "controller",
-    hdrs = [
-        "controller.h",
-        "features.h",
-    ],
-    deps = [
-        ":parse",
-        ":prover",
-        "//tool/bin:wrapper",
-        "//utils:utils",
-        "//lazyparam_prover/connection_tableau:prover",
-    ],
-)
-
-cc_test(
-    name = "controller_test",
-    srcs = ["controller_test.cc"],
-    deps = [
-        ":controller",
-        "//lazyparam_prover/engine:engine",
-        "//utils:utils",
-        "@gtest//:gtest_main",
-    ],
-)
-
 cc_test(
     name = "valuation_test",
     srcs = ["valuation_test.cc"],

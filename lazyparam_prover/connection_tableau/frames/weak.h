@@ -30,7 +30,7 @@ struct _WeakFrame {
           auto br = branch;
           x->feature_branch(br);
           x->feature_mcts_node(false);
-          x->task([br,a,b](Div *d)INLL{
+          x->task(memory::nothing(),[br,a,b](Div *d)INLL{
             if(!d->state->val.unify(d->A,a,b.head())) return;
             d->alt([&](typename Div::Alt *x)INLL{
               x->feature_branch(br);
@@ -45,7 +45,7 @@ struct _WeakFrame {
       auto br = branch;
       x->feature_branch(br);
       x->feature_mcts_node(false);
-      x->task([a,br](Div *d)INLL{
+      x->task(memory::nothing(),[a,br](Div *d)INLL{
         if(!a.strong_only()) {
           // add constraints (wrt path)
           // Note that we are ignoring the sign here, since
@@ -63,7 +63,7 @@ struct _WeakFrame {
           d->alt([&](typename Div::Alt *x)INLL{
             x->feature_branch(br);
             x->feature_mcts_node(false);
-            x->task([br,ca](Div *d)INLL{ strong(d,br,ca.cla,ca.i); });
+            x->task(memory::nothing(),[br,ca](Div *d)INLL{ strong(d,br,ca.cla,ca.i); });
           });
         }
       });

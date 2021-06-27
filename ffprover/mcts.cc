@@ -31,8 +31,7 @@ INL static inline FeatureVec action_features(features::ActionVec a) {
 }
 INL static inline FeatureVec state_features(features::StateVec a) {
   FeatureVec v;
-  v.push(0,a.proof_size);
-  v.push(1,a.open_branches);
+  for(size_t i = 0; i<a.features.v.size(); i++) v.push(i,a.features.v[i]);
   return v;
 }
 

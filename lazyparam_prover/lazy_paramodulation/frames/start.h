@@ -7,11 +7,11 @@ struct _StartFrame {
     if(!dcla) return;
     d->alt([&](typename Div::Alt *x)INLL{
       x->feature_branch(Branch());
-      x->task([dcla](Div *d)INLL{ strong(d,Branch(),dcla.get(),-1); });
+      x->task(memory::nothing(),[dcla](Div *d)INLL{ strong(d,Branch(),dcla.get(),-1); });
     });
     d->alt([&](typename Div::Alt *x)INLL{
       x->feature_branch(Branch());
-      x->task([](Div *d)INLL{ _StartFrame{}.run(d); });
+      x->task(memory::nothing(),[](Div *d)INLL{ _StartFrame{}.run(d); });
     });
   }
 };

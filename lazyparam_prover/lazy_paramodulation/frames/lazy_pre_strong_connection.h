@@ -36,13 +36,13 @@ struct _LazyPreStrongConnectionFrame {
       };
       d->alt([&](typename Div::Alt *x)INLL{
         x->feature_branch(branch);
-        x->task([base,l,r](Div *d)INLL{
+        x->task(memory::nothing(),[base,l,r](Div *d)INLL{
           _LazyStrongConnectionFrame{.base=base, .l=l, .r=r}.run(d);
         });
       });
       d->alt([&](typename Div::Alt *x)INLL{
         x->feature_branch(branch);
-        x->task([base,l,r](Div *d)INLL{
+        x->task(memory::nothing(),[base,l,r](Div *d)INLL{
           _LazyStrongConnectionFrame{.base=base, .l=r, .r=l}.run(d);
         });
       });

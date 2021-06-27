@@ -42,6 +42,7 @@ public:
 
   INL Valuation get_valuation() const { return val; }
   INL size_t size() const { return val.size(); }
+  INL size_t free_vars_size() const { return val.free_vars_size(); }
 
   template<typename T> INL T allocate(T t) {
     t = val.allocate(t);

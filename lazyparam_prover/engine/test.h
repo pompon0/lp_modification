@@ -5,6 +5,7 @@
 #include "lazyparam_prover/syntax/atom.h"
 #include "lazyparam_prover/memory/stack.h"
 #include "lazyparam_prover/memory/function.h"
+#include "lazyparam_prover/memory/maybe.h"
 
 namespace tableau::engine::test {
 
@@ -16,10 +17,9 @@ struct Div {
   struct Alt {
     void feature_branch(Branch){}
     void feature_mcts_node(bool){}
-    void feature_goal(Atom){}
 
     // argument of task will be executed asynchronously.
-    template<typename F> INL void task(F f) {
+    template<typename F> INL void task(memory::Maybe<Atom> goal, F f) {
       static_assert(memory::has_sig<F,void(Div*)>());
     }
   };
@@ -43,8 +43,7 @@ template<typename Div> static void cont(Div *d){
   d->alt([&](typename Div::Alt *x){
     x->feature_branch(Branch());
     x->feature_mcts_node(false);
-    x->feature_goal(Atom(d->A,true,4,{}));
-    x->task([](Div *d){});
+    x->task(memory::just(Atom(d->A,true,4,{})),[](Div *d){});
   });
 }
 

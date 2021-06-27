@@ -25,8 +25,7 @@ template<typename Div> INL static void strong(Div *d, Branch branch, DerAndClaus
       w.branch = branch;
       w.branch.false_.push(d->A,atoms.head());
       branch.true_.push(d->A,atoms.head());
-      x->feature_goal(atoms.head());
-      x->task([w](Div *d)INLL{ w.run(d); });
+      x->task(memory::just(atoms.head()),[w](Div *d)INLL{ w.run(d); });
     }
     x->feature_branch(branch);
     x->feature_mcts_node(true);

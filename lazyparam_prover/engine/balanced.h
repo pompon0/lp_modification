@@ -83,11 +83,10 @@ struct Proxy {
   struct Alt {
     Proxy *p;
     memory::List<Task> new_tasks;
-    template<typename F> INL void task(F f){ new_tasks.push(p->A,Task(p->A,f)); }
+    template<typename F> INL void task(memory::Maybe<Atom> goal, F f){ new_tasks.push(p->A,Task(p->A,f)); }
 
     INL void feature_branch(Branch) {}
     INL void feature_mcts_node(bool){}
-    INL void feature_goal(Atom){}
   };
 
   memory::Alloc &A;

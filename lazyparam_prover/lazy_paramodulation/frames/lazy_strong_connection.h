@@ -106,7 +106,7 @@ struct _LazyStrongConnectionFrame {
     d->alt([&](typename Div::Alt *x)INLL{
       x->feature_branch(base.branch_set.branch); // TODO: should I add sth to the branch?
       for(auto brs = bs.branches; !brs.empty(); brs = brs.tail()) {
-        x->task([brs](Div *d)INLL{ _WeakFrame{.branch=brs.head()}.run(d); });
+        x->task(memory::nothing(),[brs](Div *d)INLL{ _WeakFrame{.branch=brs.head()}.run(d); });
       }
     });
   }

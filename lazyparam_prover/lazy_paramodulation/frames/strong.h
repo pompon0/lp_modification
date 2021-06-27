@@ -12,7 +12,7 @@ template<typename Div> INL static void strong(Div *d, Branch branch, DerAndClaus
       w.branch = branch;
       w.branch.false_.push(d->A,cla.atom(i));
       branch.true_.push(d->A,cla.atom(i));
-      x->task([w](Div *d)INLL{ w.run(d); });
+      x->task(memory::nothing(),[w](Div *d)INLL{ w.run(d); });
     }
     x->feature_branch(branch);
   });

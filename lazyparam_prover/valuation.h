@@ -24,6 +24,11 @@ public:
   ~Valuation(){}
   using Save = memory::RewindArray<Term>::Save;
   INL size_t size() const { return val.size(); }
+  INL size_t free_vars_size() const {
+    size_t f = 0;
+    for(size_t i=size(); i--;) f += !val[i];
+    return f;
+  }
   
   template<typename T> INL T allocate(T t) {
     VarRange r = t.var_range();

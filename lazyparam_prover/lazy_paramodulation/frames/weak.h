@@ -16,7 +16,7 @@ struct _WeakFrame {
       d->alt([&](typename Div::Alt *x){
         auto br = branch;
         x->feature_branch(br);
-        x->task([br,a](Div *d)INLL{
+        x->task(memory::nothing(),[br,a](Div *d)INLL{
           if(!d->state->val.unify(d->A,a.arg(0),a.arg(1))) return;
           d->state->lazy_clauses_used.push(d->A,lazy(d->A,AxiomClause{AndClause::make(d->A,a.neg())}));
           d->alt([&](typename Div::Alt *x){ x->feature_branch(br); });
@@ -43,7 +43,7 @@ struct _WeakFrame {
         d->alt([&](typename Div::Alt *x){
           auto br = branch;
           x->feature_branch(br);
-          x->task([br,ca](Div *d)INLL{ strong(d,br,ca.cla,ca.i); });
+          x->task(memory::nothing(),[br,ca](Div *d)INLL{ strong(d,br,ca.cla,ca.i); });
         });
       }
     }
@@ -55,7 +55,7 @@ struct _WeakFrame {
       d->alt([&](typename Div::Alt *x){
         auto br = branch;
         x->feature_branch(br);
-        x->task([ca,br](Div *d)INLL{
+        x->task(memory::nothing(),[ca,br](Div *d)INLL{
           _LazyPreStrongConnectionFrame{
             .branch = br,
             .dcla = ca.cla,
@@ -74,7 +74,7 @@ struct _WeakFrame {
         d->alt([&](typename Div::Alt *x){
           auto br = branch;
           x->feature_branch(br);
-          x->task([ca,br](Div *d)INLL{
+          x->task(memory::nothing(),[ca,br](Div *d)INLL{
             _LazyPreStrongConnectionFrame{
               .branch = br,
               .dcla = ca.cla,
@@ -93,7 +93,7 @@ struct _WeakFrame {
     auto br = branch;
     d->alt([&](typename Div::Alt *x)INLL{
       x->feature_branch(br);
-      x->task([br,lr,L](Div *d)INLL{
+      x->task(memory::nothing(),[br,lr,L](Div *d)INLL{
         _LazyPreWeakConnectionFrame{
           .branch=br,
           .L = L,
@@ -110,7 +110,7 @@ struct _WeakFrame {
     auto br = branch;
     d->alt([&](typename Div::Alt *a)INLL{
       a->feature_branch(br);
-      a->task([br,x,y](Div *d)INLL{
+      a->task(memory::nothing(),[br,x,y](Div *d)INLL{
         d->state->stats.weak_unify_steps++;
         if(!d->state->val.unify(d->A,x,y)) return;
         d->alt([&](typename Div::Alt *a)INLL{

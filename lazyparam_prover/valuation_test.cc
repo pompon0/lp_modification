@@ -49,6 +49,22 @@ TEST(MGU,equal) {
   ASSERT_FALSE(V.equal(y,ffx));
 }
 
+TEST(MGU,free_vars_size) {
+  StreamLogger _(std::cerr);
+  memory::Alloc S;
+  Valuation V;
+  Term x(V.allocate(Var(S,0)));
+  Term y(V.allocate(Var(S,0)));
+  Term z(V.allocate(Var(S,0)));
+  ASSERT_EQ(3,V.free_vars_size());
+  u64 f = 0;
+  Term fx(Fun(S,f,{x}));
+  ASSERT_TRUE(V.unify(y,fx));
+  ASSERT_EQ(2,V.free_vars_size());
+  ASSERT_TRUE(V.unify(x,z));
+  ASSERT_EQ(1,V.free_vars_size());
+}
+
 TEST(MGU,eval) {
   StreamLogger _(std::cerr);
   memory::Alloc S;

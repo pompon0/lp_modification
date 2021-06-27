@@ -38,11 +38,6 @@ cc_test(
     ],
 )
 
-cc_import(
-    name = "openmp",
-    static_library = "libomp.a",
-)
-
 cc_binary(
     name = "mcts",
     deps = [

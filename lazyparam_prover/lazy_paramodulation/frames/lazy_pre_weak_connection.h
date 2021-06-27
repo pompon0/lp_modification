@@ -23,11 +23,11 @@ struct _LazyPreWeakConnectionFrame {
       };
       d->alt([&](typename Div::Alt *x)INLL{
         x->feature_branch(branch);
-        x->task([base,l,r](Div *d)INLL{ _LazyWeakConnectionFrame{.base = base, .l=l, .r=r}.run(d); });
+        x->task(memory::nothing(),[base,l,r](Div *d)INLL{ _LazyWeakConnectionFrame{.base = base, .l=l, .r=r}.run(d); });
       });
       d->alt([&](typename Div::Alt *x)INLL{
         x->feature_branch(branch);
-        x->task([base,l,r](Div *d)INLL{ _LazyWeakConnectionFrame{.base = base, .l=r, .r=l}.run(d); });
+        x->task(memory::nothing(),[base,l,r](Div *d)INLL{ _LazyWeakConnectionFrame{.base = base, .l=r, .r=l}.run(d); });
       });
     }
   }

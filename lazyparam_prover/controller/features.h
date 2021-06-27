@@ -24,6 +24,9 @@ private:
 
 // symbols for encoding features as strings
 enum : uint64_t {
+  // DO NOT change the numbering,
+  // otherwise you will have to retrain from scratch.
+  // TODO: The model should be annotated with the hashed_size.
   var_begin = 1,
   fun_begin = 2,
   pred_begin = 3,
@@ -33,8 +36,14 @@ enum : uint64_t {
 
   horizontal_begin = 6,
   vertical_begin = 7,
-  goal = 8,
-  path = 9,
+  
+  goal = 8, // open branches
+  path = 9, // current branch to solve
+  proof = 13, // current partial proof
+  free_vars = 15, // free variables in the proof
+  total_vars = 16, // (implementation specific) total vars used in the proof
+  tasks = 14, // (implementation specific) tasks to complete
+
   length = 10,
   occurences = 11,
   max_depth = 12,
@@ -115,61 +124,70 @@ private:
   encoding::Hash pref;
 };
 
+// Returns the head symbol. Accumulates all the vertical features.
+static encoding::Hash add(SubSpace s, const tool::node::Index &idx, const tableau::Val &val, encoding::Window<3> path, tableau::Term t) { FRAME("ActionVec::add(%)",show(t));
+  auto ts = encoding::term_head(idx,val.shallow_eval(t));
+  path.push(ts);
+  s.sub(encoding::occurences).at(ts) += 1;
+  util::maxi(s.sub(encoding::max_depth).at(ts),path.length());
+  s.sub(encoding::vertical_begin).at(path.hash()) += 1;
+  switch(t.type()) {
+    case tableau::Term::VAR: return ts;
+    case tableau::Term::FUN: {
+      tableau::Fun f(t);
+      encoding::Hash h(ts);
+      for(size_t i=0; i<f.arg_count(); i++) h.push(add(s,idx,val,path,f.arg(i)));
+      s.sub(encoding::horizontal_begin).at(h) += 1;
+      return ts;
+    }
+    default:
+      error("t.type() = %",t.type());
+  }
+}
+
+static void add(SubSpace s, const tool::node::Index &idx, const tableau::Val &val, tableau::Atom a) { FRAME("ActionVec::add(%)",show(a));
+  auto ss = encoding::sign(a.sign()); 
+  auto ps = encoding::pred_head(idx,a);
+  s.sub(encoding::sign_begin).at(a.sign()) += 1;
+  s.sub(encoding::occurences).at(ps) += 1;
+  encoding::Window<3> w; w.push(ss).push(ps);
+  encoding::Hash h(ps);
+  for(size_t i=0; i<a.arg_count(); i++) h.push(add(s,idx,val,w,a.arg(i)));
+  s.sub(encoding::horizontal_begin).at(h) += 1;
+}
+
 // TODO: this definitely deserves more structure
 struct ActionVec {
   explicit ActionVec(size_t space_size) : features(space_size) {}
-  
   Space features;
 
-  void set_goal_count(size_t x) { SubSpace(&features).sub(encoding::goal).at(encoding::length) = x; }
+  void set_new_goal_count(size_t x) { SubSpace(&features).sub(encoding::goal).at(encoding::length) = x; }
   void set_path_length(size_t x){ SubSpace(&features).sub(encoding::path).at(encoding::length) = x; }
-  void add_goal(const tool::node::Index &idx, const tableau::Val &val, tableau::Atom a){ add(SubSpace(&features).sub(encoding::goal),idx,val,a); }
-  void add_path(const tool::node::Index &idx, const tableau::Val &val, tableau::Atom a){ add(SubSpace(&features).sub(encoding::path),idx,val,a); }
-
-private:
-  static void add(SubSpace s, const tool::node::Index &idx, const tableau::Val &val, tableau::Atom a) { FRAME("ActionVec::add(%)",show(a));
-    auto ss = encoding::sign(a.sign()); 
-    auto ps = encoding::pred_head(idx,a);
-    s.sub(encoding::sign_begin).at(a.sign()) += 1;
-    s.sub(encoding::occurences).at(ps) += 1;
-    encoding::Window<3> w; w.push(ss).push(ps);
-    encoding::Hash h(ps);
-    for(size_t i=0; i<a.arg_count(); i++) h.push(add(s,idx,val,w,a.arg(i)));
-    s.sub(encoding::horizontal_begin).at(h) += 1;
-  }
-
-  // Returns the head symbol. Accumulates all the vertical features.
-  static encoding::Hash add(SubSpace s, const tool::node::Index &idx, const tableau::Val &val, encoding::Window<3> path, tableau::Term t) { FRAME("ActionVec::add(%)",show(t));
-    auto ts = encoding::term_head(idx,val.shallow_eval(t));
-    path.push(ts);
-    s.sub(encoding::occurences).at(ts) += 1;
-    util::maxi(s.sub(encoding::max_depth).at(ts),path.length());
-    s.sub(encoding::vertical_begin).at(path.hash()) += 1;
-    switch(t.type()) {
-      case tableau::Term::VAR: return ts;
-      case tableau::Term::FUN: {
-        tableau::Fun f(t);
-        encoding::Hash h(ts);
-        for(size_t i=0; i<f.arg_count(); i++) h.push(add(s,idx,val,path,f.arg(i)));
-        s.sub(encoding::horizontal_begin).at(h) += 1;
-        return ts;
-      }
-      default:
-        error("t.type() = %",t.type());
-    }
-  }
+  void add_new_goal(const tool::node::Index &idx, const tableau::Val &val, tableau::Atom a){ add(SubSpace(&features).sub(encoding::goal),idx,val,a); }
+  void add_path(const tool::node::Index &idx, const tableau::Val &val, tableau::Atom a){ add(SubSpace(&features).sub(encoding::path),idx,val,a); } 
 };
 
-
-
 struct StateVec {
-  size_t proof_size; // in clauses
-  size_t open_branches;
+  explicit StateVec(size_t space_size) : features(space_size) {}
+  Space features;
+ 
+  // proof size in clauses (aka nodes, aka cost)
+  void set_proof_size(size_t x){ SubSpace(&features).sub(encoding::proof).at(encoding::length) = x; }
+  // number of free variables
+  void set_free_vars_count(size_t x){ SubSpace(&features).sub(encoding::free_vars).at(encoding::length) = x; }
+  // number of variables total
+  void set_total_vars_count(size_t x){ SubSpace(&features).sub(encoding::total_vars).at(encoding::length) = x; }
+
+  // number of tasks
+  void set_task_count(size_t x){ SubSpace(&features).sub(encoding::tasks).at(encoding::length) = x; }
+  // number of goals
+  void set_goal_count(size_t x){ SubSpace(&features).sub(encoding::goal).at(encoding::length) = x; }
+
+  void add_goal(const tool::node::Index &idx, const tableau::Val &val, tableau::Atom a){ add(SubSpace(&features).sub(encoding::goal),idx,val,a); }
+
   // proof size in literals
-  // depth of the current branch
   // depth of the open branches
   // total proof depth
-  // number of variables 
   // number of free variables (total/in current branch)
   // number of free variables present only in a single branch
   // number of literals per predicate? (can we do that?)

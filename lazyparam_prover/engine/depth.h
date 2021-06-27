@@ -11,12 +11,11 @@ struct Div {
   struct Alt {
     Div *d;
     Cont cont;
-    template<typename F> INL void task(F f){ cont.push(d->A,Task(d->A,f)); }
+    template<typename F> INL void task(memory::Maybe<Atom> goal, F f){ cont.push(d->A,Task(d->A,f)); }
     
     size_t depth = 0;
     INL void feature_branch(Branch b) { depth = b.false_.size(); }
     INL void feature_mcts_node(bool){}
-    INL void feature_goal(Atom){}
   };
 
   memory::Alloc &A;

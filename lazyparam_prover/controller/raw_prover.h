@@ -8,25 +8,36 @@ namespace controller {
 
 struct Div {
   using Task = memory::function<void(Div*)>;
-  using Cont = memory::List<Task>; 
+  struct GoalTask {
+    memory::Maybe<tableau::Atom> goal;
+    Task task;
+  };
+  using Cont = memory::List<GoalTask>; 
   struct Action { 
     // mcts_node is true iff continuation should be treated as a node in MCTS.
     // Otherwise, the head of the continuation should be executed immediately in search of MCTS nodes.
     // Current interpretation: mcts_node <=> just finished some unification.
     bool mcts_node = true;
     tableau::Branch branch;
-    vec<tableau::Atom> goals;
     Cont cont;
+    vec<tableau::Atom> new_goals; 
   };
 
   struct Alt {
     Div *div;
     Action action;
-    template<typename F> INL void task(F f){ action.cont.push(div->A,Task(div->A,f)); }
+    template<typename F> INL void task(memory::Maybe<tableau::Atom> goal, F f){
+      if(goal) {
+        action.new_goals.push_back(goal.get());
+      }
+      action.cont.push(div->A,GoalTask{
+        .goal = goal,
+        .task = Task(div->A,f),
+      });
+    }
 
     INL void feature_branch(tableau::Branch b){ action.branch = b; }
     INL void feature_mcts_node(bool x){ action.mcts_node = x; }
-    INL void feature_goal(tableau::Atom goal){ action.goals.push_back(goal); }
   };
 
   INL size_t size_limit(){ return 1000000; }
@@ -41,7 +52,7 @@ struct Div {
   INL static vec<Action> Run(memory::Alloc &A, tableau::SearchState *state, Cont cont) { FRAME("Div::Run");
     DEBUG if(cont.empty()) error("empty cont");
     Div d{A,state,cont.tail()};
-    cont.head()(&d);
+    cont.head().task(&d);
     return d.next;
   }
 
@@ -115,7 +126,9 @@ public:
     p->A = make<memory::Alloc>();
 
     p->state = make<tableau::SearchState>(*problem->idx,FunOrd());
-    p->current = Div::Cont(*p->A,Div::Task(*p->A,[](Div *d){ tableau::connection_tableau::Cont::start(d); }));
+    p->current = Div::Cont(*p->A,Div::GoalTask{
+      .task = Div::Task(*p->A,[](Div *d){ tableau::connection_tableau::Cont::start(d); }),
+    });
     p->next = Div::Run(*p->A,p->state.get(),p->current);
     return p;
   }
@@ -127,12 +140,22 @@ public:
     return next.size(); 
   }
 
-  INL features::StateVec state_features() const {
+  INL features::StateVec state_features(size_t hashed_size) const {
     PROF_CYCLES("RawProver::state_features");
-    return {
-      .proof_size = state->nodes_used,
-      .open_branches = current.size(),
-    };
+    features::StateVec sv(hashed_size);
+    sv.set_proof_size(state->nodes_used);
+    sv.set_task_count(current.size());
+    sv.set_total_vars_count(state->val.size());
+    sv.set_free_vars_count(state->val.free_vars_size());
+    size_t goals = 0;
+    for(auto c = current; !c.empty(); c = c.tail()) {
+      if(auto mg = c.head().goal; mg) {
+        goals++;
+        sv.add_goal(*(problem->node_idx.get()),state->val,mg.get());
+      }
+    }
+    sv.set_goal_count(goals);
+    return sv;
   }
 
   INL bool action_is_mcts_node(size_t i) { FRAME("action_is_mcts_node");
@@ -144,10 +167,10 @@ public:
     PROF_CYCLES("RawProver::action_features");
     DEBUG if(i>=next.size()) error("i=%, but there are % actions",i,next.size());
     features::ActionVec av(hashed_size);
-    av.set_goal_count(next[i].goals.size());
+    av.set_new_goal_count(next[i].new_goals.size());
     av.set_path_length(next[i].branch.false_.size());
     for(auto p = next[i].branch.false_; !p.empty(); p = p.tail()) av.add_path(*(problem->node_idx.get()),state->val,p.head());
-    for(auto g : next[i].goals) av.add_goal(*(problem->node_idx.get()),state->val,g);
+    for(auto g : next[i].new_goals) av.add_new_goal(*(problem->node_idx.get()),state->val,g);
     return av;
   }
 

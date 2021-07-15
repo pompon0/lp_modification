@@ -13,7 +13,7 @@ private:
   void validate_idx(size_t i) const { if(i>=size_) error("[0..%) [%]",size_,i); }
 public:
   INL Array() : size_(0) {}
-  template<typename Alloc> INL Array(Alloc &x, const Array &a) : Array(x,a.size_) { for(size_t i=0; i<size_; ++i) ptr[i] = a.ptr[i]; }
+  // template<typename Alloc> INL Array(Alloc &x, const Array &a) : Array(x,a.size_) { for(size_t i=0; i<size_; ++i) ptr[i] = a.ptr[i]; }
   template<typename Alloc> INL Array(Alloc &a, size_t _size) : size_(_size), ptr((E*)a.alloc_bytes(size_*sizeof(E))) {}
   INL size_t size() const { return size_; }
   INL E & operator[](size_t i){ DEBUG validate_idx(i); return ptr[i]; }

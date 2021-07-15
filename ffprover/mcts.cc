@@ -1,6 +1,6 @@
 //#define DEBUG_MODE
 //#define VERBOSE
-#define PROFILE
+//#define PROFILE
 
 #include <iostream>
 #include <algorithm>
@@ -17,6 +17,7 @@
 
 #include "absl/flags/flag.h"
 #include "absl/flags/parse.h"
+#include "absl/time/clock.h"
 #include "absl/time/time.h"
 
 std::mt19937 rnd(7987345);
@@ -151,7 +152,10 @@ int main(int argc, char **argv) {
   auto tree = Tree::New();
   Search search(cfg);
 
+  auto t0 = absl::Now();
   auto res = search.run(ctx,tree->root(),*prover);
+  auto t1 = absl::Now();
+  auto inf_per_sec = double(search.stats.inferences)/absl::FDivDuration(t1-t0,absl::Seconds(1));
   switch(res.status) {
     case Result::SOLVED:
       info("SZS status Theorem");
@@ -169,10 +173,17 @@ int main(int argc, char **argv) {
     default:
       error("search.run() = %",res.status);
   }
-  for(auto &[n,s] : profile.scopes) {
-    info("[prof] % :: count=%, cycles=%, time=%",n,s.count,s.cycles,s.time);
+  struct PS { str name; Profile::Scope scope; };
+  vec<PS> ps;
+  for(auto &[n,s] : profile.scopes) ps.push_back({n,s});
+  std::sort(ps.begin(),ps.end(), [](const PS &a, const PS &b){
+    return a.scope.cycles>b.scope.cycles;
+  });
+  for(auto &x : ps) {
+    info("[prof] % :: count=%, cycles=%, time=%",x.name,x.scope.count,x.scope.cycles,x.scope.time);
   }
-  info("Bigsteps: % Inf: %",search.stats.bigsteps,search.stats.inferences);
+  info("Bigsteps: %; Playouts: %; Inf: %",search.stats.bigsteps,search.stats.playouts,search.stats.inferences);
+  info("inf/s = %",inf_per_sec);
   save_result(res);
   return 0;
 }

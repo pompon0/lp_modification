@@ -1,6 +1,7 @@
 #ifndef FEATURES_H_
 #define FEATURES_H_
 
+#include "lazyparam_prover/memory/stack.h"
 #include "lazyparam_prover/search_state.h"
 #include "lazyparam_prover/syntax/atom.h"
 #include "lazyparam_prover/syntax/term.h"
@@ -108,8 +109,11 @@ INL uint64_t horizontal_feature(Hash h) {
 }  // namespace
 
 struct Space {
-  INL Space(size_t size) : v(size,0) { if(size<1) error("size = %, want >=1",size); }
-  vec<size_t> v;
+  INL Space(memory::Alloc &A, size_t size) : v(A,size) {
+    if(size<1) error("size = %, want >=1",size);
+    for(size_t i=0; i<size; i++) v[i] = 0;
+  }
+  memory::Array<size_t> v;
 };
 
 struct SubSpace {
@@ -158,7 +162,7 @@ static void add(SubSpace s, const tool::node::Index &idx, const tableau::Val &va
 
 // TODO: this definitely deserves more structure
 struct ActionVec {
-  explicit ActionVec(size_t space_size) : features(space_size) {}
+  explicit ActionVec(memory::Alloc &A, size_t space_size) : features(A,space_size) {}
   Space features;
 
   void set_new_goal_count(size_t x) { SubSpace(&features).sub(encoding::goal).at(encoding::length) = x; }
@@ -168,7 +172,7 @@ struct ActionVec {
 };
 
 struct StateVec {
-  explicit StateVec(size_t space_size) : features(space_size) {}
+  explicit StateVec(memory::Alloc &A, size_t space_size) : features(A,space_size) {}
   Space features;
  
   // proof size in clauses (aka nodes, aka cost)

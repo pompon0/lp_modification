@@ -105,6 +105,7 @@ struct SearchState {
   };
 
   void restore(Save s) {
+    PROF_CYCLES("SearchState::restore");
     val.restore(s.val);
     nodes_used = s.nodes_used;
     clauses_used = s.clauses_used;

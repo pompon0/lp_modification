@@ -51,7 +51,7 @@ INL static inline double logit(double x) {
 INL static inline double logistic(double v){ return 1./(1.+exp(-v)); }
 
 Search::Config cfg {
-  .one_expansion_per_playout = true,
+  .one_expansion_per_playout = false,
   .playouts_per_bigstep = 10000,
   .playout_depth = 20,
   .base_reward = [](features::StateVec f) {
@@ -80,7 +80,7 @@ Search::Config cfg {
       for(size_t i=0; i<t.child_count(); i++) {
         if(auto w2 = t.child(i).won_depth(); w2 && w2.get()==w.get()-1) return i;
       }
-      error("inconsistend win_depth");
+      error("inconsistent win_depth");
     }
     ssize_t max_i = -1;
     double max_p = -1;
@@ -114,7 +114,7 @@ void save_result(Result res) {
   DataSet reward_data;
   bool won = res.status==Result::SOLVED;
   size_t dist = 0;
-  for(;res.path.size(); dist++) {
+  for(;res.path.size()>1 /*skip root evaluation, since it's not meaningful*/; dist++) {
     auto x = res.path.back(); res.path.pop_back();
     reward_data.instances.push_back({
       .label = logit(won?pow(0.98,dist):0.), // TODO: should it really be [-10,10] ?
@@ -155,7 +155,8 @@ int main(int argc, char **argv) {
   auto t0 = realtime_sec();
   auto cpu0 = cpu_proc_time_sec();
   auto cycles0 = __rdtsc();
-  
+ 
+  // most important line:
   auto res = search.run(ctx,tree->root(),*prover);
   
   auto t1 = realtime_sec();

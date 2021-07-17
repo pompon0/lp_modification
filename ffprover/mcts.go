@@ -120,7 +120,7 @@ func sgeTaskID() (int,bool) {
 func run(ctx context.Context) error {
   filter := func(p namedProblem) bool {
     if !strings.HasPrefix(p.name,*caseNamePrefix) { return false }
-    if problems.SolvedByVampireWithoutEquality[p.name] { return false }
+    // if problems.SolvedByVampireWithoutEquality[p.name] { return false }
     return true
   }
   if p := *solvedInReportPath; p!="" {
@@ -140,17 +140,17 @@ func run(ctx context.Context) error {
   if err!=nil { return fmt.Errorf("problems.MizarProblems(): %w",err) }
   defer cancel()
 
-  tp,cancel,err := problems.TptpProblems()
+  /*tp,cancel,err := problems.TptpProblems()
   if err!=nil { return fmt.Errorf("problems.TptpProblems(): %w",err) }
-  defer cancel()
+  defer cancel()*/
 
   var ps []namedProblem
   for name,p := range mp {
     ps = append(ps,namedProblem{name,p})
   }
-  for name,p := range tp {
+  /*for name,p := range tp {
     ps = append(ps,namedProblem{name,p})
-  }
+  }*/
   // Fix the order for determinism.
   sort.Slice(ps,func(i,j int)bool{ return ps[i].name<ps[j].name })
 

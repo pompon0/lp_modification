@@ -136,6 +136,20 @@ INL static inline double realtime_sec() {
   return tv.tv_sec + tv.tv_nsec * 1e-9;
 }
 
+INL static inline double cpu_proc_time_sec() {
+  timespec tv;
+  if(clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &tv)==-1)
+    error("%",strerror(errno));
+  return tv.tv_sec + tv.tv_nsec * 1e-9;
+}
+
+INL static inline double cpu_thread_time_sec() {
+  timespec tv;
+  if(clock_gettime(CLOCK_THREAD_CPUTIME_ID, &tv)==-1)
+    error("%",strerror(errno));
+  return tv.tv_sec + tv.tv_nsec * 1e-9;
+}
+
 struct Profile {
   struct Scope {
     size_t count = 0;

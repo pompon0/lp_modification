@@ -29,12 +29,12 @@ TEST(RewindArray,simple) {
   ASSERT_EQ(a[2],Maybe<int>());
 }
 
-TEST(Array,copy_constructor) {
+TEST(Array,copy) {
   memory::Alloc A;
   StreamLogger _(std::cerr);
   Array<int> a(A,3);
   a[1] = 7;
-  Array<int> b(A,a);
+  auto b = a.copy(A);
   b[1] = 9;
   ASSERT_EQ(a[1],7);
   ASSERT_EQ(b[1],9);

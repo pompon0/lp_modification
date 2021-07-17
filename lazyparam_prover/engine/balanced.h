@@ -77,8 +77,6 @@ struct Div {
   INL bool step();
 };
 
-//TODO: add runtime checks in proxy
-// - that search state can be updated only until done()/or() is called
 struct Proxy {
   struct Alt {
     Proxy *p;

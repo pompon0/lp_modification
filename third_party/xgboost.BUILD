@@ -20,6 +20,7 @@ cc_library(
   ]),
   copts = [
     "-fopenmp",
+    "--std=c++17",
   ],
   deps = [
     "@rabit//:rabit",

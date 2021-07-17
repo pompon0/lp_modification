@@ -21,7 +21,7 @@
 #include "absl/time/time.h"
 
 std::mt19937 rnd(7987345);
-std::uniform_real_distribution dist(0.,1.);
+//std::uniform_real_distribution dist(0.,1.);
 
 using namespace ff;
 
@@ -152,24 +152,30 @@ int main(int argc, char **argv) {
   auto tree = Tree::New();
   Search search(cfg);
 
-  auto t0 = absl::Now();
+  auto t0 = realtime_sec();
+  auto cpu0 = cpu_proc_time_sec();
+  auto cycles0 = __rdtsc();
+  
   auto res = search.run(ctx,tree->root(),*prover);
-  auto t1 = absl::Now();
-  auto inf_per_sec = double(search.stats.inferences)/absl::FDivDuration(t1-t0,absl::Seconds(1));
+  
+  auto t1 = realtime_sec();
+  auto cpu1 = cpu_proc_time_sec();
+  auto cycles1 = __rdtsc();
+  
+  auto inf_per_sec = double(search.stats.inferences)/(t1-t0);
+  auto cycles_per_sec = double(cycles1-cycles0)/(t1-t0);
+  auto cpu_usage = (cpu1-cpu0)/(t1-t0);
+
   switch(res.status) {
     case Result::SOLVED:
       info("SZS status Theorem");
       break;
-      //print_guides init_tree true;
-      //print_dot itree
     case Result::DEADEND:
       info("SZS status DeadEnd");
       break;
-      //print_guides init_tree false
     case Result::CANCELLED:
       info("SZS status ResourceOut");
       break;
-      //print_guides init_tree false
     default:
       error("search.run() = %",res.status);
   }
@@ -184,6 +190,9 @@ int main(int argc, char **argv) {
   }
   info("Bigsteps: %; Playouts: %; Inf: %",search.stats.bigsteps,search.stats.playouts,search.stats.inferences);
   info("inf/s = %",inf_per_sec);
+  info("reatime = %",t1-t0);
+  info("cpu usage = %",cpu_usage);
+  info("cycles/s = %",cycles_per_sec);
   save_result(res);
   return 0;
 }

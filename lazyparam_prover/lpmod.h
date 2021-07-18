@@ -101,7 +101,7 @@ struct VarMap {
   }
 };
 
-DerAndClause reduce_vars(memory::Alloc &A, DerAndClause cla) {
+static DerAndClause reduce_vars(memory::Alloc &A, DerAndClause cla) {
   VarMap M(cla);
   auto b = cla.to_builder(A);
   b.derived = M.map(A,b.derived);
@@ -277,7 +277,7 @@ struct SplitBuilder {
   }
 };
 
-OrForm conv(memory::Alloc &A, OrForm f) { FRAME("lazy::conv");
+static OrForm conv(memory::Alloc &A, OrForm f) { FRAME("lazy::conv");
   //info("before =\n%\n",show(f));
   ArityCtx ac; ac.traverse(f);
   f = flatten_OrForm(A,f);

@@ -13,6 +13,7 @@
 #include "lazyparam_prover/controller/features.h"
 #include "ffprover/xgboost.h"
 #include "ffprover/search.h"
+#include "ffprover/full_search.h"
 #include "ffprover/tree.h"
 
 #include "absl/flags/flag.h"
@@ -25,28 +26,8 @@ std::mt19937 rnd(7987345);
 
 using namespace ff;
 
-INL static inline FeatureVec action_features(features::ActionVec a) {
-  FeatureVec v;
-  for(size_t i = 0; i<a.features.v.size(); i++) v.push(i,a.features.v[i]);
-  return v;
-}
-INL static inline FeatureVec state_features(features::StateVec a) {
-  FeatureVec v;
-  for(size_t i = 0; i<a.features.v.size(); i++) v.push(i,a.features.v[i]);
-  return v;
-}
-
 ptr<Model> priority_model;
 ptr<Model> reward_model;
-
-INL static inline double logit(double x) {
-  if(x==1.) return 10.;
-  if(x==0.) return -10;
-  auto ret = log(x/(1.-x));
-  if(ret<-10.) return -10.;
-  if(ret>10.) return 10.;
-  return ret;
-}
 
 INL static inline double logistic(double v){ return 1./(1.+exp(-v)); }
 
@@ -55,12 +36,11 @@ Search::Config cfg {
   .playouts_per_bigstep = 10000,
   .playout_depth = 20,
   .base_reward = [](features::StateVec f) {
-    const auto value_factor = 0.3;
-    return reward_model ? logistic(reward_model->predict(state_features(f))) : value_factor;
+    //const auto value_factor = 0.3;
+    return logistic(reward_model ? reward_model->predict(state_features(f)) : logit(1./f.goal_count));
   },
   .base_priority = [](features::ActionVec f) {
-    const auto policy_temp = 2.;
-    return priority_model ? exp(priority_model->predict(action_features(f)))/policy_temp : 1.;
+    return priority_model ? exp(priority_model->predict(action_features(f))) : 1.;
   },
   .child_priority = [](Tree::Ptr t, size_t i) {
     //return dist(rnd) * t.child(i).priority();
@@ -107,32 +87,16 @@ ABSL_FLAG(str,priority_model_path,"","path to priority model");
 ABSL_FLAG(str,reward_model_path,"","path to reward model");
 ABSL_FLAG(str,priority_training_path,"","output path for priority training data");
 ABSL_FLAG(str,reward_training_path,"","output path for reward training data");
-ABSL_FLAG(size_t,features_space_size,1024,"size of the space that features will be hashed into. Should be <50k");
+ABSL_FLAG(size_t,features_space_size,1<<15,"size of the space that features will be hashed into. Should be <50k");
+ABSL_FLAG(bool,full_search,false,"perform full DFS search, rather than MCTS search");
 
-void save_result(Result res) {
-  DataSet priority_data;
-  DataSet reward_data;
+void save_result(controller::Prover &prover, Result res) {
   bool won = res.status==Result::SOLVED;
-  size_t dist = 0;
-  for(;res.path.size()>1 /*skip root evaluation, since it's not meaningful*/; dist++) {
-    auto x = res.path.back(); res.path.pop_back();
-    reward_data.instances.push_back({
-      .label = logit(won?pow(0.98,dist):0.), // TODO: should it really be [-10,10] ?
-      .features = state_features(x.state),
-    });
-    if(won) {
-      auto norm_vsum = double(x.tree.visits())/double(x.tree.child_count());
-      for(size_t i=0; i<x.tree.child_count(); i++) {
-        double v = x.tree.child(i).visits();
-        if(v>0) priority_data.instances.push_back({
-          .label = std::max<double>(-6,log(v/norm_vsum)),
-          .features = action_features(x.actions[i]),
-        });
-      }
-    }
+  auto output = collect_output(res.node,prover,won?1.:0.);
+  if(won) {
+    util::write_file(absl::GetFlag(FLAGS_priority_training_path),str_bytes(output->priority_data.show()));
   }
-  util::write_file(absl::GetFlag(FLAGS_priority_training_path),str_bytes(priority_data.show()));
-  util::write_file(absl::GetFlag(FLAGS_reward_training_path),str_bytes(reward_data.show()));
+  util::write_file(absl::GetFlag(FLAGS_reward_training_path),str_bytes(output->reward_data.show()));
 }
 
 StreamLogger _(std::cerr);
@@ -150,20 +114,20 @@ int main(int argc, char **argv) {
   info("loaded models");
 
   auto tree = Tree::New();
-  Search search(cfg);
 
   auto t0 = realtime_sec();
   auto cpu0 = cpu_proc_time_sec();
   auto cycles0 = __rdtsc();
- 
-  // most important line:
-  auto res = search.run(ctx,tree->root(),*prover);
+
+  Result res = absl::GetFlag(FLAGS_full_search) ?
+    FullSearch{}.run(ctx,tree->root(),*prover) :
+    Search(cfg).run(ctx,tree->root(),*prover);
   
   auto t1 = realtime_sec();
   auto cpu1 = cpu_proc_time_sec();
   auto cycles1 = __rdtsc();
   
-  auto inf_per_sec = double(search.stats.inferences)/(t1-t0);
+  auto inf_per_sec = double(res.stats.inferences)/(t1-t0);
   auto cycles_per_sec = double(cycles1-cycles0)/(t1-t0);
   auto cpu_usage = (cpu1-cpu0)/(t1-t0);
 
@@ -189,11 +153,13 @@ int main(int argc, char **argv) {
   for(auto &x : ps) {
     info("[prof] % :: count=%, cycles=%, time=%",x.name,x.scope.count,x.scope.cycles,x.scope.time);
   }
-  info("Bigsteps: %; Playouts: %; Inf: %",search.stats.bigsteps,search.stats.playouts,search.stats.inferences);
+  info("Bigsteps: %; Playouts: %; Inf: %",res.stats.bigsteps,res.stats.playouts,res.stats.inferences);
   info("inf/s = %",inf_per_sec);
   info("reatime = %",t1-t0);
   info("cpu usage = %",cpu_usage);
   info("cycles/s = %",cycles_per_sec);
-  save_result(res);
+
+  prover = controller::Prover::New(problem,absl::GetFlag(FLAGS_features_space_size));
+  save_result(*prover,res);
   return 0;
 }

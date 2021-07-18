@@ -39,17 +39,24 @@ Search::Config cfg {
   }
 };
 
-TEST(SEARCH,simple) {
+struct SearchSuite : testing::TestWithParam<std::pair<const str,str>> {};
+
+TEST_P(SearchSuite,simple) {
   StreamLogger _(std::cerr);
   // DEBUG_MODE is too heavy to be used by default for this test
   // and gtest doesn't support parallelizable subtests.
-  for(auto [n,tptp] : problems::sample::sample_problems()) {
+  auto [n,tptp] = GetParam();
     info("n = %",n);
     auto problem = controller::Problem::New(tptp);
     auto prover = controller::Prover::New(problem,32);
     auto tree = Tree::New();
     Search search(cfg);
     auto ctx = Ctx::with_timeout(Ctx::background(),absl::Seconds(5));
-    ASSERT_EQ(Result::SOLVED,search.run(ctx,tree->root(),*prover).status);
-  }
+    auto res = search.run(ctx,tree->root(),*prover);
+    ASSERT_EQ(Result::SOLVED,res.status);
+    prover = controller::Prover::New(problem,1);
+    collect_output(res.node,*prover,1.);
+    ASSERT_TRUE(prover->done());
 }
+
+INSTANTIATE_TEST_SUITE_P(SearchSuiteInstance,SearchSuite,testing::ValuesIn(problems::sample::sample_problems()));

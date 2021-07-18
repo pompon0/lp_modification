@@ -27,6 +27,7 @@ var rewardModelPath = flag.String("reward_model_path","","")
 var caseNamePrefix = flag.String("case_name_prefix","","")
 var outputDir = flag.String("output_dir","","")
 var solvedInReportPath = flag.String("solved_in_report_path","","")
+var fullSearch = flag.Bool("full_search",false,"")
 
 func MCTS(ctx context.Context, problemName string, tptpFOFProblem []byte, out Output) error {
   tptpPath,cleanup,err := tool.WriteTmp(tptpFOFProblem)
@@ -40,6 +41,7 @@ func MCTS(ctx context.Context, problemName string, tptpFOFProblem []byte, out Ou
     fmt.Sprintf("--reward_model_path=%v",*rewardModelPath),
     fmt.Sprintf("--priority_training_path=%v",out.PriorityDir.File(problemName)),
     fmt.Sprintf("--reward_training_path=%v",out.RewardDir.File(problemName)),
+    fmt.Sprintf("--full_search=%v",*fullSearch),
   )
   var inBuf,outBuf bytes.Buffer
   cmd.Stdin = &inBuf
@@ -118,6 +120,9 @@ func sgeTaskID() (int,bool) {
 }
 
 func run(ctx context.Context) error {
+  if *outputDir=="" {
+    return fmt.Errorf("output_dir is required")
+  }
   filter := func(p namedProblem) bool {
     if !strings.HasPrefix(p.name,*caseNamePrefix) { return false }
     // if problems.SolvedByVampireWithoutEquality[p.name] { return false }

@@ -6,6 +6,7 @@ cc_library(
         "xgboost.h",
         "tree.h",
         "search.h",
+        "full_search.h",
     ],
     deps = [
         "//lazyparam_prover/controller:controller",
@@ -28,8 +29,12 @@ cc_test(
 )
 
 cc_test(
+    # separate target, since it has
+    # DEBUG_MODE disabled.
     name = "search_test",
-    srcs = ["search_test.cc"],
+    srcs = [
+      "search_test.cc",
+    ],
     deps = [
         ":mcts_lib",
         "//utils:utils",
@@ -38,6 +43,21 @@ cc_test(
     ],
 )
 
+cc_test(
+    name = "full_search_test",
+    srcs = [
+      "full_search_test.cc",
+    ],
+    # Force optimization, as it is too slow without it
+    # and I don't know how to parallelize TEST_P yet.
+    copts = ["-O3"],
+    deps = [
+        ":mcts_lib",
+        "//utils:utils",
+        "//problems/sample:sample_cc",
+        "@gtest//:gtest_main",
+    ],
+)
 cc_binary(
     name = "mcts",
     deps = [

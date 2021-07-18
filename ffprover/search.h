@@ -5,6 +5,7 @@
 #include "lazyparam_prover/controller/features.h"
 #include "lazyparam_prover/controller/prover.h"
 #include "ffprover/tree.h"
+#include "ffprover/xgboost.h"
 #include "utils/log.h"
 
 namespace ff {
@@ -12,12 +13,14 @@ namespace ff {
 struct Result {
   enum Status { SOLVED, DEADEND, CANCELLED };
   Status status;
-  struct Node {
-    features::StateVec state;
-    vec<features::ActionVec> actions;
-    Tree::Ptr tree;
+  Tree::Ptr node;
+
+  struct Stats {
+    size_t inferences = 0;
+    size_t playouts = 0;
+    size_t bigsteps = 0;
   };
-  vec<Node> path;
+  Stats stats;
 };
 
 struct Search {
@@ -31,34 +34,18 @@ struct Search {
     std::function<size_t(Tree::Ptr)> bigstep_selector;
   };
 
-  struct Stats {
-    size_t inferences = 0;
-    size_t playouts = 0;
-    size_t bigsteps = 0;
-  };
-
   Search(Config _cfg) : cfg(_cfg) {}
 
   Config cfg;
-  Stats stats;
+  Result::Stats stats;
 
   Result run(Ctx::Ptr ctx, Tree::Ptr t, controller::Prover &p) { FRAME("Search::run");
     PROF_TIME("Search::run");
-    Result res;
     while(!ctx->done()) {
-      if(stats.bigsteps%1==0) info("bigsteps = %",stats.bigsteps);
-      // push a node on the result path
-      res.path.push_back({
-        .state = p.state_features(),
-        .tree = t,
-      });
-      if(!p.done()) {
-        for(size_t i=0,ac=p.action_count(); i<ac; i++)
-          res.path.back().actions.push_back(p.action_features(i));
-      }
+      info("bigsteps = %",stats.bigsteps);
       // early exit
-      if(p.done()){ res.status = Result::SOLVED; return res; }
-      if(t.lost()){ res.status = Result::DEADEND; return res; }
+      if(p.done()) return {.status = Result::SOLVED, .node = t, .stats = stats};
+      if(t.lost()) return {.status = Result::DEADEND, .node = t, .stats = stats};
       // perform playouts
       auto s = p.save();
       for(size_t i = 0; !ctx->done() && i<cfg.playouts_per_bigstep; i++) {
@@ -67,13 +54,11 @@ struct Search {
       }
       if(ctx->done()) break;
       auto i = cfg.bigstep_selector(t);
-      //info("bigstep %",i);
       stats.bigsteps++;
       t = t.child(i);
       p.apply_action(i);
     }
-    res.status = Result::CANCELLED;
-    return res;
+    return {.status = Result::CANCELLED, .node = t, .stats = stats};
   }
   
 private:
@@ -129,6 +114,51 @@ private:
     if(p.done()) t.set_won();
   }
 };
+
+INL static inline double logit(double x) {
+  if(x==1.) return 10.;
+  if(x==0.) return -10;
+  auto ret = log(x/(1.-x));
+  if(ret<-10.) return -10.;
+  if(ret>10.) return 10.;
+  return ret;
+}
+
+INL static inline FeatureVec action_features(features::ActionVec a) {
+  FeatureVec v;
+  for(size_t i = 0; i<a.features.v.size(); i++) v.push(i,a.features.v[i]);
+  return v;
+}
+INL static inline FeatureVec state_features(features::StateVec a) {
+  FeatureVec v;
+  for(size_t i = 0; i<a.features.v.size(); i++) v.push(i,a.features.v[i]);
+  return v;
+}
+
+struct Output {
+  DataSet priority_data;
+  DataSet reward_data;
+};
+
+static ptr<Output> collect_output(Tree::Ptr t, controller::Prover &prover, double reward) {
+  if(!t.has_parent()) return make<Output>();
+  auto output = collect_output(t.parent(),prover,reward*0.98); 
+  size_t i = t.parent().child_id(t);
+  auto norm_vsum = double(t.parent().visits())/double(t.parent().child_count());
+  for(size_t i=0; i<t.parent().child_count(); i++) {
+    double v = t.parent().child(i).visits();
+    if(v>0) output->priority_data.instances.push_back({
+      .label = std::max<double>(-6,log(v/norm_vsum)), // this is dual to the exp in the base_priority
+      .features = action_features(prover.action_features(i)),
+    });
+  }
+  prover.apply_action(i);
+  output->reward_data.instances.push_back({
+    .label = logit(reward), // TODO: should it really be [-10,10] ?
+    .features = state_features(prover.state_features()),
+  });
+  return output;
+}
 
 }  // namespace ff
 

@@ -41,7 +41,7 @@ public:
       return node->children.get().size();
     }
 
-    INL Ptr child(size_t i) { FRAME("child(%)",i);
+    INL Ptr child(size_t i) const { FRAME("child(%)",i);
       DEBUG if(!node->children) error("unexpanded node");
       return Ptr(tree,&node->children.get()[i]);
     }
@@ -54,10 +54,13 @@ public:
 
     INL bool expanded() const { return bool(node->children); }
 
-    void expand(const vec<double> &priorities) { FRAME("expand");
+    INL void expand(const vec<double> &priorities) { FRAME("expand");
       DEBUG if(node->children) error("re-expanding a node");
       node->children = memory::just(memory::Array<Node>(tree->A,priorities.size()));
-      double total = 0; for(auto p : priorities) total += p;
+      double total = 0; for(auto p : priorities){
+        DEBUG if(p<0) error("negative priority");
+        total += p;
+      }
       for(size_t i=0; i<priorities.size(); i++)
         node->children.get()[i] = Node{.parent=node,.priority=priorities[i]/total};
       // if child_count is 0, then this is a lost branch.
@@ -79,6 +82,13 @@ public:
     }
 
     INL memory::Maybe<size_t> won_depth() const { return node->won_depth; }
+
+    INL size_t child_id(Ptr t) const {
+      DEBUG if(!node->children) error("unexpanded node");
+      for(size_t i=node->children.get().size(); i--;) 
+        if(child(i).node==t.node) return i;
+      error("not a valid child");
+    }
   private:
     friend struct Tree;
     Ptr(Tree *_tree, Node *_node) : tree(_tree), node(_node) {}

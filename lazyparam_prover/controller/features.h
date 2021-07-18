@@ -174,6 +174,7 @@ struct ActionVec {
 struct StateVec {
   explicit StateVec(memory::Alloc &A, size_t space_size) : features(A,space_size) {}
   Space features;
+  size_t goal_count = 1; // a neutral default, in case it is not set.
  
   // proof size in clauses (aka nodes, aka cost)
   void set_proof_size(size_t x){ SubSpace(&features).sub(encoding::proof).at(encoding::length) = x; }
@@ -185,7 +186,10 @@ struct StateVec {
   // number of tasks
   void set_task_count(size_t x){ SubSpace(&features).sub(encoding::tasks).at(encoding::length) = x; }
   // number of goals
-  void set_goal_count(size_t x){ SubSpace(&features).sub(encoding::goal).at(encoding::length) = x; }
+  void set_goal_count(size_t x){
+    goal_count = x;
+    SubSpace(&features).sub(encoding::goal).at(encoding::length) = x;
+  }
 
   void add_goal(const tool::node::Index &idx, const tableau::Val &val, tableau::Atom a){ add(SubSpace(&features).sub(encoding::goal),idx,val,a); }
 

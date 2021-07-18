@@ -94,9 +94,9 @@ rules_proto_toolchains()
 
 http_archive(
     name = "gtest",
-    strip_prefix = "googletest-release-1.8.1",
-    urls = ["https://github.com/google/googletest/archive/release-1.8.1.zip"],
-    sha256 = "927827c183d01734cc5cfef85e0ff3f5a92ffe6188e0d18e909c5efebf28a0c7",
+    strip_prefix = "googletest-release-1.11.0",
+    urls = ["https://github.com/google/googletest/archive/release-1.11.0.zip"],
+    sha256 = "353571c2440176ded91c2de6d6cd88ddd41401d14692ec1f99e35d013feda55a",
 )
 
 http_archive(

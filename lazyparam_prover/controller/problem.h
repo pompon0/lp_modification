@@ -5,6 +5,7 @@
 #include "lazyparam_prover/controller/features.h"
 #include "lazyparam_prover/index.h"
 #include "lazyparam_prover/lpmod.h"
+#include "lazyparam_prover/eq_axioms.h"
 #include "lazyparam_prover/memory/stack.h"
 #include "lazyparam_prover/parse.h"
 #include "lazyparam_prover/search_state.h"
@@ -24,7 +25,10 @@ public:
     auto p = own(new Problem());
     p->A = make<memory::Alloc>();
     auto [f,idx] = tableau::ProtoToSyntax::orForm(*p->A,file);
-    p->idx = make<tableau::ClauseIndex>(tableau::lpmod::conv(*p->A,f));
+    if(tableau::has_equality(f)) {
+      f = tableau::lpmod::conv(*p->A,f);
+    }
+    p->idx = make<tableau::ClauseIndex>(f);
     p->node_idx = make<tool::node::Index>(idx);
     return p;
   }

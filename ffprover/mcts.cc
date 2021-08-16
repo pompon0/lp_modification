@@ -109,8 +109,8 @@ int main(int argc, char **argv) {
   auto problem = controller::Problem::New(tptp_fof);
   auto prover = controller::Prover::New(problem,absl::GetFlag(FLAGS_features_space_size));
   info("loaded problem");
-  auto priority_model = Model::New(absl::GetFlag(FLAGS_priority_model_path));
-  auto reward_model = Model::New(absl::GetFlag(FLAGS_reward_model_path));
+  priority_model = Model::New(absl::GetFlag(FLAGS_priority_model_path));
+  reward_model = Model::New(absl::GetFlag(FLAGS_reward_model_path));
   info("loaded models");
 
   auto tree = Tree::New();

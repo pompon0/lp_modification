@@ -26,56 +26,6 @@ std::mt19937 rnd(7987345);
 
 using namespace ff;
 
-ptr<Model> priority_model;
-ptr<Model> reward_model;
-
-INL static inline double logistic(double v){ return 1./(1.+exp(-v)); }
-
-Search::Config cfg {
-  .one_expansion_per_playout = false,
-  .playouts_per_bigstep = 10000,
-  .playout_depth = 20,
-  .base_reward = [](features::StateVec f) {
-    //const auto value_factor = 0.3;
-    return logistic(reward_model ? reward_model->predict(state_features(f)) : logit(1./f.goal_count));
-  },
-  .base_priority = [](features::ActionVec f) {
-    return priority_model ? exp(priority_model->predict(action_features(f))) : 1.;
-  },
-  .child_priority = [](Tree::Ptr t, size_t i) {
-    //return dist(rnd) * t.child(i).priority();
-
-    double sum_visits = std::max<size_t>(1,t.visits());
-    double visits = std::max<size_t>(1,t.child(i).visits());
-    //double factor = sqrt(sum_visits/visits); // UCB no logarithm *)
-    //double factor = sqrt(sum_visits)/visits; // PUCB from Alpha Zero *)
-    double factor = sqrt(log(sum_visits)/visits); // Original Csaba Szepesvari *)
-    const double ucb_const = 1.;
-    return (t.child(i).rewards()/visits)
-      + ucb_const*t.child(i).priority()*factor;
-  },
-  .bigstep_selector = [](Tree::Ptr t) {
-    const auto navigate_to_win = true; 
-    if(auto w = t.won_depth(); navigate_to_win && w) {
-      for(size_t i=0; i<t.child_count(); i++) {
-        if(auto w2 = t.child(i).won_depth(); w2 && w2.get()==w.get()-1) return i;
-      }
-      error("inconsistent win_depth");
-    }
-    ssize_t max_i = -1;
-    double max_p = -1;
-    for(size_t i=0; i<t.child_count(); i++) {
-      auto visits = t.child(i).visits();
-      if(visits==0) continue;
-      // choose by visits (+rewards tie breaker)
-      double p = double(visits) + t.child(i).rewards()/double(visits);
-      if(p>max_p){ max_p = p; max_i = i; }
-    }
-    DEBUG if(max_i==-1) error("no canididate for bigstep");
-    return size_t(max_i);
-  }
-};
-
 ABSL_FLAG(absl::Duration,timeout,absl::Seconds(60),"spend timeout+eps time on searching");
 //ABSL_FLAG(uint64_t,max_mem,3000000,"memory limit in bytes");
 //ABSL_FLAG(uint64_t,max_infs,20000000,"limit on number of inferences");
@@ -90,7 +40,9 @@ ABSL_FLAG(str,reward_training_path,"","output path for reward training data");
 ABSL_FLAG(size_t,features_space_size,1<<15,"size of the space that features will be hashed into. Should be <50k");
 ABSL_FLAG(bool,full_search,false,"perform full DFS search, rather than MCTS search");
 
-void save_result(controller::Prover &prover, Result res) {
+INL static inline double logistic(double v){ return 1./(1.+exp(-v)); }
+
+void save_result(controller::Prover &prover, Result res) { FRAME("save_result");
   bool won = res.status==Result::SOLVED;
   auto output = collect_output(res.node,prover,won?1.:0.);
   if(won) {
@@ -99,10 +51,62 @@ void save_result(controller::Prover &prover, Result res) {
   util::write_file(absl::GetFlag(FLAGS_reward_training_path),str_bytes(output->reward_data.show()));
 }
 
-StreamLogger _(std::cerr);
-int main(int argc, char **argv) {
+
+
+
+int main(int argc, char **argv) { 
+  StreamLogger l(std::cerr); FRAME("main");
   std::ios::sync_with_stdio(0);
   absl::ParseCommandLine(argc, argv);
+
+  ptr<Model> priority_model;
+  ptr<Model> reward_model;
+
+  Search::Config cfg {
+    .one_expansion_per_playout = false,
+    .playouts_per_bigstep = 10000,
+    .playout_depth = 20,
+    .base_reward = [&](features::StateVec f) {
+      //const auto value_factor = 0.3;
+      return logistic(reward_model ? reward_model->predict(state_features(f)) : logit(1./f.goal_count));
+    },
+    .base_priority = [&](features::ActionVec f) {
+      return priority_model ? exp(priority_model->predict(action_features(f))) : 1.;
+    },
+    .child_priority = [&](Tree::Ptr t, size_t i) {
+      //return dist(rnd) * t.child(i).priority();
+
+      double sum_visits = std::max<size_t>(1,t.visits());
+      double visits = std::max<size_t>(1,t.child(i).visits());
+      //double factor = sqrt(sum_visits/visits); // UCB no logarithm *)
+      //double factor = sqrt(sum_visits)/visits; // PUCB from Alpha Zero *)
+      double factor = sqrt(log(sum_visits)/visits); // Original Csaba Szepesvari *)
+      const double ucb_const = 1.;
+      return (t.child(i).rewards()/visits)
+        + ucb_const*t.child(i).priority()*factor;
+    },
+    .bigstep_selector = [&](Tree::Ptr t) {
+      const auto navigate_to_win = true; 
+      if(auto w = t.won_depth(); navigate_to_win && w) {
+        for(size_t i=0; i<t.child_count(); i++) {
+          if(auto w2 = t.child(i).won_depth(); w2 && w2.get()==w.get()-1) return i;
+        }
+        error("inconsistent win_depth");
+      }
+      ssize_t max_i = -1;
+      double max_p = -1;
+      for(size_t i=0; i<t.child_count(); i++) {
+        auto visits = t.child(i).visits();
+        if(visits==0) continue;
+        // choose by visits (+rewards tie breaker)
+        double p = double(visits) + t.child(i).rewards()/double(visits);
+        if(p>max_p){ max_p = p; max_i = i; }
+      }
+      DEBUG if(max_i==-1) error("no canididate for bigstep");
+      return size_t(max_i);
+    }
+  };
+
   info("parsed");
   auto ctx = Ctx::with_timeout(Ctx::background(),absl::GetFlag(FLAGS_timeout));
   auto tptp_fof = bytes_str(util::read_file(absl::GetFlag(FLAGS_problem_path)));

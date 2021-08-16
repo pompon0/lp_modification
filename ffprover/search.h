@@ -125,12 +125,12 @@ INL static inline double logit(double x) {
 }
 
 INL static inline FeatureVec action_features(features::ActionVec a) {
-  FeatureVec v;
+  FeatureVec v(a.features.v.size());
   for(size_t i = 0; i<a.features.v.size(); i++) v.push(i,a.features.v[i]);
   return v;
 }
 INL static inline FeatureVec state_features(features::StateVec a) {
-  FeatureVec v;
+  FeatureVec v(a.features.v.size());
   for(size_t i = 0; i<a.features.v.size(); i++) v.push(i,a.features.v[i]);
   return v;
 }

@@ -11,11 +11,11 @@
 namespace ff {
 
 struct FeatureVec {
-  unsigned max_index = 0; // bound on indices values
+  FeatureVec(size_t _space_size) : space_size(_space_size) {}
   void push(unsigned index, float value) {
+    if(index>=space_size) error("index % > space_size = %",index,space_size);
     indices.push_back(index);
     values.push_back(value);
-    util::maxi(max_index,index);
   }
   str show() const {
     vec<str> fs;
@@ -25,6 +25,7 @@ struct FeatureVec {
   }
 private:
   friend struct Matrix;
+  size_t space_size;
   vec<unsigned> indices;
   vec<float> values;
 };
@@ -50,7 +51,7 @@ struct Matrix {
   static ptr<Matrix> New(const FeatureVec &f) { FRAME("Matrix::New()");
     DMatrixHandle handle;
     size_t indptr[] = {0,f.indices.size()};
-    if(auto err = XGDMatrixCreateFromCSREx(indptr, &f.indices[0], &f.values[0], 2, f.indices.size(), f.max_index+1, &handle); err!=0) {
+    if(auto err = XGDMatrixCreateFromCSREx(indptr, &f.indices[0], &f.values[0], 2, f.indices.size(), f.space_size, &handle); err!=0) {
       error("XGDMatrixCreateFromCSREx() = %",err);
     }
     return own(new Matrix(handle));
@@ -112,13 +113,6 @@ private:
   bool initialized;
   BoosterHandle handle_; 
 };
-
-/*value x_mem(value unit) {
-  CAMLparam1 (unit);
-  struct rusage r_usage;
-  getrusage(RUSAGE_SELF,&r_usage);
-  CAMLreturn (Val_int(r_usage.ru_maxrss));
-}*/
 
 }  // namespace ff
 

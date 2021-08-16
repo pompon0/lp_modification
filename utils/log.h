@@ -20,6 +20,7 @@
 #define INLL __attribute__((always_inline))
 namespace util {
 
+//WARNING: Logging from destructors/constructors of global variables may cause segfaults.
 struct Logger {
   enum { INFO = 0, ERROR = 1, PUSH_FRAME = 2, POP_FRAME = 3 };
   virtual void log(int level, str msg){}

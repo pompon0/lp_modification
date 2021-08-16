@@ -33,7 +33,7 @@ cc_test(
     # DEBUG_MODE disabled.
     name = "search_test",
     srcs = [
-      "search_test.cc",
+        "search_test.cc",
     ],
     deps = [
         ":mcts_lib",
@@ -46,7 +46,7 @@ cc_test(
 cc_test(
     name = "full_search_test",
     srcs = [
-      "full_search_test.cc",
+        "full_search_test.cc",
     ],
     # Force optimization, as it is too slow without it
     # and I don't know how to parallelize TEST_P yet.
@@ -58,19 +58,25 @@ cc_test(
         "@gtest//:gtest_main",
     ],
 )
+
 cc_binary(
     name = "mcts",
     deps = [
         ":mcts_lib",
     ],
     srcs = ["mcts.cc"],
+    visibility = ["//ffprover:__subpackages__"],
     features = ["fully_static_link"],
 )
 
 go_library(
     name = "go_default_library",
     srcs = [
+        "full_search.h",
         "mcts.go",
+        "search.h",
+        "tree.h",
+        "xgboost.h",
     ],
     data = [":mcts"],
     importpath = "github.com/pompon0/tptp_benchmark_go/ffprover",
@@ -79,7 +85,6 @@ go_library(
         "//problems:go_default_library",
         "//tool:go_default_library",
         "//utils:go_default_library",
-        "@com_github_google_uuid//:go_default_library",
     ],
 )
 
@@ -101,5 +106,5 @@ pkg_tar(
     remap_paths = {
         "external/": "",
         "": "__main__/",
-    }
+    },
 )

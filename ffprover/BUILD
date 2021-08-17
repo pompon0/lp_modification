@@ -1,4 +1,30 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
+
+proto_library(
+    name = "mcts_proto",
+    srcs = ["mcts.proto"],
+    deps = [
+      "//tptp_parser/proto:tptp_proto",
+      "//tptp_parser/proto:solutions_proto",
+      "@com_google_protobuf//:duration_proto",
+    ],
+)
+
+cc_proto_library(
+    name = "mcts_cc_proto",
+    deps = [":mcts_proto"],
+)
+
+go_proto_library(
+    name = "mcts_go_proto",
+    importpath = "github.com/pompon0/tptp_benchmark_go/ffprover/mcts_go_proto",
+    proto = ":mcts_proto",
+    deps = [
+      "//tptp_parser/proto:tptp_go_proto",
+      "//tptp_parser/proto:solutions_go_proto",
+    ],
+)
 
 cc_library(
     name = "mcts_lib",
@@ -63,6 +89,7 @@ cc_binary(
     name = "mcts",
     deps = [
         ":mcts_lib",
+        ":mcts_cc_proto",
     ],
     srcs = ["mcts.cc"],
     visibility = ["//ffprover:__subpackages__"],

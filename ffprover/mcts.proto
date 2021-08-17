@@ -1,0 +1,50 @@
+syntax = "proto3";
+package mcts;
+
+import "google/protobuf/duration.proto";
+import "tptp.proto";
+import "solutions.proto";
+
+message Model {
+  bytes xgb = 1;
+}
+
+message Data {
+  string libsvm = 1;
+}
+
+message Input {
+  tptp.File problem = 1;
+  google.protobuf.Duration timeout = 2;
+
+  bool full_search = 5;
+  uint64 features_space_size = 6;
+  Model priority = 3;
+  Model reward = 4;
+}
+
+message Stats {
+  uint64 bigsteps = 1;
+  uint64 playouts = 2;
+  uint64 inferences = 3;
+
+  double realtime_sec = 4;
+  double cpu_sec = 5;
+  uint64 cpu_cycles = 6;
+}
+
+enum Status {
+  UNSPECIFIED = 0;
+  THEOREM = 1;
+  DEADEND = 2;
+  RESOURCE_OUT = 3;
+}
+
+message Output {
+  Status status = 1;
+  Data priority = 2;
+  Data reward = 3;
+
+  Stats stats = 4;
+  solutions.Profiler profiler = 5;
+}

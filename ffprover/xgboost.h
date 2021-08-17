@@ -8,6 +8,8 @@
 #include "xgboost/learner.h"
 #include "xgboost/c_api.h"
 
+#include "ffprover/mcts.pb.h"
+
 namespace ff {
 
 struct FeatureVec {
@@ -69,10 +71,7 @@ private:
 };
 
 struct Model {
-  static ptr<Model> New(const str &model_path) { FRAME("Model::New(%)",model_path);
-    if(model_path=="") {
-      return own(new Model());
-    }
+  static ptr<Model> New(const mcts::Model &proto) { FRAME("Model::New(%)",model_path);
     BoosterHandle handle;
     info("XGBoosterCreate()");
     if(auto err = XGBoosterCreate(0 /*dmat*/, 0 /*len(dmat)*/, &handle); err!=0) {
@@ -81,22 +80,19 @@ struct Model {
     info("XGBoosterLoadModel()");
     // WARNING: this compiles without error, no matter if you put handle (void*),
     // or &handle (void**), which sucks.
-    if(auto err = XGBoosterLoadModel(handle, model_path.c_str()); err!=0) {
-      error("XGBoosterLoadModel(): %",XGBGetLastError());
+    if(auto err = XGBoosterLoadModelFromBuffer(handle, proto.xgb().c_str(), proto.xgb().size()); err!=0) {
+      error("XGBoosterLoadModelFromBuffer(): %",XGBGetLastError());
     }
     info("Done");
     return own(new Model(handle));
   }
   ~Model() { FRAME("~Model()");
-    if(initialized) {
-      if(auto err = XGBoosterFree(handle_); err!=0) {
-        error("XGBoosterFree(): %",XGBGetLastError());
-      }
+    if(auto err = XGBoosterFree(handle_); err!=0) {
+      error("XGBoosterFree(): %",XGBGetLastError());
     }
   }
 
   float predict(const FeatureVec &f) {
-    if(!initialized) return 1.;
     auto mtx = Matrix::New(f); 
     const int training = true;
     bst_ulong res_len;
@@ -108,9 +104,7 @@ struct Model {
     return *res;
   }
 private:
-  Model() : initialized(false), handle_{} {}
-  Model(BoosterHandle _handle) : initialized(true), handle_(_handle) {}
-  bool initialized;
+  Model(BoosterHandle _handle) : handle_(_handle) {}
   BoosterHandle handle_; 
 };
 

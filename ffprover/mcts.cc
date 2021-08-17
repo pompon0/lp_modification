@@ -15,6 +15,7 @@
 #include "ffprover/search.h"
 #include "ffprover/full_search.h"
 #include "ffprover/tree.h"
+#include "ffprover/mcts.pb.h"
 
 #include "absl/flags/flag.h"
 #include "absl/flags/parse.h"
@@ -26,39 +27,53 @@ std::mt19937 rnd(7987345);
 
 using namespace ff;
 
-ABSL_FLAG(absl::Duration,timeout,absl::Seconds(60),"spend timeout+eps time on searching");
+//ABSL_FLAG(absl::Duration,timeout,absl::Seconds(60),"spend timeout+eps time on searching");
 //ABSL_FLAG(uint64_t,max_mem,3000000,"memory limit in bytes");
 //ABSL_FLAG(uint64_t,max_infs,20000000,"limit on number of inferences");
 //ABSL_FLAG(uint64_t,playout_depth,100,"limit on depth of a single playout");
 //ABSL_FLAG(uint64_t,max_bigsteps,100,"limit on number of big steps");
 
-ABSL_FLAG(str,problem_path,"","path to TPTP problem");
-ABSL_FLAG(str,priority_model_path,"","path to priority model");
-ABSL_FLAG(str,reward_model_path,"","path to reward model");
-ABSL_FLAG(str,priority_training_path,"","output path for priority training data");
-ABSL_FLAG(str,reward_training_path,"","output path for reward training data");
-ABSL_FLAG(size_t,features_space_size,1<<15,"size of the space that features will be hashed into. Should be <50k");
-ABSL_FLAG(bool,full_search,false,"perform full DFS search, rather than MCTS search");
+//ABSL_FLAG(str,problem_path,"","path to TPTP problem");
+//ABSL_FLAG(str,priority_model_path,"","path to priority model");
+//ABSL_FLAG(str,reward_model_path,"","path to reward model");
+//ABSL_FLAG(str,priority_training_path,"","output path for priority training data");
+//ABSL_FLAG(str,reward_training_path,"","output path for reward training data");
+//ABSL_FLAG(size_t,features_space_size,1<<15,"size of the space that features will be hashed into. Should be <50k");
+//ABSL_FLAG(bool,full_search,false,"perform full DFS search, rather than MCTS search");
 
 INL static inline double logistic(double v){ return 1./(1.+exp(-v)); }
 
-void save_result(controller::Prover &prover, Result res) { FRAME("save_result");
+ptr<mcts::Output> save_result(controller::Prover &prover, Result res) { FRAME("save_result");
   bool won = res.status==Result::SOLVED;
   auto output = collect_output(res.node,prover,won?1.:0.);
-  if(won) {
-    util::write_file(absl::GetFlag(FLAGS_priority_training_path),str_bytes(output->priority_data.show()));
-  }
-  util::write_file(absl::GetFlag(FLAGS_reward_training_path),str_bytes(output->reward_data.show()));
+  auto proto = own(new mcts::Output());
+  if(won) proto->mutable_priority()->set_libsvm(output->priority_data.show());
+  proto->mutable_reward()->set_libsvm(output->reward_data.show());
+  return proto;
 }
 
+template<typename Proto> inline static Proto proto_from_raw(const str &file_raw) { FRAME("proto_from_raw()");
+  PROF_CYCLES("proto_from_raw");
+  Proto proto;
+  auto stream = new google::protobuf::io::CodedInputStream((const uint8_t*)(&file_raw[0]),file_raw.size());
+  stream->SetRecursionLimit(100000000);
+  if(!proto.ParseFromCodedStream(stream)) {
+    error("failed to parse input");
+  }
+  return proto;
+}
 
-
+static absl::Duration proto_to_absl(const google::protobuf::Duration &proto) {
+  return absl::Seconds(proto.seconds()) + absl::Nanoseconds(proto.nanos());
+}
 
 int main(int argc, char **argv) { 
   StreamLogger l(std::cerr); FRAME("main");
   std::ios::sync_with_stdio(0);
-  absl::ParseCommandLine(argc, argv);
-
+  
+  str input_raw((std::istreambuf_iterator<char>(std::cin)), (std::istreambuf_iterator<char>()));
+  auto input = proto_from_raw<mcts::Input>(input_raw);
+  
   ptr<Model> priority_model;
   ptr<Model> reward_model;
 
@@ -108,13 +123,12 @@ int main(int argc, char **argv) {
   };
 
   info("parsed");
-  auto ctx = Ctx::with_timeout(Ctx::background(),absl::GetFlag(FLAGS_timeout));
-  auto tptp_fof = bytes_str(util::read_file(absl::GetFlag(FLAGS_problem_path)));
-  auto problem = controller::Problem::New(tptp_fof);
-  auto prover = controller::Prover::New(problem,absl::GetFlag(FLAGS_features_space_size));
+  auto ctx = Ctx::with_timeout(Ctx::background(),proto_to_absl(input.timeout()));
+  auto problem = controller::Problem::New(input.problem());
+  auto prover = controller::Prover::New(problem,input.features_space_size());
   info("loaded problem");
-  priority_model = Model::New(absl::GetFlag(FLAGS_priority_model_path));
-  reward_model = Model::New(absl::GetFlag(FLAGS_reward_model_path));
+  if(input.has_priority()) priority_model = Model::New(input.priority());
+  if(input.has_reward()) reward_model = Model::New(input.reward());
   info("loaded models");
 
   auto tree = Tree::New();
@@ -123,7 +137,7 @@ int main(int argc, char **argv) {
   auto cpu0 = cpu_proc_time_sec();
   auto cycles0 = __rdtsc();
 
-  Result res = absl::GetFlag(FLAGS_full_search) ?
+  Result res = input.full_search() ?
     FullSearch{}.run(ctx,tree->root(),*prover) :
     Search(cfg).run(ctx,tree->root(),*prover);
   
@@ -131,39 +145,36 @@ int main(int argc, char **argv) {
   auto cpu1 = cpu_proc_time_sec();
   auto cycles1 = __rdtsc();
   
-  auto inf_per_sec = double(res.stats.inferences)/(t1-t0);
-  auto cycles_per_sec = double(cycles1-cycles0)/(t1-t0);
-  auto cpu_usage = (cpu1-cpu0)/(t1-t0);
+  prover = controller::Prover::New(problem,input.features_space_size());
+  auto out = save_result(*prover,res);
 
-  switch(res.status) {
-    case Result::SOLVED:
-      info("SZS status Theorem");
-      break;
-    case Result::DEADEND:
-      info("SZS status DeadEnd");
-      break;
-    case Result::CANCELLED:
-      info("SZS status ResourceOut");
-      break;
-    default:
-      error("search.run() = %",res.status);
-  }
-  struct PS { str name; Profile::Scope scope; };
-  vec<PS> ps;
-  for(auto &[n,s] : profile.scopes) ps.push_back({n,s});
-  std::sort(ps.begin(),ps.end(), [](const PS &a, const PS &b){
-    return a.scope.cycles>b.scope.cycles;
-  });
-  for(auto &x : ps) {
-    info("[prof] % :: count=%, cycles=%, time=%",x.name,x.scope.count,x.scope.cycles,x.scope.time);
-  }
-  info("Bigsteps: %; Playouts: %; Inf: %",res.stats.bigsteps,res.stats.playouts,res.stats.inferences);
-  info("inf/s = %",inf_per_sec);
-  info("reatime = %",t1-t0);
-  info("cpu usage = %",cpu_usage);
-  info("cycles/s = %",cycles_per_sec);
+  out->set_status([&]()INLL{
+    switch(res.status) {
+    case Result::SOLVED: return mcts::THEOREM;
+    case Result::DEADEND: return mcts::DEADEND;
+    case Result::CANCELLED: return mcts::RESOURCE_OUT;
+    default: error("search.run() = %",res.status);
+    }
+  }());
+  
+  for(auto &[n,s] : profile.scopes){
+    auto *e = out->mutable_profiler()->add_entries();
+    e->set_label(n);
+    e->set_count(s.count);
+    e->set_cycles(s.cycles);
+    e->set_time_s(s.time);
+  };
+  
+  auto *s = out->mutable_stats();
+  s->set_bigsteps(res.stats.bigsteps);
+  s->set_playouts(res.stats.playouts);
+  s->set_inferences(res.stats.inferences);
+  s->set_realtime_sec(t1-t0);
+  s->set_cpu_sec(cpu1-cpu0);
+  s->set_cpu_cycles(cycles1-cycles0);
 
-  prover = controller::Prover::New(problem,absl::GetFlag(FLAGS_features_space_size));
-  save_result(*prover,res);
+  if(!out->SerializeToOstream(&std::cout)) {
+    error("outProto.SerializeToOstream() failed");  
+  }
   return 0;
 }

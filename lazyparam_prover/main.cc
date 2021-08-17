@@ -104,7 +104,6 @@ int main(int argc, char **argv) {
     }
 
     auto ctx = Ctx::with_timeout(Ctx::background(),absl::GetFlag(FLAGS_timeout));
-    //Defer _cancel(cancel);
     auto method = absl::GetFlag(FLAGS_method);
     auto deepening = absl::GetFlag(FLAGS_deepening);
     ProverOutput out;

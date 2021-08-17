@@ -59,7 +59,6 @@ func Push(ctx context.Context, commit string) error {
 
   template := &run.RevisionTemplate {
     Metadata: &run.ObjectMeta {
-      Name: fmt.Sprintf("worker-%s",commit[:15]),
       Annotations: map[string]string {
         "autoscaling.knative.dev/maxScale": "1000",
       },
@@ -87,6 +86,9 @@ func Push(ctx context.Context, commit string) error {
     },
   }
 
+  revisions,err := ns.Revisions.List(projectName).Context(ctx).Do()
+  if err!=nil { return fmt.Errorf("ns.Revisions.List(%q): %+v",serviceName,err) }
+
   service,err := ns.Services.Get(serviceName).Context(ctx).Do()
   if err!=nil { return fmt.Errorf("ns.Service.Get(%q): %v",serviceName,err) }
 
@@ -102,8 +104,6 @@ func Push(ctx context.Context, commit string) error {
 
   // cleanup old revisions
   log.Printf("wiping out old revisions...")
-  revisions,err := ns.Revisions.List(projectName).Context(ctx).Do()
-  if err!=nil { return fmt.Errorf("ns.Revisions.List(%q): %+v",serviceName,err) }
   for _,r := range revisions.Items {
     name := projectName + "/revisions/" + r.Metadata.Name
     if _,err := ns.Revisions.Delete(name).Context(ctx).Do(); err!=nil {

@@ -16,3 +16,8 @@ enum Method {
   LAZY_PARAMODULATION = 2;
 };
 
+enum Deepening {
+  BALANCED = 0;
+  DEPTH = 1;
+};
+

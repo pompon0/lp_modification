@@ -15,6 +15,7 @@ enum Prover{
   reserved 5;
   GPRUSAK_AXIOMATIC_EQ = 6;
   GPRUSAK_LP_MODIFICATION = 7;
+  GPRUSAK_LP_MODIFICATION_DEPTH = 12; // iterative deepening by proof depth
   GPRUSAK_LAZY_PARAMODULATION = 8;
   GPRUSAK_NO_EQ = 10;
 }

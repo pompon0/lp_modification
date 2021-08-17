@@ -76,7 +76,7 @@ struct Div {
 // Search takes alloc as an argument to be able to return result in its memory.
 template<typename Cont> INL bool search(const Ctx &ctx, memory::Alloc &A, SearchState &state, bool cut, size_t depth_limit) { FRAME("connection_tableau::search()");
   PROF_CYCLES("connection_tableau::search");
-  Div d(A,&state,cut,depth_limit,Cont::start());
+  Div d(A,&state,cut,depth_limit,[](Div *d){ Cont::start(d); });
   size_t steps = 0;
   for(; d.saves.size(); steps++) {
     if(d.step()) return true;

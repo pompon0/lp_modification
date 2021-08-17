@@ -29,6 +29,7 @@ var timeout = flag.Duration("timeout",time.Hour,"")
 var trans = (*ppb.Transformation)(utils.NewEnumFlag("trans", ppb.Transformation_LP_MODIFICATION))
 var transOnly = flag.Bool("trans_only",false,"")
 var method = (*ppb.Method)(utils.NewEnumFlag("method", ppb.Method_CONNECTION_TABLEAU))
+var deepening = (*ppb.Deepening)(utils.NewEnumFlag("deepening", ppb.Deepening_BALANCED))
 
 var funOrdPath = flag.String("fun_ord_path","","Path to a file with FunOrd text proto.")
 
@@ -64,7 +65,7 @@ func tptpProofString(p *spb.Proof) string {
 func prove(ctx context.Context, tptp []byte, funOrd *spb.FunOrd) error {
   ctxProve,cancel := context.WithTimeout(ctx,*timeout)
   defer cancel()
-  out,err := tableau.Prove(ctxProve,tptp,funOrd,*method,*trans,*transOnly)
+  out,err := tableau.Prove(ctxProve,tptp,funOrd,*method,*deepening,*trans,*transOnly)
   if err!=nil { return fmt.Errorf("Tableau(%q): %v",*caseName,err) }
   if !out.Solved {
     log.Printf("not solved")

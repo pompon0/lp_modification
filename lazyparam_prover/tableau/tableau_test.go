@@ -29,7 +29,7 @@ func TestTransformations(t *testing.T) {
       t.Run(testName,func(t *testing.T) {
         t.Parallel()
         log.Printf("[%s]",testName)
-        out,err := Prove(ctx,v,nil,ppb.Method_UNKNOWN_METHOD,trans,true)
+        out,err := Prove(ctx,v,nil,ppb.Method_UNKNOWN_METHOD,ppb.Deepening_BALANCED,trans,true)
         if err!=nil { t.Fatalf("Tableau(%q): %v",k,err) }
         tptpTransformed,err := tool.ProtoToTptp(ctx,out.TransformedProblem)
         if err!=nil { t.Fatalf("tool.ProtoToTptp(%q): %v",k,err) }
@@ -57,31 +57,34 @@ func TestTableau(t *testing.T) {
     {ppb.Method_CONNECTION_TABLEAU, ppb.Transformation_LP_MODIFICATION},
     {ppb.Method_LAZY_PARAMODULATION, ppb.Transformation_SKIP},
   }{
-    p := p
-    for k,v := range sample.SampleProblems() {
-      k,v := k,v
-      testName := fmt.Sprintf("case (%v,%q)",p,k)
-      t.Run(testName,func(t *testing.T) {
-        t.Parallel()
-        ctx,cancel := context.WithTimeout(ctx,3*time.Second)
-        defer cancel()
-        log.Printf("[%s]",testName)
-        proveCtx,cancel := context.WithTimeout(ctx,10*time.Second)
-        defer cancel()
-        out,err := Prove(proveCtx,v,nil,p.Method,p.Trans,false)
-        if err!=nil { t.Fatalf("Prove(%q): %v",k,err) }
-        if out.Proof==nil {
-          t.Fatalf("out = %+v",out)
-        }
-        log.Printf("out = %+v",out)
-        proofTptp,err := tool.ProofToTptp(ctx,out.Proof)
-        if err!=nil { t.Fatalf("tool.ProofTPTP(%q): %v",k,err) }
-        t.Logf("proof = %s",proofTptp)
+    for _,deepening := range []ppb.Deepening{ ppb.Deepening_BALANCED, ppb.Deepening_DEPTH} {
+      for k,v := range sample.SampleProblems() {
+        p := p
+        deepening := deepening
+        k,v := k,v
+        testName := fmt.Sprintf("case (%v,%q)",p,k)
+        t.Run(testName,func(t *testing.T) {
+          t.Parallel()
+          ctx,cancel := context.WithTimeout(ctx,3*time.Second)
+          defer cancel()
+          log.Printf("[%s]",testName)
+          proveCtx,cancel := context.WithTimeout(ctx,10*time.Second)
+          defer cancel()
+          out,err := Prove(proveCtx,v,nil,p.Method,deepening,p.Trans,false)
+          if err!=nil { t.Fatalf("Prove(%q): %v",k,err) }
+          if out.Proof==nil {
+            t.Fatalf("out = %+v",out)
+          }
+          log.Printf("out = %+v",out)
+          proofTptp,err := tool.ProofToTptp(ctx,out.Proof)
+          if err!=nil { t.Fatalf("tool.ProofTPTP(%q): %v",k,err) }
+          t.Logf("proof = %s",proofTptp)
 
-        if err!=nil { t.Fatalf("Tableau(%q): %v",k,err) }
-        _,err = tool.ValidateProof(ctx,&spb.CNF{Problem:out.CnfProblem,Proof:out.Proof})
-        if err!=nil { t.Fatalf("tool.Validate(%q): %v",k,err) }
-      })
+          if err!=nil { t.Fatalf("Tableau(%q): %v",k,err) }
+          _,err = tool.ValidateProof(ctx,&spb.CNF{Problem:out.CnfProblem,Proof:out.Proof})
+          if err!=nil { t.Fatalf("tool.Validate(%q): %v",k,err) }
+        })
+      }
     }
   }
 }

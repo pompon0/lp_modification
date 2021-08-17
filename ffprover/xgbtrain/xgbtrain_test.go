@@ -107,27 +107,23 @@ func MCTS(ctx context.Context, tptpFOFProblem []byte, model *Model) (*Output,err
 
 func TestXgbTrain(t *testing.T) {
   ctx := context.Background()
-  for name,tptpFOFProblem := range sample.SampleProblems() {
-    if name != "simple" { continue }
-    name,tptpFOFProblem := name,tptpFOFProblem
-    t.Run(name,func(t *testing.T) {
-      t.Parallel()
+  name := "simple"
+  tptpFOFProblem,ok := sample.SampleProblems()[name]
+  if !ok { t.Fatalf("problem %q is missing") }
 
-      // without a model
-      out,err := MCTS(ctx,tptpFOFProblem,nil)
-      if err!=nil { t.Fatalf("MCTS(): %v",err) }
-      fmt.Printf("out = %v",out)
+  // without a model
+  out,err := MCTS(ctx,tptpFOFProblem,nil)
+  if err!=nil { t.Fatalf("MCTS(): %v",err) }
+  fmt.Printf("out = %v",out)
 
-      // train a models
-      model := &Model{}
-      model.priority,err = XGBTrain(ctx,out.priority)
-      if err!=nil { t.Fatalf("XGBTrain(): %v",err) }
-      model.reward,err = XGBTrain(ctx,out.reward)
-      if err!=nil { t.Fatalf("XGBTrain(): %v",err) }
+  // train a models
+  model := &Model{}
+  model.priority,err = XGBTrain(ctx,out.priority)
+  if err!=nil { t.Fatalf("XGBTrain(): %v",err) }
+  model.reward,err = XGBTrain(ctx,out.reward)
+  if err!=nil { t.Fatalf("XGBTrain(): %v",err) }
 
-      // with model
-      _,err = MCTS(ctx,tptpFOFProblem,model)
-      if err!=nil { t.Fatalf("MCTS(): %v",err) }
-    })
-  }
+  // with model
+  _,err = MCTS(ctx,tptpFOFProblem,model)
+  if err!=nil { t.Fatalf("MCTS(): %v",err) }
 }

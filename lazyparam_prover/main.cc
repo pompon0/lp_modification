@@ -22,9 +22,11 @@
 #include "absl/time/time.h"
 
 const tableau::EnumFlag method_def(prover::Method_descriptor());
+const tableau::EnumFlag deepening_def(prover::Deepening_descriptor());
 const tableau::EnumFlag trans_def(prover::Transformation_descriptor());
 ABSL_FLAG(absl::Duration,timeout,absl::Seconds(4),"spend timeout+eps time on searching");
 ABSL_FLAG(tableau::EnumFlag,method,method_def,method_def.values());
+ABSL_FLAG(tableau::EnumFlag,deepening,deepening_def,deepening_def.values());
 ABSL_FLAG(tableau::EnumFlag,trans,trans_def,trans_def.values());
 ABSL_FLAG(bool,trans_only,false,"");
 
@@ -62,6 +64,15 @@ template<typename Proto> inline static Proto proto_from_raw(const str &file_raw)
   return proto;
 }
 
+using Schedule = std::function<ProverOutput(Ctx::Ptr, memory::Alloc&, SearchState&)>;
+template<typename Cont> Schedule schedule(int deepening) {
+  switch(deepening) {
+  case prover::BALANCED: return engine::balanced::schedule<Cont>;
+  case prover::DEPTH: return engine::depth::schedule<Cont>;
+  default: error("deepening = %",deepening);
+  }
+}
+
 StreamLogger _(std::cerr);
 int main(int argc, char **argv) {
   std::ios::sync_with_stdio(0);
@@ -95,19 +106,21 @@ int main(int argc, char **argv) {
     auto ctx = Ctx::with_timeout(Ctx::background(),absl::GetFlag(FLAGS_timeout));
     //Defer _cancel(cancel);
     auto method = absl::GetFlag(FLAGS_method);
+    auto deepening = absl::GetFlag(FLAGS_deepening);
     ProverOutput out;
     FunOrd fun_ord(input.fun_ord(),input.problem().nodes());
     ClauseIndex cla_idx(f);
     SearchState state(cla_idx,fun_ord);
+
     switch(method.get()) {
       case prover::CONNECTION_TABLEAU:
-        out = engine::balanced::schedule<connection_tableau::Cont>(ctx,A,state);
+        out = schedule<connection_tableau::Cont>(deepening.get())(ctx,A,state);
         break;
       case prover::LAZY_PARAMODULATION:
         if(absl::GetFlag(FLAGS_trans).get()!=prover::SKIP) {
           error("method=LAZY_PARAMODULATION requires trans=SKIP");
         }
-        out = engine::balanced::schedule<lazy_paramodulation::Cont>(ctx,A,state);
+        out = schedule<lazy_paramodulation::Cont>(deepening.get())(ctx,A,state);
         break;
       default:
         error("method = %",show(method));

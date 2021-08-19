@@ -8,14 +8,14 @@ cc_library(
         "cont.h",
     ],
     deps = [
-        "//utils:utils",
-        "//tptp_parser/proto:tptp_cc_proto",
-        "//tptp_parser/proto:solutions_cc_proto",
-        "//lazyparam_prover:valuation",
         "//lazyparam_prover:parse",
         "//lazyparam_prover:prover",
-        "//lazyparam_prover/connection_tableau/frames:frames",
-        "//lazyparam_prover/syntax:syntax",
+        "//lazyparam_prover:valuation",
+        "//lazyparam_prover/connection_tableau/frames",
+        "//lazyparam_prover/syntax",
+        "//tptp_parser/proto:solutions_cc_proto",
+        "//tptp_parser/proto:tptp_cc_proto",
+        "//utils",
     ],
 )
 
@@ -24,7 +24,7 @@ cc_test(
     srcs = ["cont_test.cc"],
     deps = [
         ":prover",
-        "//lazyparam_prover/engine:engine",
+        "//lazyparam_prover/engine",
         "@gtest//:gtest_main",
     ],
 )

@@ -14,7 +14,7 @@ cc_library(
         "stack.h",
     ],
     deps = [
-        "//utils:utils",
+        "//utils",
     ],
 )
 
@@ -23,7 +23,7 @@ cc_test(
     srcs = ["alloc_test.cc"],
     deps = [
         ":memory",
-        "//utils:utils",
+        "//utils",
         "@gtest//:gtest_main",
     ],
 )
@@ -33,7 +33,7 @@ cc_test(
     srcs = ["stack_test.cc"],
     deps = [
         ":memory",
-        "//utils:utils",
+        "//utils",
         "@gtest//:gtest_main",
     ],
 )
@@ -42,8 +42,8 @@ cc_test(
     name = "list_test",
     srcs = ["list_test.cc"],
     deps = [
-        "//utils:utils",
         ":memory",
+        "//utils",
         "@gtest//:gtest_main",
     ],
 )
@@ -52,8 +52,8 @@ cc_test(
     name = "layout_test",
     srcs = ["layout_test.cc"],
     deps = [
-        "//utils:utils",
         ":memory",
+        "//utils",
         "@gtest//:gtest_main",
     ],
 )

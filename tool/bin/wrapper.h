@@ -22,6 +22,19 @@ static ::tool::Response wrapper(Ctx::Ptr ctx, ::tool::Request req) {
   return resp;
 }
 
+static str tptp_cnf(const str &tptp_fof) {
+  ::tool::Request req;
+  req.mutable_fof_to_cnf()->set_tptp_fof(tptp_fof);
+  return wrapper(Ctx::background(),req).fof_to_cnf().tptp_cnf();
+}
+
+static tptp::File tptp_to_proto(const str &tptp_cnf) {
+  ::tool::Request req;
+  req.mutable_tptp_to_proto()->set_tptp(tptp_cnf);
+  req.mutable_tptp_to_proto()->set_lang(tptp::Input::CNF);
+  return wrapper(Ctx::background(),req).tptp_to_proto().file();
+}
+
 }
 
 #endif  // TOOL_BIN_WRAPPER_H_

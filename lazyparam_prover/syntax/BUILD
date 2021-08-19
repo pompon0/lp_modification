@@ -5,13 +5,13 @@ package(
 cc_library(
     name = "syntax",
     hdrs = [
-        "term.h",
         "atom.h",
         "clause.h",
         "show.h",
+        "term.h",
     ],
     deps = [
-        "//lazyparam_prover/memory:memory",
+        "//lazyparam_prover/memory",
     ],
 )
 
@@ -20,7 +20,7 @@ cc_test(
     srcs = ["term_test.cc"],
     deps = [
         ":syntax",
-        "//utils:utils",
+        "//utils",
         "@gtest//:gtest_main",
     ],
 )
@@ -30,7 +30,7 @@ cc_test(
     srcs = ["clause_test.cc"],
     deps = [
         ":syntax",
-        "//utils:utils",
+        "//utils",
         "@gtest//:gtest_main",
     ],
 )

@@ -1,3 +1,4 @@
+load("@rules_proto//proto:defs.bzl", "proto_library")
 load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
 load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
 
@@ -38,23 +39,23 @@ cc_proto_library(
 
 cc_library(
     name = "wrapper",
-    data = [":bin"],
     hdrs = ["wrapper.h"],
+    data = [":bin"],
+    visibility = ["//visibility:public"],
     deps = [
         ":bin_cc_proto",
-        "//utils:utils",
+        "//utils",
     ],
-    visibility = ["//visibility:public"],
 )
 
 cc_test(
     name = "wrapper_test",
     srcs = ["wrapper_test.cc"],
     deps = [
-        ":wrapper",
         ":bin_cc_proto",
-        "//utils:utils",
+        ":wrapper",
         "//problems/sample:sample_cc",
+        "//utils",
         "@gtest//:gtest_main",
     ],
 )

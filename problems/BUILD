@@ -8,8 +8,8 @@ go_library(
         "vampire_no_eq.go",
     ],
     data = [
-        "@tptp_problems//file",
         "@mizar_problems//file",
+        "@tptp_problems//file",
     ],
     importpath = "github.com/pompon0/tptp_benchmark_go/problems",
     visibility = ["//visibility:public"],

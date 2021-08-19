@@ -11,7 +11,6 @@ import (
   "os"
   "path/filepath"
 
-  "github.com/golang/protobuf/ptypes"
   "github.com/pompon0/tptp_benchmark_go/problems"
   "github.com/pompon0/tptp_benchmark_go/tool"
   spb "github.com/pompon0/tptp_benchmark_go/tptp_parser/proto/solutions_go_proto"
@@ -73,8 +72,7 @@ func caseSummary(c *spb.Case) string {
   if !c.GetOutput().GetSolved() {
     status = "UNSOLVED"
   }
-  d,err := ptypes.Duration(c.Duration)
-  if err!=nil { return fmt.Sprintf("ptypes.Duration(%q): %v",c.Name,err); }
+  d := c.Duration.AsDuration()
   return fmt.Sprintf("%20q : %s %05.2f cost=%3d cont=%d",c.Name,status,d.Seconds(),c.Output.Cost,c.Output.ContinuationCount)
 }
 
@@ -88,8 +86,7 @@ func summary(ctx context.Context) error {
   for _,c := range report.Cases {
     if !c.GetOutput().GetSolved() { continue }
     solved += 1
-    d,err := ptypes.Duration(c.Duration)
-    if err!=nil { log.Printf("ptypes.Duration(%q): %v",c.Name,err); continue }
+    d := c.Duration.AsDuration()
     stats.Add(c.Output.Cost,Rec{1,c.Output.ContinuationCount,d})
   }
   fmt.Printf("solved %d/%d\n",solved,len(report.Cases))
@@ -154,9 +151,7 @@ func accumByPrefix(r *spb.Report) (map[string]*Result,error) {
       if res[p]==nil { res[p] = &Result{} }
       if c.GetOutput().GetSolved() { res[p].solved++ }
       res[p].total++
-      d,err := ptypes.Duration(c.Duration)
-      if err!=nil { return nil,err }
-      res[p].totalTime += d
+      res[p].totalTime += c.Duration.AsDuration()
     }
   }
   return res,nil

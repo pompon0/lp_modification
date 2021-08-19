@@ -30,13 +30,14 @@ go_library(
 cc_binary(
     name = "limit",
     srcs = ["limit.cc"],
-    deps = [":utils"],
     features = ["fully_static_link"],
     visibility = ["//visibility:public"],
+    deps = [":utils"],
 )
 
 cc_library(
     name = "utils",
+    srcs = ["log.cc"],
     hdrs = [
         "bazel.h",
         "ctx.h",
@@ -49,10 +50,9 @@ cc_library(
         "sys.h",
         "types.h",
     ],
-    srcs = ["log.cc"],
     deps = [
-        "@abseil//absl/strings:strings",
-        "@abseil//absl/time:time",
+        "@abseil//absl/strings",
+        "@abseil//absl/time",
         "@abseil//absl/types:optional",
         "@com_google_protobuf//:protobuf",
     ],

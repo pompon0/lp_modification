@@ -1,4 +1,4 @@
-load("@rules_haskell//haskell:defs.bzl", "haskell_library", "haskell_test", "haskell_binary")
+load("@rules_haskell//haskell:defs.bzl", "haskell_binary", "haskell_library", "haskell_test")
 
 haskell_library(
     name = "Err",
@@ -25,38 +25,38 @@ haskell_test(
 haskell_library(
     name = "Tptp",
     srcs = [
-        "Tptp.hs",
-        "Parser.hs",
         "Ctx.hs",
-        "HashSeq.hs",
         "Err.hs",
+        "HashSeq.hs",
+        "Parser.hs",
+        "Tptp.hs",
     ],
     deps = [
         ":Err",
+        "//tptp_parser/proto:tptp_haskell_proto",
+        "@stackage//:attoparsec",
         "@stackage//:base",
         "@stackage//:containers",
         "@stackage//:lens",
-        "@stackage//:proto-lens",
         "@stackage//:parsec",
+        "@stackage//:proto-lens",
         "@stackage//:text",
-        "@stackage//:attoparsec",
         "@stackage//:transformers",
-        "@tptp//:tptp",
-        "//tptp_parser/proto:tptp_haskell_proto",
+        "@tptp",
     ],
 )
 
 haskell_library(
     name = "Pred",
     srcs = [
-        "Pred.hs",
         "Coq.hs",
+        "Pred.hs",
     ],
     deps = [
         ":Tptp",
         "@stackage//:base",
-        "@stackage//:lens",
         "@stackage//:containers",
+        "@stackage//:lens",
     ],
 )
 
@@ -64,8 +64,8 @@ haskell_library(
     name = "MGU",
     srcs = ["MGU.hs"],
     deps = [
-        ":Tptp",
         ":Pred",
+        ":Tptp",
         "@stackage//:base",
         "@stackage//:containers",
         "@stackage//:lens",
@@ -78,17 +78,17 @@ haskell_test(
     name = "MGU_test",
     srcs = ["MGUTest.hs"],
     deps = [
-        ":Tptp",
+        ":IO",
         ":MGU",
         ":Pred",
-        ":IO",
+        ":Tptp",
+        "//tptp_parser/proto:tptp_haskell_proto",
         "@stackage//:base",
         "@stackage//:containers",
         "@stackage//:lens",
+        "@stackage//:proto-lens",
         "@stackage//:tasty",
         "@stackage//:tasty-hunit",
-        "//tptp_parser/proto:tptp_haskell_proto",
-        "@stackage//:proto-lens",
         "@stackage//:text",
     ],
 )
@@ -99,15 +99,15 @@ haskell_library(
         "FOF.hs",
     ],
     deps = [
-        ":Tptp",
         ":Pred",
-        "@stackage//:base",
-        "@stackage//:text",
-        "@stackage//:lens",
-        "@stackage//:transformers",
-        "@stackage//:proto-lens",
-        "@stackage//:containers",
+        ":Tptp",
         "//tptp_parser/proto:tptp_haskell_proto",
+        "@stackage//:base",
+        "@stackage//:containers",
+        "@stackage//:lens",
+        "@stackage//:proto-lens",
+        "@stackage//:text",
+        "@stackage//:transformers",
     ],
 )
 
@@ -117,37 +117,37 @@ haskell_library(
         "DNF.hs",
     ],
     deps = [
-        ":Tptp",
-        ":Pred",
         ":FOF",
         ":MGU",
+        ":Pred",
+        ":Tptp",
+        "//tptp_parser/proto:tptp_haskell_proto",
         "@stackage//:base",
         "@stackage//:containers",
-        "@stackage//:text",
         "@stackage//:lens",
         "@stackage//:proto-lens",
-        "//tptp_parser/proto:tptp_haskell_proto",
+        "@stackage//:text",
     ],
 )
 
 haskell_library(
     name = "Valid",
     srcs = [
-        "Valid.hs",
-        "Proof.hs",
         "EqAxioms.hs",
+        "Proof.hs",
+        "Valid.hs",
     ],
     deps = [
-        ":Tptp",
         ":DNF",
         ":Pred",
+        ":Tptp",
+        "//tptp_parser/proto:solutions_haskell_proto",
         "@stackage//:base",
         "@stackage//:containers",
         "@stackage//:lens",
         "@stackage//:proto-lens",
         "@stackage//:text",
         "@stackage//:transformers",
-        "//tptp_parser/proto:solutions_haskell_proto",
     ],
 )
 
@@ -162,22 +162,22 @@ haskell_library(
 haskell_binary(
     name = "tool",
     srcs = ["ToolBin.hs"],
+    features = ["fully_static_link"],
+    visibility = ["//visibility:public"],
     deps = [
         ":DNF",
         ":FOF",
+        ":IO",
         ":Tptp",
         ":Valid",
-        ":IO",
+        "//tptp_parser/proto:solutions_haskell_proto",
+        "//tptp_parser/proto:tptp_haskell_proto",
         "@stackage//:base",
         "@stackage//:bytestring",
         "@stackage//:containers",
+        "@stackage//:deepseq",
         "@stackage//:lens",
         "@stackage//:proto-lens",
         "@stackage//:text",
-        "@stackage//:deepseq",
-        "//tptp_parser/proto:tptp_haskell_proto",
-        "//tptp_parser/proto:solutions_haskell_proto",
     ],
-    features = ["fully_static_link"],
-    visibility = ["//visibility:public"],
 )

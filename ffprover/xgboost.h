@@ -71,7 +71,7 @@ private:
 };
 
 struct Model {
-  static ptr<Model> New(const mcts::Model &proto) { FRAME("Model::New(%)",model_path);
+  static ptr<Model> New(const mcts::Model &proto) { FRAME("Model::New()");
     BoosterHandle handle;
     info("XGBoosterCreate()");
     if(auto err = XGBoosterCreate(0 /*dmat*/, 0 /*len(dmat)*/, &handle); err!=0) {

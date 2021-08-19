@@ -1,3 +1,4 @@
+load("@rules_proto//proto:defs.bzl", "proto_library")
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
 
@@ -49,12 +50,12 @@ cc_library(
     name = "sample_cc",
     hdrs = ["sample.h"],
     data = [":sample_textpb"],
+    visibility = ["//visibility:public"],
     deps = [
-        "//utils:utils",
         ":sample_cc_proto",
+        "//utils",
         "@com_google_protobuf//:protobuf",
     ],
-    visibility = ["//visibility:public"],
 )
 
 cc_test(
@@ -62,7 +63,7 @@ cc_test(
     srcs = ["sample_test.cc"],
     deps = [
         ":sample_cc",
-        "//utils:utils",
+        "//utils",
         "@gtest//:gtest_main",
     ],
 )

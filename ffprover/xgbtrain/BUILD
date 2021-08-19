@@ -9,8 +9,8 @@ go_test(
     name = "go_default_test",
     srcs = ["xgbtrain_test.go"],
     data = [
-      "//ffprover:mcts",
-      ":xgb-train",
+        ":xgb-train",
+        "//ffprover:mcts",
     ],
     deps = [
         "//problems/sample:go_default_library",

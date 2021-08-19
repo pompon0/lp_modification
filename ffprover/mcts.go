@@ -2,49 +2,37 @@ package mcts
 
 import (
   "context"
-  "log"
-  "strconv"
   "fmt"
-  "flag"
   "bytes"
-  "time"
   "os"
-  "sort"
-  "strings"
-  "path"
   "os/exec"
 
-  "github.com/pompon0/tptp_benchmark_go/tool"
-  "github.com/pompon0/tptp_benchmark_go/problems"
+  "github.com/golang/protobuf/proto"
   "github.com/pompon0/tptp_benchmark_go/utils"
+  mpb "github.com/pompon0/tptp_benchmark_go/ffprover/mcts_go_proto"
 )
 
 const mcts_bin_path = "__main__/ffprover/mcts"
 
-func MCTS(ctx context.Context, problemName string, tptpFOFProblem []byte, out Output) error {
-  tptpPath,cleanup,err := tool.WriteTmp(tptpFOFProblem)
-  if err!=nil { return fmt.Errorf("tool.WriteTmp(): %w",err) }
-  defer cleanup()
-
-  cmd := exec.Command(utils.Runfile(mcts_bin_path),
-    fmt.Sprintf("--timeout=%v",*timeout),
-    fmt.Sprintf("--problem_path=%v",tptpPath),
-    fmt.Sprintf("--priority_model_path=%v",*priorityModelPath),
-    fmt.Sprintf("--reward_model_path=%v",*rewardModelPath),
-    fmt.Sprintf("--priority_training_path=%v",out.PriorityDir.File(problemName)),
-    fmt.Sprintf("--reward_training_path=%v",out.RewardDir.File(problemName)),
-    fmt.Sprintf("--full_search=%v",*fullSearch),
-  )
+func MCTS(ctx context.Context, input *mpb.Input) (*mpb.Output,error) {
   var inBuf,outBuf bytes.Buffer
+  inputBytes,err := proto.Marshal(input)
+  if err!=nil { return nil,fmt.Errorf("proto.Marshal(): %w",err) }
+  if _,err := inBuf.Write(inputBytes); err!=nil {
+    return nil,fmt.Errorf("inBuf.Write(): %w",err)
+  }
+
+  cmd := exec.Command(utils.Runfile(mcts_bin_path))
   cmd.Stdin = &inBuf
   cmd.Stdout = &outBuf
   cmd.Stderr = os.Stderr
   const memLimitBytes = 2*1000*1000*1000
-  gracefulExitTimeout := time.Minute
-  cmdCtx,cancel := context.WithTimeout(ctx,*timeout+gracefulExitTimeout)
-  defer cancel()
-  if err := utils.RunWithMemLimit(cmdCtx,cmd,memLimitBytes); err!=nil {
-    return fmt.Errorf("cmd.Run(): %w",err)
+  if err := utils.RunWithMemLimit(ctx,cmd,memLimitBytes); err!=nil {
+    return nil,fmt.Errorf("cmd.Run(): %w",err)
   }
-  return nil
+  output := &mpb.Output{}
+  if err:=proto.Unmarshal(outBuf.Bytes(),output); err!=nil {
+    return nil,fmt.Errorf("proto.Unmarshal(): %w",err)
+  }
+  return output,nil
 }

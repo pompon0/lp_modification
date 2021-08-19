@@ -62,9 +62,9 @@ func Prove(ctx context.Context, tptpFOFProblem []byte, funOrd *spb.FunOrd, metho
 func Tableau(ctx context.Context, cnfProblem *tpb.File, funOrd *spb.FunOrd, streamStdErr bool, method ppb.Method, deepening ppb.Deepening, trans ppb.Transformation, transOnly bool) (*spb.ProverOutput,error) {
   var inBuf,outBuf,errBuf bytes.Buffer
   cnfProblemBytes, err := proto.Marshal(&spb.ProverInput{Problem:cnfProblem,FunOrd:funOrd})
-  if err!=nil { return nil,fmt.Errorf("proto.Marshal(): %v",err) }
+  if err!=nil { return nil,fmt.Errorf("proto.Marshal(): %w",err) }
   if _,err := inBuf.Write(cnfProblemBytes); err!=nil {
-    return nil,fmt.Errorf("inBuf.Write(): %v",err)
+    return nil,fmt.Errorf("inBuf.Write(): %w",err)
   }
   timeout := time.Hour
   if deadline,ok := ctx.Deadline(); ok {
@@ -93,12 +93,12 @@ func Tableau(ctx context.Context, cnfProblem *tpb.File, funOrd *spb.FunOrd, stre
       return &spb.ProverOutput{Solved:false,Killed:true},nil
     }
     // deadline exceeded is not acceptable, summary should be always provided.
-    return nil,fmt.Errorf("cmd.Run(): %v",err)
+    return nil,fmt.Errorf("cmd.Run(): %w",err)
   }
 
   output := &spb.ProverOutput{}
   if err:=proto.Unmarshal(outBuf.Bytes(),output); err!=nil {
-    return nil,fmt.Errorf("proto.UnmarshalText(): %v",err)
+    return nil,fmt.Errorf("proto.Unmarshal(): %w",err)
   }
   return output,nil
 }

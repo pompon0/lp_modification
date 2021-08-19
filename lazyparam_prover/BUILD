@@ -1,3 +1,4 @@
+load("@rules_proto//proto:defs.bzl", "proto_library")
 load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
 
 package(
@@ -27,22 +28,22 @@ cc_library(
         "derived.h",
     ],
     deps = [
-        "//utils:utils",
-        "//lazyparam_prover/memory:memory",
-        "//lazyparam_prover/syntax:syntax",
+        "//lazyparam_prover/memory",
+        "//lazyparam_prover/syntax",
+        "//utils",
     ],
 )
 
 cc_test(
     name = "derived_test",
     srcs = [
-        "derived_test.cc",
         "constraint_test.cc",
+        "derived_test.cc",
     ],
     deps = [
         ":derived",
+        "//utils",
         "@gtest//:gtest_main",
-        "//utils:utils",
     ],
 )
 
@@ -52,8 +53,8 @@ cc_library(
         "parse.h",
     ],
     deps = [
+        "//lazyparam_prover/syntax",
         "//tool:node",
-        "//lazyparam_prover/syntax:syntax",
         "//tptp_parser/proto:tptp_cc_proto",
         "@com_google_protobuf//:protobuf",
     ],
@@ -62,39 +63,39 @@ cc_library(
 cc_library(
     name = "valuation",
     hdrs = [
-        "valuation.h",
+        "constrained_valuation.h",
+        "constraint.h",
+        "fun_ord.h",
         "kbo.h",
         "lpo.h",
-        "fun_ord.h",
-        "constraint.h",
-        "constrained_valuation.h",
         "rewrite_test_utils.h",
+        "valuation.h",
     ],
     deps = [
         ":derived",
+        "//lazyparam_prover/memory",
+        "//lazyparam_prover/syntax",
         "//tptp_parser/proto:solutions_cc_proto",
-        "//lazyparam_prover/syntax:syntax",
-        "//lazyparam_prover/memory:memory",
     ],
 )
 
 cc_library(
     name = "prover",
     hdrs = [
-        "search_state.h",
         "eq_axioms.h",
         "ground.h",
-        "lpmod.h",
         "index.h",
+        "lpmod.h",
         "prover_output.h",
+        "search_state.h",
     ],
     deps = [
-        "//tptp_parser/proto:tptp_cc_proto",
-        "//tptp_parser/proto:solutions_cc_proto",
         ":parse",
-        "//lazyparam_prover/syntax:syntax",
         ":valuation",
-        "//utils:utils",
+        "//lazyparam_prover/syntax",
+        "//tptp_parser/proto:solutions_cc_proto",
+        "//tptp_parser/proto:tptp_cc_proto",
+        "//utils",
         "@com_google_protobuf//:protobuf",
     ],
 )
@@ -104,7 +105,7 @@ cc_test(
     srcs = ["valuation_test.cc"],
     deps = [
         ":valuation",
-        "//utils:utils",
+        "//utils",
         "@gtest//:gtest_main",
     ],
 )
@@ -114,7 +115,7 @@ cc_test(
     srcs = ["kbo_test.cc"],
     deps = [
         ":valuation",
-        "//utils:utils",
+        "//utils",
         "@gtest//:gtest_main",
     ],
 )
@@ -124,7 +125,7 @@ cc_test(
     srcs = ["lpo_test.cc"],
     deps = [
         ":valuation",
-        "//utils:utils",
+        "//utils",
         "@gtest//:gtest_main",
     ],
 )
@@ -134,7 +135,7 @@ cc_test(
     srcs = ["eq_axioms_test.cc"],
     deps = [
         ":prover",
-        "//utils:utils",
+        "//utils",
         "@gtest//:gtest_main",
     ],
 )
@@ -142,16 +143,16 @@ cc_test(
 cc_binary(
     name = "main",
     srcs = ["main.cc"],
+    features = ["fully_static_link"],
+    visibility = ["//visibility:public"],
     deps = [
         ":prover",
         ":prover_cc_proto",
-        "//lazyparam_prover/lazy_paramodulation:prover",
         "//lazyparam_prover/connection_tableau:prover",
-        "//lazyparam_prover/engine:engine",
-        "//utils:utils",
+        "//lazyparam_prover/engine",
+        "//lazyparam_prover/lazy_paramodulation:prover",
+        "//utils",
         "@abseil//absl/flags:flag",
         "@abseil//absl/flags:parse",
     ],
-    visibility = ["//visibility:public"],
-    features = ["fully_static_link"],
 )

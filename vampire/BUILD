@@ -3,7 +3,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "go_default_library",
     srcs = ["vampire.go"],
-    data = ["@vampire//:vampire"],
+    data = ["@vampire"],
     importpath = "github.com/pompon0/tptp_benchmark_go/vampire",
     visibility = ["//visibility:public"],
     deps = [

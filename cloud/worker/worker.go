@@ -12,7 +12,7 @@ import (
   "google.golang.org/grpc/status"
   "google.golang.org/grpc/codes"
   "golang.org/x/sync/semaphore"
-  "github.com/golang/protobuf/ptypes"
+  "google.golang.org/protobuf/types/known/durationpb"
 
   "github.com/pompon0/tptp_benchmark_go/vampire"
   "github.com/pompon0/tptp_benchmark_go/leancop"
@@ -47,14 +47,13 @@ func (s *server) Prove(ctx context.Context, req *pb.Req) (*pb.Resp,error) {
     return nil,status.Newf(codes.Unavailable,"commit got = %q, want %q",got,want).Err()
   }
 
-  timeout,err := ptypes.Duration(req.Timeout)
-  if err!=nil { return nil,status.Newf(codes.InvalidArgument,"ptypes.Duration(req.Timeout): %v",err).Err() }
-  if timeout>=maxTimeout { return nil,status.Newf(codes.InvalidArgument,"req.Timeout > %v",maxTimeout).Err() }
+  timeout := req.Timeout.AsDuration()
   proverCtx,cancel := context.WithTimeout(ctx,timeout)
   defer cancel()
 
   c := &spb.Case{}
   t0 := time.Now()
+  var err error
   switch req.Prover {
     case pb.Prover_VAMPIRE:
       c.Output,err = vampire.Prove(proverCtx,req.TptpProblem)
@@ -82,7 +81,7 @@ func (s *server) Prove(ctx context.Context, req *pb.Req) (*pb.Resp,error) {
       return nil,status.New(codes.InvalidArgument,"unknown prover").Err()
   }
   if err!=nil { return nil,status.Newf(codes.Internal,"prove(): %v",err).Err() }
-  c.Duration = ptypes.DurationProto(time.Since(t0))
+  c.Duration = durationpb.New(time.Since(t0))
   if req.ValidateProof && c.Output.Proof!=nil {
     if _,err := tool.ValidateProof(ctx,&spb.CNF{Problem:c.Output.CnfProblem,Proof:c.Output.Proof}); err!=nil {
       return nil,status.Newf(codes.Internal,"tool.ValidateProof(): %v",err).Err()

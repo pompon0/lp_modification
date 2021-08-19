@@ -6,17 +6,19 @@ import (
   "strconv"
   "fmt"
   "flag"
-  "bytes"
   "time"
   "os"
   "sort"
   "strings"
   "path"
-  "os/exec"
+  "io/ioutil"
 
+  "google.golang.org/protobuf/types/known/durationpb"
+  "github.com/pompon0/tptp_benchmark_go/eprover"
   "github.com/pompon0/tptp_benchmark_go/tool"
   "github.com/pompon0/tptp_benchmark_go/problems"
-  "github.com/pompon0/tptp_benchmark_go/utils"
+  mcts "github.com/pompon0/tptp_benchmark_go/ffprover"
+  mpb "github.com/pompon0/tptp_benchmark_go/ffprover/mcts_go_proto"
 )
 
 const mcts_bin_path = "__main__/ffprover/mcts"
@@ -28,34 +30,6 @@ var caseNamePrefix = flag.String("case_name_prefix","","")
 var outputDir = flag.String("output_dir","","")
 var solvedInReportPath = flag.String("solved_in_report_path","","")
 var fullSearch = flag.Bool("full_search",false,"")
-
-func MCTS(ctx context.Context, problemName string, tptpFOFProblem []byte, out Output) error {
-  tptpPath,cleanup,err := tool.WriteTmp(tptpFOFProblem)
-  if err!=nil { return fmt.Errorf("tool.WriteTmp(): %w",err) }
-  defer cleanup()
-
-  cmd := exec.Command(utils.Runfile(mcts_bin_path),
-    fmt.Sprintf("--timeout=%v",*timeout),
-    fmt.Sprintf("--problem_path=%v",tptpPath),
-    fmt.Sprintf("--priority_model_path=%v",*priorityModelPath),
-    fmt.Sprintf("--reward_model_path=%v",*rewardModelPath),
-    fmt.Sprintf("--priority_training_path=%v",out.PriorityDir.File(problemName)),
-    fmt.Sprintf("--reward_training_path=%v",out.RewardDir.File(problemName)),
-    fmt.Sprintf("--full_search=%v",*fullSearch),
-  )
-  var inBuf,outBuf bytes.Buffer
-  cmd.Stdin = &inBuf
-  cmd.Stdout = &outBuf
-  cmd.Stderr = os.Stderr
-  const memLimitBytes = 2*1000*1000*1000
-  gracefulExitTimeout := time.Minute
-  cmdCtx,cancel := context.WithTimeout(ctx,*timeout+gracefulExitTimeout)
-  defer cancel()
-  if err := utils.RunWithMemLimit(cmdCtx,cmd,memLimitBytes); err!=nil {
-    return fmt.Errorf("cmd.Run(): %w",err)
-  }
-  return nil
-}
 
 type namedProblem struct { name string; p *problems.Problem }
 
@@ -69,18 +43,71 @@ func process(ctx context.Context, p namedProblem) error {
     RewardDir: outRewardDir,
   }
 
-  tptp,err := p.p.Get()
+  tptpFOF,err := p.p.Get()
   if err!=nil {
     return fmt.Errorf("p.Get(): %w",err)
   }
-  if has,err := tool.TptpHasEquality(ctx,tptp); err!=nil {
+  if has,err := tool.TptpHasEquality(ctx,tptpFOF); err!=nil {
     return fmt.Errorf("tool.TptpHasEquality(): %w",err)
   } else if !has {
     return nil
   }
   log.Printf("solving %q",p.name)
-  if err:=MCTS(ctx,strings.ReplaceAll(p.name,"/","_"),tptp,out); err!=nil {
+
+  tptpCNF,err := eprover.FOFToCNF(ctx,tptpFOF)
+  if err!=nil { return fmt.Errorf("eprover.FOFToCNF(): %w",err) }
+  cnf,err := tool.TptpToProto(ctx,tool.CNF,tptpCNF)
+  if err!=nil { return fmt.Errorf("tool.TptpToProto(): %w",err) }
+
+  input := &mpb.Input{
+    Problem: cnf,
+    Timeout: durationpb.New(*timeout),
+    FullSearch: *fullSearch,
+  }
+  if *priorityModelPath!="" {
+    priorityModel,err := ioutil.ReadFile(*priorityModelPath)
+    if err!=nil { return fmt.Errorf("io.ReadFile(): %w",err) }
+    input.Priority = &mpb.Model{Xgb: priorityModel}
+  }
+  if *rewardModelPath!="" {
+    rewardModel,err := ioutil.ReadFile(*rewardModelPath)
+    if err!=nil { return fmt.Errorf("io.ReadFile(): %w",err) }
+    input.Reward = &mpb.Model{Xgb: rewardModel}
+  }
+
+  gracefulExitTimeout := time.Minute
+  cmdCtx,cancel := context.WithTimeout(ctx,*timeout+gracefulExitTimeout)
+  defer cancel()
+  output,err := mcts.MCTS(cmdCtx,input)
+  if err!=nil {
     return fmt.Errorf("MCTS(): %w",err)
+  }
+
+  // Print status & stats
+  fmt.Printf("Status %v\n",output.GetStatus())
+  fmt.Printf("%v\n\n",output.GetStats())
+
+  // Print priofiler data.
+  prof := output.GetProfiler().GetEntries()
+  sort.Slice(prof,func(i,j int) bool { return prof[i].GetTimeS() > prof[j].GetTimeS() })
+  for _,e := range prof { log.Printf("%v",e) }
+
+  // Save model data.
+  problemName := strings.ReplaceAll(p.name,"/","_")
+  if err:=ioutil.WriteFile(
+    out.PriorityDir.File(problemName),
+    []byte(output.GetPriority().GetLibsvm()),
+    0777,
+  ); err!=nil {
+    return fmt.Errorf("ioutil.WriteFile(): %w",err)
+  }
+
+  if err:=ioutil.WriteFile(
+    out.RewardDir.File(problemName),
+    []byte(output.GetReward().GetLibsvm()),
+    0777,
+  ); err!=nil {
+    return fmt.Errorf("ioutil.WriteFile(): %w",err)
   }
   return nil
 }

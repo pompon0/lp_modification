@@ -1,13 +1,14 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+load("@rules_proto//proto:defs.bzl", "proto_library")
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
 load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
 
 proto_library(
     name = "mcts_proto",
     srcs = ["mcts.proto"],
     deps = [
-      "//tptp_parser/proto:tptp_proto",
-      "//tptp_parser/proto:solutions_proto",
-      "@com_google_protobuf//:duration_proto",
+        "//tptp_parser/proto:solutions_proto",
+        "//tptp_parser/proto:tptp_proto",
+        "@com_google_protobuf//:duration_proto",
     ],
 )
 
@@ -20,27 +21,30 @@ go_proto_library(
     name = "mcts_go_proto",
     importpath = "github.com/pompon0/tptp_benchmark_go/ffprover/mcts_go_proto",
     proto = ":mcts_proto",
+    visibility = ["//visibility:public"],
     deps = [
-      "//tptp_parser/proto:tptp_go_proto",
-      "//tptp_parser/proto:solutions_go_proto",
+        "//tptp_parser/proto:solutions_go_proto",
+        "//tptp_parser/proto:tptp_go_proto",
+        "@com_github_golang_protobuf//ptypes/duration",
     ],
 )
 
 cc_library(
     name = "mcts_lib",
     hdrs = [
-        "xgboost.h",
-        "tree.h",
-        "search.h",
         "full_search.h",
+        "search.h",
+        "tree.h",
+        "xgboost.h",
     ],
     deps = [
-        "//lazyparam_prover/controller:controller",
-        "//utils:utils",
-        "@abseil//absl/flags:parse",
+        ":mcts_cc_proto",
+        "//lazyparam_prover/controller",
+        "//utils",
         "@abseil//absl/flags:flag",
-        "@abseil//absl/time:time",
-        "@xgboost//:xgboost",
+        "@abseil//absl/flags:parse",
+        "@abseil//absl/time",
+        "@xgboost",
     ],
 )
 
@@ -49,7 +53,7 @@ cc_test(
     srcs = ["tree_test.cc"],
     deps = [
         ":mcts_lib",
-        "//utils:utils",
+        "//utils",
         "@gtest//:gtest_main",
     ],
 )
@@ -63,8 +67,8 @@ cc_test(
     ],
     deps = [
         ":mcts_lib",
-        "//utils:utils",
         "//problems/sample:sample_cc",
+        "//utils",
         "@gtest//:gtest_main",
     ],
 )
@@ -79,21 +83,22 @@ cc_test(
     copts = ["-O3"],
     deps = [
         ":mcts_lib",
-        "//utils:utils",
         "//problems/sample:sample_cc",
+        "//tool/bin:wrapper",
+        "//utils",
         "@gtest//:gtest_main",
     ],
 )
 
 cc_binary(
     name = "mcts",
-    deps = [
-        ":mcts_lib",
-        ":mcts_cc_proto",
-    ],
     srcs = ["mcts.cc"],
-    visibility = ["//ffprover:__subpackages__"],
     features = ["fully_static_link"],
+    visibility = ["//ffprover:__subpackages__"],
+    deps = [
+        ":mcts_cc_proto",
+        ":mcts_lib",
+    ],
 )
 
 go_library(
@@ -107,31 +112,10 @@ go_library(
     ],
     data = [":mcts"],
     importpath = "github.com/pompon0/tptp_benchmark_go/ffprover",
-    visibility = ["//visibility:private"],
-    deps = [
-        "//problems:go_default_library",
-        "//tool:go_default_library",
-        "//utils:go_default_library",
-    ],
-)
-
-go_binary(
-    name = "ffprover",
-    embed = [":go_default_library"],
     visibility = ["//visibility:public"],
-)
-
-# NOTE: rules_pkg is builtin. If you want to import rules_pkg in WORKSPACE
-#   use a different package name, like "rules_pkg2".
-load("@rules_pkg//:pkg.bzl", "pkg_tar")
-
-pkg_tar(
-    name = "ffprover_tar",
-    srcs = [":ffprover"],
-    strip_prefix = "/",
-    include_runfiles = 1,
-    remap_paths = {
-        "external/": "",
-        "": "__main__/",
-    },
+    deps = [
+        ":mcts_go_proto",
+        "//utils:go_default_library",
+        "@com_github_golang_protobuf//proto:go_default_library",
+    ],
 )

@@ -8,8 +8,8 @@ go_library(
         "tool.go",
     ],
     data = [
-        "//tptp_parser/src:tool",
         ":tool",
+        "//tptp_parser/src:tool",
     ],
     importpath = "github.com/pompon0/tptp_benchmark_go/tool",
     visibility = ["//visibility:public"],
@@ -38,12 +38,12 @@ go_test(
 cc_library(
     name = "node",
     hdrs = ["node.h"],
+    visibility = ["//visibility:public"],
     deps = [
-        "//utils:utils",
         "//tptp_parser/proto:tptp_cc_proto",
+        "//utils",
         "@com_google_protobuf//:protobuf",
     ],
-    visibility = ["//visibility:public"],
 )
 
 cc_library(
@@ -65,13 +65,13 @@ cc_library(
 cc_binary(
     name = "tool",
     srcs = ["tool.cc"],
-    deps = [
-        "//tptp_parser/proto:tptp_cc_proto",
-        ":node",
-        ":conv",
-        "//utils:utils",
-        "@abseil//absl/flags:parse",
-        "@abseil//absl/flags:flag",
-    ],
     features = ["fully_static_link"],
+    deps = [
+        ":conv",
+        ":node",
+        "//tptp_parser/proto:tptp_cc_proto",
+        "//utils",
+        "@abseil//absl/flags:flag",
+        "@abseil//absl/flags:parse",
+    ],
 )

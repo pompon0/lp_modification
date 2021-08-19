@@ -9,6 +9,7 @@
 #include "ffprover/full_search.h"
 #include "ffprover/tree.h"
 #include "absl/time/time.h"
+#include "tool/bin/wrapper.h"
 #include <iostream>
 #include <random>
 
@@ -21,9 +22,11 @@ StreamLogger _(std::cerr);
 TEST_P(FullSearchSuite,simple) {
   // DEBUG_MODE is too heavy to be used by default for this test
   // and gtest doesn't support parallelizable subtests.
-  auto [n,tptp] = GetParam();
+  auto [n,tptpFOF] = GetParam();
+  auto cnf = tool::bin::tptp_to_proto(tool::bin::tptp_cnf(tptpFOF));
+
   info("n = %",n);
-  auto problem = controller::Problem::New(tptp);
+  auto problem = controller::Problem::New(cnf);
   auto prover = controller::Prover::New(problem,1);
   auto tree = Tree::New();
   auto ctx = Ctx::with_timeout(Ctx::background(),absl::Seconds(10));

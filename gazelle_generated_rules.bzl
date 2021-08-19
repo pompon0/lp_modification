@@ -2,6 +2,13 @@ load("@bazel_gazelle//:deps.bzl", "go_repository")
 
 def gazelle_generated():
     go_repository(
+        name = "org_golang_x_net",
+        importpath = "golang.org/x/net",
+        sum = "h1:LO7XpTYMwTqxjLcGWPijK3vRXg1aWdlNOVOHRq45d7c=",
+        version = "v0.0.0-20210813160813-60bc85c4be6d",
+    )
+    
+    go_repository(
         name = "com_github_golang_groupcache",
         importpath = "github.com/golang/groupcache",
         sum = "h1:oI5xCqsCo564l8iNU+DwB5epxmsaqB+rhGL0m5jtYqE=",
@@ -48,7 +55,8 @@ def gazelle_generated():
     )
     go_repository(
         name = "org_golang_google_grpc",
-        build_file_proto_mode = "disable",
+        # this prevents gazelle from generating extra go_proto_library targets for Well Known Types.
+        build_file_proto_mode = "disable_global",
         importpath = "google.golang.org/grpc",
         sum = "h1:AGJ0Ih4mHjSeibYkFGh1dD9KJ/eOtZ93I6hoHhukQ5Q=",
         version = "v1.40.0",
@@ -58,13 +66,6 @@ def gazelle_generated():
         importpath = "google.golang.org/protobuf",
         sum = "h1:SnqbnDw1V7RiZcXPx5MEeqPv2s79L9i7BJUlG/+RurQ=",
         version = "v1.27.1",
-    )
-
-    go_repository(
-        name = "org_golang_x_net",
-        importpath = "golang.org/x/net",
-        sum = "h1:LO7XpTYMwTqxjLcGWPijK3vRXg1aWdlNOVOHRq45d7c=",
-        version = "v0.0.0-20210813160813-60bc85c4be6d",
     )
 
     go_repository(

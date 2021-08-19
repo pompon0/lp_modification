@@ -47,11 +47,7 @@ http_archive(
     urls = ["https://github.com/bazelbuild/rules_go/releases/download/v0.28.0/rules_go-v0.28.0.zip"],
 )
 
-load("@io_bazel_rules_go//go:deps.bzl", "go_register_toolchains", "go_rules_dependencies")
 
-go_rules_dependencies()
-
-go_register_toolchains(version = "1.16.5")
 
 http_archive(
     name = "bazel_gazelle",
@@ -59,14 +55,20 @@ http_archive(
     urls = ["https://github.com/bazelbuild/bazel-gazelle/releases/download/v0.23.0/bazel-gazelle-v0.23.0.tar.gz"],
 )
 
-load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies")
-
-gazelle_dependencies()
 
 # gazelle:repository_macro gazelle_generated_rules.bzl%gazelle_generated
 load("//:gazelle_generated_rules.bzl", "gazelle_generated")
 
+# gazelle_generated() has to be before all the go/gazelle dependencies, so that
+# the selected versions override the defaults.
 gazelle_generated()
+
+load("@io_bazel_rules_go//go:deps.bzl", "go_register_toolchains", "go_rules_dependencies")
+load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies")
+
+go_rules_dependencies()
+go_register_toolchains(version = "1.16.5")
+gazelle_dependencies()
 
 ################################
 # PROTO

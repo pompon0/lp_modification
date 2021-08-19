@@ -5,10 +5,14 @@ import scipy.sparse.csr
 import sklearn.datasets
 import sys
 import xgboost as xgb
+import argparse
+import logging
 
-n_features = 2**15
+parser = argparse.ArgumentParser()
+parser.add_argument('--features_space_size', type=int, required=True)
+args = parser.parse_args()
 
-x_t, y_t = sklearn.datasets.load_svmlight_file(sys.argv[1], n_features=n_features, zero_based=1)
+x_t, y_t = sklearn.datasets.load_svmlight_file(sys.stdin.buffer, n_features=args.features_space_size, zero_based=1)
 d_t = xgb.DMatrix(x_t, label=y_t)
 #d_t = xgb.DMatrix(sys.argv[1])
 #y_t = d_t.get_label()
@@ -28,7 +32,11 @@ params['lambda'] = 1.5
 #else:
 watchlist = [(d_t, 'tr')]
 
-rf = xgb.train(params, d_t, 50, watchlist, early_stopping_rounds=50, verbose_eval=10)
+# TODO: with verbose_eval, this shit writes to stdout (and it is not configurable).
+# To be resistant to this dumb behavior, we should:
+# - duplicate descriptor 1 -> new one
+# - duplicate descriptor 2 -> 1
+rf = xgb.train(params, d_t, 50, watchlist, early_stopping_rounds=50, verbose_eval=False)
 # print rf.predict(d_t)
 
 mae=np.sum(np.abs(rf.predict(d_t) - y_t)) / len(y_t)
@@ -39,5 +47,5 @@ mae=np.sum(np.abs(avg - y_t)) / len(y_t)
 rmse=math.sqrt(np.sum(np.square(avg - y_t)) / len(y_t))
 # print "avg %f mae: %.4f rmse: %.4f" % (avg, mae, rmse)
 
-rf.save_model(sys.argv[2])
-
+sys.stdout.buffer.write(rf.save_raw())
+sys.stdout.buffer.flush()

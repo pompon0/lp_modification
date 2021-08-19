@@ -18,7 +18,7 @@ int main(int argc, char **argv) {
   node::Index idx;
   conv::TptpToProto::file(idx,out.mutable_file(),std::cin);
   // This one cannot be just replaced with checking if
-  // there is a PRED_EQ node, since it technically it can
+  // there is a PRED_EQ node, since technically it can
   // be unused.
   out.set_has_equality(has_equality(out.file()));
   out.SerializeToOstream(&std::cout);

@@ -43,12 +43,16 @@ using namespace ff;
 
 INL static inline double logistic(double v){ return 1./(1.+exp(-v)); }
 
-ptr<mcts::Output> save_result(controller::Prover &prover, Result res) { FRAME("save_result");
+ptr<mcts::Output> save_result(controller::Prover &prover, Result res, size_t features_space_size) { FRAME("save_result");
   bool won = res.status==Result::SOLVED;
   auto output = collect_output(res.node,prover,won?1.:0.);
   auto proto = own(new mcts::Output());
-  if(won) proto->mutable_priority()->set_libsvm(output->priority_data.show());
+  if(won) {
+    proto->mutable_priority()->set_libsvm(output->priority_data.show());
+    proto->mutable_priority()->set_features_space_size(features_space_size);
+  }
   proto->mutable_reward()->set_libsvm(output->reward_data.show());
+  proto->mutable_reward()->set_features_space_size(features_space_size);
   return proto;
 }
 
@@ -146,7 +150,7 @@ int main(int argc, char **argv) {
   auto cycles1 = __rdtsc();
   
   prover = controller::Prover::New(problem,input.features_space_size());
-  auto out = save_result(*prover,res);
+  auto out = save_result(*prover,res,input.features_space_size());
 
   out->set_status([&]()INLL{
     switch(res.status) {

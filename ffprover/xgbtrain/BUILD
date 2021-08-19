@@ -13,8 +13,12 @@ go_test(
         "//ffprover:mcts",
     ],
     deps = [
+        "//eprover:go_default_library",
+        "//ffprover:go_default_library",
+        "//ffprover:mcts_go_proto",
         "//problems/sample:go_default_library",
         "//tool:go_default_library",
         "//utils:go_default_library",
+        "@org_golang_google_protobuf//types/known/durationpb:go_default_library",
     ],
 )

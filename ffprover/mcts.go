@@ -4,12 +4,19 @@ import (
   "context"
   "fmt"
   "bytes"
+  "time"
   "os"
   "os/exec"
+  "syscall"
 
   "github.com/golang/protobuf/proto"
+  "google.golang.org/protobuf/types/known/durationpb"
+
   "github.com/pompon0/tptp_benchmark_go/utils"
+  "github.com/pompon0/tptp_benchmark_go/eprover"
+  "github.com/pompon0/tptp_benchmark_go/tool"
   mpb "github.com/pompon0/tptp_benchmark_go/ffprover/mcts_go_proto"
+  spb "github.com/pompon0/tptp_benchmark_go/tptp_parser/proto/solutions_go_proto"
 )
 
 const mcts_bin_path = "__main__/ffprover/mcts"
@@ -28,6 +35,11 @@ func MCTS(ctx context.Context, input *mpb.Input) (*mpb.Output,error) {
   cmd.Stderr = os.Stderr
   const memLimitBytes = 2*1000*1000*1000
   if err := utils.RunWithMemLimit(ctx,cmd,memLimitBytes); err!=nil {
+    status := err.(*exec.ExitError).Sys().(syscall.WaitStatus)
+    if status.Signaled() && status.Signal()==syscall.SIGKILL {
+      return &mpb.Output{Status: mpb.Status_KILLED},nil
+    }
+    // deadline exceeded is not acceptable, summary should be always provided.
     return nil,fmt.Errorf("cmd.Run(): %w",err)
   }
   output := &mpb.Output{}
@@ -35,4 +47,34 @@ func MCTS(ctx context.Context, input *mpb.Input) (*mpb.Output,error) {
     return nil,fmt.Errorf("proto.Unmarshal(): %w",err)
   }
   return output,nil
+}
+
+func Prove(ctx context.Context, tptpFOF []byte) (*spb.ProverOutput,error) {
+  tptpCNF,err := eprover.FOFToCNF(ctx,tptpFOF)
+  if err!=nil { return nil,fmt.Errorf("eprover.FOFToCNF(): %w",err) }
+  cnf,err := tool.TptpToProto(ctx,tool.CNF,tptpCNF)
+  if err!=nil { return nil,fmt.Errorf("tool.TptpToProto(): %w",err) }
+
+  timeout := time.Hour
+  if deadline,ok := ctx.Deadline(); ok {
+    timeout = deadline.Sub(time.Now())
+  }
+  gracefulExitTimeout := time.Second
+  timeout -= gracefulExitTimeout
+  input := &mpb.Input{
+    Problem: cnf,
+    Timeout: durationpb.New(timeout),
+    FullSearch: true,
+    FeaturesSpaceSize: 1,
+  }
+  out,err := MCTS(ctx,input)
+  if err!=nil {
+    return nil,fmt.Errorf("MCTS(): %w",err)
+  }
+  return &spb.ProverOutput{
+    CnfProblem: cnf,
+    Solved: out.GetStatus()==mpb.Status_THEOREM,
+    Profiler: out.GetProfiler(),
+    Killed: out.GetStatus()==mpb.Status_KILLED,
+  },nil
 }

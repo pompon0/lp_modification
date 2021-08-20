@@ -18,6 +18,7 @@ enum Prover{
   GPRUSAK_LP_MODIFICATION_DEPTH = 12; // iterative deepening by proof depth
   GPRUSAK_LAZY_PARAMODULATION = 8;
   GPRUSAK_NO_EQ = 10;
+  GPRUSAK_MCTS_FULL_SEARCH = 13; // iterative deepening by proof depth, but using the MCTS infrastructure.
 }
 
 enum ProblemSet {

@@ -33,11 +33,11 @@ go_library(
     deps = [
         ":worker_go_proto",
         "//eprover:go_default_library",
+        "//ffprover:go_default_library",
         "//lazyparam_prover/tableau:go_default_library",
         "//leancop:go_default_library",
         "//tool:go_default_library",
         "//tptp_parser/proto:solutions_go_proto",
-        "//tptp_parser/proto:tptp_go_proto",
         "//vampire:go_default_library",
         "@org_golang_google_grpc//:go_default_library",
         "@org_golang_google_grpc//codes:go_default_library",

@@ -30,6 +30,7 @@ var caseNamePrefix = flag.String("case_name_prefix","","")
 var outputDir = flag.String("output_dir","","")
 var solvedInReportPath = flag.String("solved_in_report_path","","")
 var fullSearch = flag.Bool("full_search",false,"")
+var featuresSpaceSize = flag.Int("features_space_size",1<<15,"")
 
 type namedProblem struct { name string; p *problems.Problem }
 
@@ -63,6 +64,7 @@ func process(ctx context.Context, p namedProblem) error {
     Problem: cnf,
     Timeout: durationpb.New(*timeout),
     FullSearch: *fullSearch,
+    FeaturesSpaceSize: uint64(*featuresSpaceSize),
   }
   if *priorityModelPath!="" {
     priorityModel,err := ioutil.ReadFile(*priorityModelPath)

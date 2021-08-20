@@ -19,8 +19,8 @@ import (
   "github.com/pompon0/tptp_benchmark_go/eprover"
   "github.com/pompon0/tptp_benchmark_go/lazyparam_prover/tableau"
   "github.com/pompon0/tptp_benchmark_go/tool"
+  "github.com/pompon0/tptp_benchmark_go/ffprover"
   pb "github.com/pompon0/tptp_benchmark_go/cloud/worker/worker_go_proto"
-  tpb "github.com/pompon0/tptp_benchmark_go/tptp_parser/proto/tptp_go_proto"
   spb "github.com/pompon0/tptp_benchmark_go/tptp_parser/proto/solutions_go_proto"
 )
 
@@ -77,6 +77,8 @@ func (s *server) Prove(ctx context.Context, req *pb.Req) (*pb.Resp,error) {
       c.Output,err = tableau.ProveLazyParamodulation(proverCtx,req.TptpProblem)
     case pb.Prover_GPRUSAK_NO_EQ:
       c.Output,err = tableau.ProveNoEq(proverCtx,req.TptpProblem)
+    case pb.Prover_GPRUSAK_MCTS_FULL_SEARCH:
+      c.Output,err = mcts.Prove(proverCtx,req.TptpProblem)
     default:
       return nil,status.New(codes.InvalidArgument,"unknown prover").Err()
   }
@@ -92,16 +94,6 @@ func (s *server) Prove(ctx context.Context, req *pb.Req) (*pb.Resp,error) {
   c.Output.CnfProblem = nil
   c.Output.Proof = nil
   return &pb.Resp{Case:c},nil
-}
-
-func convProblemEprover(ctx context.Context, tptp []byte) (/*fof*/ *tpb.File, /*cnf*/ *tpb.File, error) {
-  fof,err := tool.TptpToProto(ctx,tool.FOF,tptp)
-  if err!=nil { return nil,nil,fmt.Errorf("tool.TptpToProto(FOF): %v",err) }
-  tptpCNF,err := eprover.FOFToCNF(ctx,tptp)
-  if err!=nil { return nil,nil,fmt.Errorf("eprover.FOFToCNF(): %v",err) }
-  cnf,err := tool.TptpToProto(ctx,tool.CNF,tptpCNF)
-  if err!=nil { return nil,nil,fmt.Errorf("tool.TptpToProto(CNF): %v",err) }
-  return fof,cnf,nil
 }
 
 func run(ctx context.Context) error {

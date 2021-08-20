@@ -51,7 +51,7 @@ private:
   }
 public:
   Index(){}
-  //Index(const Index&) = default;
+  Index(const Index&) = default;
   Index(google::protobuf::RepeatedPtrField<tptp::Node> _nodes) { FRAME("InputIndex");
     for(auto n : _nodes) {
       auto a = TYPE_ARITY.at(n.type());

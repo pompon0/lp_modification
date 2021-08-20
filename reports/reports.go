@@ -23,8 +23,9 @@ const (
   cmdMultiDiff = "multidiff"
   cmdList = "list"
   cmdProfiler = "profiler"
+  cmdProfilerDiff = "profilerdiff"
 )
-var cmds = []string{cmdSummary,cmdPrint,cmdDiff,cmdMultiDiff,cmdList,cmdProfiler}
+var cmds = []string{cmdSummary,cmdPrint,cmdDiff,cmdMultiDiff,cmdList,cmdProfiler,cmdProfilerDiff}
 
 var reportDir = flag.String("report_dir","","")
 var reportPath = flag.String("report_path","","")
@@ -268,6 +269,12 @@ func (e ProfileEntry) Less(b ProfileEntry) bool {
   return false
 }
 
+func entryLess(a,b *spb.Profiler_Entry) bool {
+  if x,y := a.Cycles,b.Cycles; x!=y { return x<y }
+  if x,y := a.Count,b.Count; x!=y { return x<y }
+  return false
+}
+
 func (e ProfileEntry) Add(b ProfileEntry) ProfileEntry {
   e.Count += b.Count
   e.Cycles += b.Cycles
@@ -331,6 +338,42 @@ func profiler(ctx context.Context) error {
   return nil
 }
 
+func profilerDiff(ctx context.Context) error {
+  report1,err := problems.ReadReport(*reportPath)
+  if err!=nil { return fmt.Errorf("problems.ReadReport(report_path=%q): %v",*reportPath,err) }
+  report2,err := problems.ReadReport(*reportPath2)
+  if err!=nil { return fmt.Errorf("problems.ReadReport(report_path=%q): %v",*reportPath2,err) }
+
+  cs1 := map[string]*spb.Case{}
+  for _,c := range report1.Cases {
+    cs1[c.Name] = c
+  }
+  cs2 := map[string]*spb.Case{}
+  for _,c := range report2.Cases {
+    cs2[c.Name] = c
+  }
+
+  fmt.Printf("%q | %q\n",*reportPath,*reportPath2)
+  for n,c1 := range cs1 {
+    c2,ok := cs2[n]
+    if !ok { continue }
+    fmt.Printf("\n[%s] %v %v | %v %v\n",n,
+      c1.GetDuration().AsDuration(), c1.GetOutput().GetSolved(),
+      c2.GetDuration().AsDuration(), c2.GetOutput().GetSolved(),
+    )
+    es := c1.GetOutput().GetProfiler().GetEntries()
+    sort.Slice(es,func(i,j int) bool { return entryLess(es[j],es[i]) })
+    es2 := map[string]*spb.Profiler_Entry{}
+    for _,e := range c2.GetOutput().GetProfiler().GetEntries() {
+      es2[e.GetLabel()] = e
+    }
+    for _,e := range es {
+      fmt.Printf("\t%+v | %+v\n",e,es2[e.GetLabel()])
+    }
+  }
+  return nil
+}
+
 func run(ctx context.Context) error {
   switch *cmd {
     case cmdSummary: return summary(ctx)
@@ -339,6 +382,7 @@ func run(ctx context.Context) error {
     case cmdMultiDiff: return multidiff(ctx)
     case cmdList: return list(ctx)
     case cmdProfiler: return profiler(ctx)
+    case cmdProfilerDiff: return profilerDiff(ctx)
     default: return fmt.Errorf("unknown command = %q",*cmd)
   }
 }

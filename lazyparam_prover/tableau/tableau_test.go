@@ -79,8 +79,6 @@ func TestTableau(t *testing.T) {
           proofTptp,err := tool.ProofToTptp(ctx,out.Proof)
           if err!=nil { t.Fatalf("tool.ProofTPTP(%q): %v",k,err) }
           t.Logf("proof = %s",proofTptp)
-
-          if err!=nil { t.Fatalf("Tableau(%q): %v",k,err) }
           _,err = tool.ValidateProof(ctx,&spb.CNF{Problem:out.CnfProblem,Proof:out.Proof})
           if err!=nil { t.Fatalf("tool.Validate(%q): %v",k,err) }
         })

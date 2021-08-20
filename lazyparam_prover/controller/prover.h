@@ -69,6 +69,8 @@ public:
 
   INL bool done() const { return p->done(); }
 
+  INL solutions::Proof get_proof() { return p->get_proof(); }
+
   INL size_t action_count() const { FRAME("action_count");
     DEBUG if(done()) error("already done");
     return actions.size(); 

@@ -3,6 +3,7 @@
 
 #include "lazyparam_prover/derived.h"
 #include "lazyparam_prover/kbo.h"
+#include "lazyparam_prover/constrained_valuation.h"
 #include "solutions.pb.h"
 
 namespace tableau {

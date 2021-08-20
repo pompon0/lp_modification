@@ -74,6 +74,7 @@ func Prove(ctx context.Context, tptpFOF []byte) (*spb.ProverOutput,error) {
   return &spb.ProverOutput{
     CnfProblem: cnf,
     Solved: out.GetStatus()==mpb.Status_THEOREM,
+    Proof: out.GetProof(),
     Profiler: out.GetProfiler(),
     Killed: out.GetStatus()==mpb.Status_KILLED,
   },nil

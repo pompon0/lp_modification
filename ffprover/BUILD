@@ -128,5 +128,9 @@ go_test(
     name = "go_default_test",
     srcs = ["mcts_test.go"],
     embed = [":go_default_library"],
-    deps = ["//problems/sample:go_default_library"],
+    deps = [
+        "//problems/sample:go_default_library",
+        "//tool:go_default_library",
+        "//tptp_parser/proto:solutions_go_proto",
+    ],
 )

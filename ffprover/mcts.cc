@@ -48,6 +48,7 @@ ptr<mcts::Output> save_result(controller::Prover &prover, Result res, size_t fea
   auto output = collect_output(res.node,prover,won?1.:0.);
   auto proto = own(new mcts::Output());
   if(won) {
+    *proto->mutable_proof() = prover.get_proof();
     proto->mutable_priority()->set_libsvm(output->priority_data.show());
     proto->mutable_priority()->set_features_space_size(features_space_size);
   }

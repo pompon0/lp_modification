@@ -2,6 +2,7 @@
 #define CONTROLLER_RAW_PROVER_H_
 
 #include "lazyparam_prover/memory/list.h"
+#include "lazyparam_prover/prover_output.h"
 #include "lazyparam_prover/controller/problem.h"
 #include "lazyparam_prover/connection_tableau/cont.h"
 
@@ -135,6 +136,15 @@ public:
   }
 
   INL bool done() const { return current.empty(); }
+
+  INL solutions::Proof get_proof() {
+    if(!done()) error("cannot fetch output of an unfinished proof");
+    auto idx = *problem->node_idx;
+    return tableau::SyntaxToProto::proof(*A,idx,
+      *state->get_proof(*A),
+      state->val.get_valuation()
+    );
+  }
 
   INL size_t action_count() const { FRAME("action_count");
     DEBUG if(done()) error("already done");

@@ -44,6 +44,8 @@ enum Status {
 
 message Output {
   Status status = 1;
+  solutions.Proof proof = 6;
+
   Data priority = 2;
   Data reward = 3;
 

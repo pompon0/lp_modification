@@ -1,6 +1,6 @@
 //#define DEBUG_MODE
 //#define VERBOSE
-//#define PROFILE
+#define PROFILE
 
 #include <csignal>
 #include <iostream>

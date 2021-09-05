@@ -77,6 +77,7 @@ public:
 
     INL void set_won() {
       size_t depth = 0;
+      if(!tree->root().node->won_depth) info("WON");
       for(auto *x = node; x && (!bool(x->won_depth) || x->won_depth.get()>depth); x = x->parent)
         x->won_depth = memory::just(depth++);
     }

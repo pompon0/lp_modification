@@ -13,6 +13,7 @@ import (
   "path"
   "io/ioutil"
 
+  "github.com/golang/protobuf/proto"
   "google.golang.org/protobuf/types/known/durationpb"
   "github.com/pompon0/tptp_benchmark_go/eprover"
   "github.com/pompon0/tptp_benchmark_go/tool"
@@ -24,8 +25,7 @@ import (
 const mcts_bin_path = "__main__/ffprover/mcts"
 
 var timeout = flag.Duration("timeout",time.Minute,"")
-var priorityModelPath = flag.String("priority_model_path","","")
-var rewardModelPath = flag.String("reward_model_path","","")
+var modelsPath = flag.String("models_path","","")
 var caseNamePrefix = flag.String("case_name_prefix","","")
 var outputDir = flag.String("output_dir","","")
 var solvedInReportPath = flag.String("solved_in_report_path","","")
@@ -35,14 +35,8 @@ var featuresSpaceSize = flag.Int("features_space_size",1<<15,"")
 type namedProblem struct { name string; p *problems.Problem }
 
 func process(ctx context.Context, p namedProblem) error {
-  outPriorityDir,err:=NewDir(*outputDir,"priority")
+  outDir,err:=NewDir(*outputDir,"")
   if err!=nil { return fmt.Errorf("NewDir(): %w",err) }
-  outRewardDir,err:=NewDir(*outputDir,"reward")
-  if err!=nil { return fmt.Errorf("NewDir(): %w",err) }
-  out := Output{
-    PriorityDir: outPriorityDir,
-    RewardDir: outRewardDir,
-  }
 
   tptpFOF,err := p.p.Get()
   if err!=nil {
@@ -65,16 +59,16 @@ func process(ctx context.Context, p namedProblem) error {
     Timeout: durationpb.New(*timeout),
     FullSearch: *fullSearch,
     FeaturesSpaceSize: uint64(*featuresSpaceSize),
+    PlayoutsPerBigstep: 100,
+    PlayoutDepth: 10,
   }
-  if *priorityModelPath!="" {
-    priorityModel,err := ioutil.ReadFile(*priorityModelPath)
+  if *modelsPath!="" {
+    modelsBytes,err := ioutil.ReadFile(*modelsPath)
     if err!=nil { return fmt.Errorf("io.ReadFile(): %w",err) }
-    input.Priority = &mpb.Model{Xgb: priorityModel}
-  }
-  if *rewardModelPath!="" {
-    rewardModel,err := ioutil.ReadFile(*rewardModelPath)
-    if err!=nil { return fmt.Errorf("io.ReadFile(): %w",err) }
-    input.Reward = &mpb.Model{Xgb: rewardModel}
+    input.Models = &mpb.ModelSet{}
+    if err:=proto.Unmarshal(modelsBytes,input.Models); err!=nil {
+      return fmt.Errorf("proto.Unmarshal(): %w",err)
+    }
   }
 
   gracefulExitTimeout := time.Minute
@@ -94,21 +88,14 @@ func process(ctx context.Context, p namedProblem) error {
   sort.Slice(prof,func(i,j int) bool { return prof[i].GetTimeS() > prof[j].GetTimeS() })
   for _,e := range prof { log.Printf("%v",e) }
 
-  // Save model data.
+  // Save output data.
   problemName := strings.ReplaceAll(p.name,"/","_")
-  if err:=ioutil.WriteFile(
-    out.PriorityDir.File(problemName),
-    []byte(output.GetPriority().GetLibsvm()),
-    0777,
-  ); err!=nil {
-    return fmt.Errorf("ioutil.WriteFile(): %w",err)
-  }
 
-  if err:=ioutil.WriteFile(
-    out.RewardDir.File(problemName),
-    []byte(output.GetReward().GetLibsvm()),
-    0777,
-  ); err!=nil {
+  outputRaw,err := proto.Marshal(output)
+  if err!=nil {
+    return fmt.Errorf("proto.Marshal(): %w",err)
+  }
+  if err:=ioutil.WriteFile(outDir.File(problemName),outputRaw,0777); err!=nil {
     return fmt.Errorf("ioutil.WriteFile(): %w",err)
   }
   return nil
@@ -133,11 +120,6 @@ func NewDir(root string, path_ string) (Dir,error) {
 
 func (d Dir) File(name string) string {
   return path.Join(d.root,d.path,name)
-}
-
-type Output struct {
-  PriorityDir Dir
-  RewardDir Dir
 }
 
 func sgeTaskID() (int,bool) {

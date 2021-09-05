@@ -1,5 +1,7 @@
 #include <sys/time.h>
+#include <sys/prctl.h>
 #include <sys/resource.h>
+#include <signal.h>
 #include <unistd.h>
 #include <errno.h>
 #include <string.h>
@@ -20,6 +22,8 @@ int main(int argc, char **argv) {
   if(setrlimit(RLIMIT_AS,&l)==-1) {
     error("setrlimit(): %",strerror(errno));
   }
+  // Kill this process when parent dies/exists.
+  prctl(PR_SET_PDEATHSIG, SIGKILL);
   if(execv(argv[2],argv+2)==-1) {
     error("execv(%): %",argv[2],strerror(errno));
   }

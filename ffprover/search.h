@@ -34,7 +34,14 @@ struct Search {
     std::function<size_t(Tree::Ptr)> bigstep_selector;
   };
 
-  Search(Config _cfg) : cfg(_cfg) {}
+  Search(Config _cfg) : cfg(_cfg) {
+    if(auto got = cfg.playouts_per_bigstep, want = 0ul; got<want) {
+      error("cfg.playouts_per_bigstep = %, want >=%",got,want);
+    }
+    if(auto got = cfg.playout_depth, want = 0ul; got<=want) {
+      error("cfg.playout_depth = %, want >%",got,want);
+    }
+  }
 
   Config cfg;
   Result::Stats stats;
@@ -46,14 +53,18 @@ struct Search {
       // early exit
       if(p.done()) return {.status = Result::SOLVED, .node = t, .stats = stats};
       if(t.lost()) return {.status = Result::DEADEND, .node = t, .stats = stats};
+      if(!t.expanded()) expand(t,p);
       // perform playouts
       auto s = p.save();
-      for(size_t i = 0; !ctx->done() && i<cfg.playouts_per_bigstep; i++) {
-        playout(t,p);
-        p.restore(s);
+      if(t.child_count()>1) {
+        for(size_t i = 0; !ctx->done() && i<cfg.playouts_per_bigstep; i++) {
+          playout(t,p);
+          p.restore(s);
+        }
       }
       if(ctx->done()) break;
       auto i = cfg.bigstep_selector(t);
+      info("bigstep_selector() = %/%",i,t.child_count());
       stats.bigsteps++;
       t = t.child(i);
       p.apply_action(i);
@@ -70,7 +81,7 @@ private:
     return r;
   }
 
-  void expand(Tree::Ptr t, controller::Prover &p) {
+  void expand(Tree::Ptr t, controller::Prover &p) { FRAME("search::expand()");
     size_t n = p.action_count();
     vec<double> priorities(n);
     for(size_t i=0; i<n; i++) priorities[i] = cfg.base_priority(p.action_features(i));
@@ -78,7 +89,7 @@ private:
   }
 
   size_t select_child(Tree::Ptr t) {
-    if(t.child_count()==0) error("t has no children");
+    DEBUG if(t.child_count()==0) error("t has no children");
     ssize_t best_i=-1; double best = -1;
     for(size_t i=0; i<t.child_count(); i++) {
       if(t.child(i).lost()) continue;
@@ -99,8 +110,8 @@ private:
       if(p.done()) break;
       if(!t.expanded()) {
         if(expansions && cfg.one_expansion_per_playout) break;
-        expansions++;
         expand(t,p);
+        expansions++;
         if(t.lost()) break;
       }
       DEBUG if(t.lost()) error("playout in a lost branch");

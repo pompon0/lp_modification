@@ -25,6 +25,14 @@ struct FeatureVec {
       if(values[i]!=0.) fs.push_back(util::fmt("%:%",indices[i],std::to_string(values[i])));
     return util::join(" ",fs);
   }
+
+  void to_proto(mcts::LibSVM::Instance &inst) const {
+    for(size_t i=0; i<indices.size(); i++) if(values[i]!=0.) {
+      auto f = inst.add_features();
+      f->set_index(indices[i]);
+      f->set_value(values[i]);
+    }
+  }
 private:
   friend struct Matrix;
   size_t space_size;
@@ -39,6 +47,10 @@ struct DataSet {
     double label;
     FeatureVec features;
     str show() const { return util::fmt("% %",label,features.show()); }
+    void to_proto(mcts::LibSVM::Instance &inst) const {
+      features.to_proto(inst);
+      inst.set_label(label);
+    }
   };
   
   vec<Instance> instances;
@@ -46,6 +58,9 @@ struct DataSet {
     vec<str> is;
     for(const auto &i : instances) is.push_back(i.show()+"\n");
     return util::join("",is);
+  }
+  void to_proto(mcts::LibSVM &data) const {
+    for(auto &i : instances) i.to_proto(*data.add_instances());
   }
 };
 

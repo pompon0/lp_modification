@@ -113,7 +113,7 @@ int main(int argc, char **argv) {
     },
     .child_priority = child_priority,
     .bigstep_selector = [&](Tree::Ptr t) {
-      DEBUG if(t.child_count()==0) error("no canididate for bigstep");
+      DEBUG if(t.child_count()==0) error("no candidate for bigstep");
       const auto navigate_to_win = true; 
       if(auto w = t.won_depth(); navigate_to_win && w) {
         for(size_t i=0; i<t.child_count(); i++) {

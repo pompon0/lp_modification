@@ -24,7 +24,8 @@ Search::Config cfg {
   .child_priority = [](Tree::Ptr t, size_t i) {
     return -double(t.child(i).visits());
   },
-  .bigstep_selector = [](Tree::Ptr t) {
+  .bigstep_selector = [](Tree::Ptr t) -> size_t {
+    if(t.child_count()==1) return 0;
     ssize_t max_i = -1;
     double max_p = -1;
     for(size_t i=0; i<t.child_count(); i++) {
@@ -35,7 +36,7 @@ Search::Config cfg {
       double p = double(visits) + t.child(i).rewards()/double(visits);
       if(p>max_p){ max_p = p; max_i = i; }
     }
-    if(max_i==-1) error("no canididate for bigstep");
+    if(max_i==-1) error("no candidate for bigstep");
     return size_t(max_i);
   }
 };

@@ -361,6 +361,7 @@ func profilerDiff(ctx context.Context) error {
       c1.GetDuration().AsDuration(), c1.GetOutput().GetSolved(),
       c2.GetDuration().AsDuration(), c2.GetOutput().GetSolved(),
     )
+    fmt.Printf("\tcost = %v | %v\n",c1.GetOutput().GetCost(),c2.GetOutput().GetCost())
     es := c1.GetOutput().GetProfiler().GetEntries()
     sort.Slice(es,func(i,j int) bool { return entryLess(es[j],es[i]) })
     es2 := map[string]*spb.Profiler_Entry{}

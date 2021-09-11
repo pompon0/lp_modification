@@ -67,8 +67,13 @@ template<typename Proto> inline static Proto proto_from_raw(const str &file_raw)
 using Schedule = std::function<ProverOutput(Ctx::Ptr, memory::Alloc&, SearchState&)>;
 template<typename Cont> Schedule schedule(int deepening) {
   switch(deepening) {
-  case prover::BALANCED: return engine::balanced::schedule<Cont>;
-  case prover::DEPTH: return engine::depth::schedule<Cont>;
+  case prover::BALANCED_SCHEDULE: return engine::balanced::schedule<Cont>;
+  case prover::DEPTH_SCHEDULE: return engine::depth::schedule<Cont>;
+  case prover::DEPTH: return [](Ctx::Ptr ctx, memory::Alloc &A, SearchState &s){
+    return engine::iterative_deepening(*ctx,A,s,[](const Ctx &ctx, memory::Alloc &A, SearchState &s, size_t limit){
+      return engine::depth::search<Cont>(ctx,A,s,false,limit);
+    });
+  };
   default: error("deepening = %",deepening);
   }
 }

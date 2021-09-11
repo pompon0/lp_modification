@@ -17,7 +17,8 @@ enum Method {
 };
 
 enum Deepening {
-  BALANCED = 0;
-  DEPTH = 1;
+  BALANCED_SCHEDULE = 0;
+  DEPTH_SCHEDULE = 1;
+  DEPTH = 2;
 };
 

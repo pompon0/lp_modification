@@ -22,11 +22,11 @@ import (
 const tableau_bin_path = "__main__/lazyparam_prover/main"
 
 func ProveAxiomaticEq(ctx context.Context, tptpFOFProblem []byte) (*spb.ProverOutput,error) {
-  return Prove(ctx,tptpFOFProblem,nil,ppb.Method_CONNECTION_TABLEAU,ppb.Deepening_BALANCED,ppb.Transformation_AXIOMATIC_EQ,false)
+  return Prove(ctx,tptpFOFProblem,nil,ppb.Method_CONNECTION_TABLEAU,ppb.Deepening_BALANCED_SCHEDULE,ppb.Transformation_AXIOMATIC_EQ,false)
 }
 
 func ProveLPModification(ctx context.Context, tptpFOFProblem []byte) (*spb.ProverOutput,error) {
-  return Prove(ctx,tptpFOFProblem,nil,ppb.Method_CONNECTION_TABLEAU,ppb.Deepening_BALANCED,ppb.Transformation_LP_MODIFICATION,false)
+  return Prove(ctx,tptpFOFProblem,nil,ppb.Method_CONNECTION_TABLEAU,ppb.Deepening_BALANCED_SCHEDULE,ppb.Transformation_LP_MODIFICATION,false)
 }
 
 func ProveLPModificationDepth(ctx context.Context, tptpFOFProblem []byte) (*spb.ProverOutput,error) {
@@ -34,11 +34,11 @@ func ProveLPModificationDepth(ctx context.Context, tptpFOFProblem []byte) (*spb.
 }
 
 func ProveLazyParamodulation(ctx context.Context, tptpFOFProblem []byte) (*spb.ProverOutput,error) {
-  return Prove(ctx,tptpFOFProblem,nil,ppb.Method_LAZY_PARAMODULATION,ppb.Deepening_BALANCED,ppb.Transformation_SKIP,false);
+  return Prove(ctx,tptpFOFProblem,nil,ppb.Method_LAZY_PARAMODULATION,ppb.Deepening_BALANCED_SCHEDULE,ppb.Transformation_SKIP,false);
 }
 
 func ProveNoEq(ctx context.Context, tptpFOFProblem []byte) (*spb.ProverOutput,error) {
-  return Prove(ctx,tptpFOFProblem,nil,ppb.Method_CONNECTION_TABLEAU,ppb.Deepening_BALANCED,ppb.Transformation_SKIP,false);
+  return Prove(ctx,tptpFOFProblem,nil,ppb.Method_CONNECTION_TABLEAU,ppb.Deepening_BALANCED_SCHEDULE,ppb.Transformation_SKIP,false);
 }
 
 func Prove(ctx context.Context, tptpFOFProblem []byte, funOrd *spb.FunOrd, method ppb.Method, deepening ppb.Deepening, trans ppb.Transformation, transOnly bool) (*spb.ProverOutput,error) {

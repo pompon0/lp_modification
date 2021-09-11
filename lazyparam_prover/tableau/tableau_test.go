@@ -29,7 +29,7 @@ func TestTransformations(t *testing.T) {
       t.Run(testName,func(t *testing.T) {
         t.Parallel()
         log.Printf("[%s]",testName)
-        out,err := Prove(ctx,v,nil,ppb.Method_UNKNOWN_METHOD,ppb.Deepening_BALANCED,trans,true)
+        out,err := Prove(ctx,v,nil,ppb.Method_UNKNOWN_METHOD,ppb.Deepening_BALANCED_SCHEDULE,trans,true)
         if err!=nil { t.Fatalf("Tableau(%q): %v",k,err) }
         tptpTransformed,err := tool.ProtoToTptp(ctx,out.TransformedProblem)
         if err!=nil { t.Fatalf("tool.ProtoToTptp(%q): %v",k,err) }
@@ -57,7 +57,7 @@ func TestTableau(t *testing.T) {
     {ppb.Method_CONNECTION_TABLEAU, ppb.Transformation_LP_MODIFICATION},
     {ppb.Method_LAZY_PARAMODULATION, ppb.Transformation_SKIP},
   }{
-    for _,deepening := range []ppb.Deepening{ ppb.Deepening_BALANCED, ppb.Deepening_DEPTH} {
+    for _,deepening := range []ppb.Deepening{ ppb.Deepening_BALANCED_SCHEDULE, ppb.Deepening_DEPTH_SCHEDULE, ppb.Deepening_DEPTH} {
       for k,v := range sample.SampleProblems() {
         p := p
         deepening := deepening

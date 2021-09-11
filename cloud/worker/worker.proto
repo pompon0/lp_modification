@@ -14,8 +14,8 @@ enum Prover{
   LEANCOP_PROLOG_CUT_COMP_7 = 9;
   reserved 5;
   GPRUSAK_AXIOMATIC_EQ = 6;
-  GPRUSAK_LP_MODIFICATION = 7;
-  GPRUSAK_LP_MODIFICATION_DEPTH = 12; // iterative deepening by proof depth
+  GPRUSAK_LP_MODIFICATION = 7; // iterative deepening by proof cost. Schedule: with cut + without cut.
+  GPRUSAK_LP_MODIFICATION_DEPTH = 12; // iterative deepening by proof depth. No cut, no fancy schedule.
   GPRUSAK_LAZY_PARAMODULATION = 8;
   GPRUSAK_NO_EQ = 10;
   GPRUSAK_MCTS_FULL_SEARCH = 13; // iterative deepening by proof depth, but using the MCTS infrastructure.

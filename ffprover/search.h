@@ -146,29 +146,25 @@ INL static inline FeatureVec state_features(features::StateVec a) {
   return v;
 }
 
-struct Output {
-  DataSet priority_data;
-  DataSet reward_data;
-};
-
-static ptr<Output> collect_output(Tree::Ptr t, controller::Prover &prover, double reward) {
-  if(!t.has_parent()) return make<Output>();
-  auto output = collect_output(t.parent(),prover,reward*0.98); 
+static void collect_output(mcts::Path *path, Tree::Ptr t, controller::Prover &prover, double reward) {
+  if(!t.has_parent()) return;
+  collect_output(path,t.parent(),prover,reward*0.98); 
+  auto *node = path->add_nodes();
   size_t i = t.parent().child_id(t);
+  node->set_chosen_action(i);
   auto norm_vsum = double(t.parent().visits())/double(t.parent().child_count());
   for(size_t i=0; i<t.parent().child_count(); i++) {
     double v = t.parent().child(i).visits();
-    if(v>0) output->priority_data.instances.push_back({
-      .label = std::max<double>(-6,log(v/norm_vsum)), // this is dual to the exp in the base_priority
-      .features = action_features(prover.action_features(i)),
-    });
+    auto *action = node->add_actions();
+    // this is dual to the exp in the base_priority
+    action->set_label(std::max<double>(-6,log(v/norm_vsum)));
+    action_features(prover.action_features(i)).to_proto(*action);
   }
+  auto *state = node->mutable_state();
+  state->set_label(logit(reward)); // TODO: should it really be [-10,10] ?
+  state_features(prover.state_features()).to_proto(*state);
   prover.apply_action(i);
-  output->reward_data.instances.push_back({
-    .label = logit(reward), // TODO: should it really be [-10,10] ?
-    .features = state_features(prover.state_features()),
-  });
-  return output;
+  return;
 }
 
 }  // namespace ff

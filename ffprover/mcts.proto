@@ -14,7 +14,7 @@ message ModelSet {
   Model reward = 2;
 }
 
-message LibSVM {
+message Path {
   message Feature {
     uint64 index = 1;
     double value = 2;
@@ -23,8 +23,15 @@ message LibSVM {
     double label = 2;
     repeated Feature features = 1;
   }
-  repeated Instance instances = 1;
+  message Node {
+    Instance state = 1;
+    
+    repeated Instance actions = 3;
+    uint32 chosen_action = 4;
+  }
+  repeated Node nodes = 1;
   uint64 features_space_size = 2;
+  bool won = 3;
 }
 
 message Input {
@@ -61,8 +68,7 @@ message Output {
   Status status = 1;
   solutions.Proof proof = 6;
 
-  LibSVM priority = 2;
-  LibSVM reward = 3;
+  Path path = 2;
 
   Stats stats = 4;
   solutions.Profiler profiler = 5;

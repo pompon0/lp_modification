@@ -33,7 +33,8 @@ TEST_P(FullSearchSuite,simple) {
   auto res = FullSearch{}.run(ctx,tree->root(),*prover);
   ASSERT_EQ(Result::SOLVED,res.status);
   prover = controller::Prover::New(problem,1);
-  collect_output(res.node,*prover,1.);
+  mcts::Path path;
+  collect_output(&path,res.node,*prover,1.);
   ASSERT_TRUE(prover->done());
 }
 

@@ -48,17 +48,17 @@ func run(ctx context.Context) error {
   outs,err := readZip()
   if err!=nil { return fmt.Errorf("readZip(): %w",err) }
   models := &mpb.ModelSet{}
-  priority := &mpb.LibSVM{}
-  reward := &mpb.LibSVM{}
+  byStatus := map[mpb.Status]int{}
+  data := xgbtrain.NewData()
   for _,out := range outs {
-    //TODO: increase weight of positive samples
-    priority.Instances = append(priority.GetInstances(),out.GetPriority().GetInstances()...)
-    reward.Instances = append(reward.GetInstances(),out.GetReward().GetInstances()...)
+    data.Append(out.GetPath())
+    byStatus[out.GetStatus()]++
   }
-  if models.Priority,err = xgbtrain.XGBTrain(ctx,priority); err!=nil {
+  fmt.Printf("byStatus = %+v\n",byStatus)
+  if models.Priority,err = xgbtrain.XGBTrain(ctx,data.Priority); err!=nil {
     return fmt.Errorf("xgbtrain.XGBTrain(): %w",err)
   }
-  if models.Reward,err = xgbtrain.XGBTrain(ctx,reward); err!=nil {
+  if models.Reward,err = xgbtrain.XGBTrain(ctx,data.Reward); err!=nil {
     return fmt.Errorf("xgbtrain.XGBTrain(): %w",err)
   }
   modelsBytes,err := proto.Marshal(models)
@@ -74,6 +74,6 @@ func run(ctx context.Context) error {
 func main() {
   flag.Parse()
   if err:=run(context.Background()); err!=nil {
-    log.Fatalf("run(): %b",err)
+    log.Fatalf("run(): %v",err)
   }
 }

@@ -41,11 +41,14 @@ func TestXGBTrain(t *testing.T) {
   if err!=nil { t.Fatalf("MCTS(): %v",err) }
   fmt.Printf("out = %v",out)
 
+  data := NewData()
+  data.Append(out.GetPath())
+
   // train a models
   input.Models = &mpb.ModelSet{}
-  input.Models.Priority,err = XGBTrain(ctx,out.GetPriority())
+  input.Models.Priority,err = XGBTrain(ctx,data.Priority)
   if err!=nil { t.Fatalf("XGBTrain(): %v",err) }
-  input.Models.Reward,err = XGBTrain(ctx,out.GetReward())
+  input.Models.Reward,err = XGBTrain(ctx,data.Reward)
   if err!=nil { t.Fatalf("XGBTrain(): %v",err) }
 
   // with model

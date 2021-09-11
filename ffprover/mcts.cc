@@ -21,6 +21,10 @@
 // - decrease the number of playouts to 100 or 1000
 // - disable playouts once won
 
+// 1. verify that the taught model finds exactly the paths it is supposed to find.
+// 2. find examples of non-trivial paths
+// 3. match full_search with regular prover
+
 #include <iostream>
 #include <algorithm>
 #include <random>
@@ -50,15 +54,12 @@ INL static inline double logistic(double v){ return 1./(1.+exp(-v)); }
 
 ptr<mcts::Output> save_result(controller::Prover &prover, Result res, size_t features_space_size) { FRAME("save_result");
   bool won = res.status==Result::SOLVED;
-  auto output = collect_output(res.node,prover,won?1.:0.);
   auto proto = own(new mcts::Output());
-  if(won) {
-    *proto->mutable_proof() = prover.get_proof();
-    output->priority_data.to_proto(*(proto->mutable_priority()));
-    proto->mutable_priority()->set_features_space_size(features_space_size);
-  }
-  output->reward_data.to_proto(*(proto->mutable_reward()));
-  proto->mutable_reward()->set_features_space_size(features_space_size);
+  auto path = proto->mutable_path();
+  path->set_won(won);
+  path->set_features_space_size(features_space_size);
+  collect_output(path,res.node,prover,won?1.:0.);
+  if(won) *proto->mutable_proof() = prover.get_proof();
   return proto;
 }
 

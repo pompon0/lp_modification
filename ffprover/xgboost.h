@@ -26,7 +26,7 @@ struct FeatureVec {
     return util::join(" ",fs);
   }
 
-  void to_proto(mcts::LibSVM::Instance &inst) const {
+  void to_proto(mcts::Path::Instance &inst) const {
     for(size_t i=0; i<indices.size(); i++) if(values[i]!=0.) {
       auto f = inst.add_features();
       f->set_index(indices[i]);
@@ -39,7 +39,7 @@ private:
   vec<unsigned> indices;
   vec<float> values;
 };
-
+/*
 // TODO: dataset show() is xgboost-specific,
 // so it doesn't belong here. Move is somewhere else.
 struct DataSet {
@@ -47,7 +47,7 @@ struct DataSet {
     double label;
     FeatureVec features;
     str show() const { return util::fmt("% %",label,features.show()); }
-    void to_proto(mcts::LibSVM::Instance &inst) const {
+    void to_proto(mcts::Node::Instance &inst) const {
       features.to_proto(inst);
       inst.set_label(label);
     }
@@ -59,11 +59,11 @@ struct DataSet {
     for(const auto &i : instances) is.push_back(i.show()+"\n");
     return util::join("",is);
   }
-  void to_proto(mcts::LibSVM &data) const {
+  void to_proto(mcts::Node &data) const {
     for(auto &i : instances) i.to_proto(*data.add_instances());
   }
 };
-
+*/
 struct Matrix {
   static ptr<Matrix> New(const FeatureVec &f) { FRAME("Matrix::New()");
     DMatrixHandle handle;

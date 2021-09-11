@@ -72,6 +72,7 @@ func Prove(ctx context.Context, tptpFOF []byte) (*spb.ProverOutput,error) {
     return nil,fmt.Errorf("MCTS(): %w",err)
   }
   return &spb.ProverOutput{
+    Cost: int64(out.GetStats().GetBigsteps()),
     CnfProblem: cnf,
     Solved: out.GetStatus()==mpb.Status_THEOREM,
     Proof: out.GetProof(),

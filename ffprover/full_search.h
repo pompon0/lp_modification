@@ -45,6 +45,7 @@ struct FullSearch {
         }
         t.visit(1);
         t.set_won();
+        stats.bigsteps = depth;
         return {
           .status = Result::SOLVED,
           .node = t,
@@ -52,6 +53,7 @@ struct FullSearch {
         };
       }
       if(ctx->done()) {
+        stats.bigsteps = depth;
         return {
           .status = Result::CANCELLED,
           .node = t,

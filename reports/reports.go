@@ -357,11 +357,12 @@ func profilerDiff(ctx context.Context) error {
   for n,c1 := range cs1 {
     c2,ok := cs2[n]
     if !ok { continue }
+    if c1.GetOutput().GetSolved() || !c2.GetOutput().GetSolved() { continue }
     fmt.Printf("\n[%s] %v %v | %v %v\n",n,
       c1.GetDuration().AsDuration(), c1.GetOutput().GetSolved(),
       c2.GetDuration().AsDuration(), c2.GetOutput().GetSolved(),
     )
-    fmt.Printf("\tcost = %v | %v\n",c1.GetOutput().GetCost(),c2.GetOutput().GetCost())
+    fmt.Printf("\tcost = %v | cost = %v\n",c1.GetOutput().GetCost(),c2.GetOutput().GetCost())
     es := c1.GetOutput().GetProfiler().GetEntries()
     sort.Slice(es,func(i,j int) bool { return entryLess(es[j],es[i]) })
     es2 := map[string]*spb.Profiler_Entry{}

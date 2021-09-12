@@ -158,14 +158,11 @@ public:
     sv.set_task_count(current.size());
     sv.set_total_vars_count(state->val.size());
     sv.set_free_vars_count(state->val.free_vars_size());
-    size_t goals = 0;
     for(auto c = current; !c.empty(); c = c.tail()) {
       if(auto mg = c.head().goal; mg) {
-        goals++;
         sv.add_goal(*(problem->node_idx.get()),state->val,mg.get());
       }
     }
-    sv.set_goal_count(goals);
     return sv;
   }
 
@@ -186,8 +183,7 @@ public:
       PROF_CYCLES("RawProver::action_features");
       features::ActionVec av(A,hashed_size);
       auto a = next.head();
-      av.set_new_goal_count(a.new_goals.size());
-      av.set_path_length(a.branch.false_.size());
+      for(auto p = a.branch.true_; !p.empty(); p = p.tail()) av.add_lemma(*(prover->problem->node_idx.get()),prover->state->val,p.head());
       for(auto p = a.branch.false_; !p.empty(); p = p.tail()) av.add_path(*(prover->problem->node_idx.get()),prover->state->val,p.head());
       for(auto g = a.new_goals; !g.empty(); g = g.tail()) av.add_new_goal(*(prover->problem->node_idx.get()),prover->state->val,g.head());
       return av;

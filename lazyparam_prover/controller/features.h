@@ -27,7 +27,6 @@ private:
 enum : uint64_t {
   // DO NOT change the numbering,
   // otherwise you will have to retrain from scratch.
-  // TODO: The model should be annotated with the hashed_size.
   var_begin = 1,
   fun_begin = 2,
   pred_begin = 3,
@@ -39,6 +38,7 @@ enum : uint64_t {
   vertical_begin = 7,
   
   goal = 8, // open branches
+  lemma = 17, // literals assumed to be true (available for exact matches)
   path = 9, // current branch to solve
   proof = 13, // current partial proof
   free_vars = 15, // free variables in the proof
@@ -164,20 +164,41 @@ static void add(SubSpace s, const tool::node::Index &idx, const tableau::Val &va
 struct ActionVec {
   explicit ActionVec(memory::Alloc &A, size_t space_size) : features(A,space_size) {}
   Space features;
+  size_t new_goal_count = 0;
+  size_t lemma_count = 0;
+  size_t path_length = 0;
 
-  void set_new_goal_count(size_t x) { SubSpace(&features).sub(encoding::goal).at(encoding::length) = x; }
-  void set_path_length(size_t x){ SubSpace(&features).sub(encoding::path).at(encoding::length) = x; }
-  void add_new_goal(const tool::node::Index &idx, const tableau::Val &val, tableau::Atom a){ add(SubSpace(&features).sub(encoding::goal),idx,val,a); }
-  void add_path(const tool::node::Index &idx, const tableau::Val &val, tableau::Atom a){ add(SubSpace(&features).sub(encoding::path),idx,val,a); } 
+  void add_new_goal(const tool::node::Index &idx, const tableau::Val &val, tableau::Atom a){
+    new_goal_count++;
+    auto sub = SubSpace(&features).sub(encoding::goal);
+    sub.at(encoding::length)++;
+    add(sub,idx,val,a);
+  }
+  void add_lemma(const tool::node::Index &idx, const tableau::Val &val, tableau::Atom a) {
+    lemma_count++;
+    auto sub = SubSpace(&features).sub(encoding::lemma);
+    sub.at(encoding::length)++;
+    add(sub,idx,val,a);
+  }
+  void add_path(const tool::node::Index &idx, const tableau::Val &val, tableau::Atom a){
+    path_length++;
+    auto sub = SubSpace(&features).sub(encoding::path);
+    sub.at(encoding::length)++;
+    add(sub,idx,val,a);
+  }
 };
 
 struct StateVec {
   explicit StateVec(memory::Alloc &A, size_t space_size) : features(A,space_size) {}
   Space features;
-  size_t goal_count = 1; // a neutral default, in case it is not set.
- 
+  size_t goal_count = 0;
+  size_t proof_size = 0;
+
   // proof size in clauses (aka nodes, aka cost)
-  void set_proof_size(size_t x){ SubSpace(&features).sub(encoding::proof).at(encoding::length) = x; }
+  void set_proof_size(size_t x){
+    proof_size = x;
+    SubSpace(&features).sub(encoding::proof).at(encoding::length) = x;
+  }
   // number of free variables
   void set_free_vars_count(size_t x){ SubSpace(&features).sub(encoding::free_vars).at(encoding::length) = x; }
   // number of variables total
@@ -185,13 +206,13 @@ struct StateVec {
 
   // number of tasks
   void set_task_count(size_t x){ SubSpace(&features).sub(encoding::tasks).at(encoding::length) = x; }
-  // number of goals
-  void set_goal_count(size_t x){
-    goal_count = x;
-    SubSpace(&features).sub(encoding::goal).at(encoding::length) = x;
-  }
 
-  void add_goal(const tool::node::Index &idx, const tableau::Val &val, tableau::Atom a){ add(SubSpace(&features).sub(encoding::goal),idx,val,a); }
+  void add_goal(const tool::node::Index &idx, const tableau::Val &val, tableau::Atom a){
+    goal_count++;
+    auto sub = SubSpace(&features).sub(encoding::goal);
+    sub.at(encoding::length)++;
+    add(sub,idx,val,a);
+  }
 
   // proof size in literals
   // depth of the open branches

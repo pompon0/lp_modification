@@ -17,7 +17,7 @@ using namespace ff;
 
 Search::Config cfg {
   .one_expansion_per_playout = false,
-  .playouts_per_bigstep = 100,
+  .playouts_per_bigstep = 20,
   .playout_depth = 40,
   .base_reward = [](features::StateVec f){ return 0.3; },
   .base_priority = [](features::ActionVec f){ return 1.; },
@@ -54,7 +54,7 @@ TEST_P(SearchSuite,simple) {
   auto prover = controller::Prover::New(problem,32);
   auto tree = Tree::New();
   Search search(cfg);
-  auto ctx = Ctx::with_timeout(Ctx::background(),absl::Seconds(5));
+  auto ctx = Ctx::with_timeout(Ctx::background(),absl::Seconds(10));
   auto res = search.run(ctx,tree->root(),*prover);
   ASSERT_EQ(Result::SOLVED,res.status);
   prover = controller::Prover::New(problem,1);

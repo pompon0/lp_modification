@@ -7,7 +7,7 @@ import (
   "testing"
   "context"
 
-  "github.com/pompon0/tptp_benchmark_go/eprover"
+  "github.com/pompon0/tptp_benchmark_go/vampire"
   "github.com/pompon0/tptp_benchmark_go/problems/sample"
   "github.com/pompon0/tptp_benchmark_go/tool"
   spb "github.com/pompon0/tptp_benchmark_go/tptp_parser/proto/solutions_go_proto"
@@ -37,9 +37,9 @@ func TestTransformations(t *testing.T) {
 
         proveCtx,cancel := context.WithTimeout(ctx,10*time.Second)
         defer cancel()
-        eproverOut,err := eprover.Prove(proveCtx,tptpTransformed)
-        if err!=nil { t.Fatalf("eprover.Prove(%q): %v",k,err) }
-        if !eproverOut.Solved { t.Fatalf("eprover.Prove(%q) = not solved",k) }
+        vampireOut,err := vampire.Prove(proveCtx,tptpTransformed)
+        if err!=nil { t.Fatalf("vampire.Prove(%q): %v",k,err) }
+        if !vampireOut.Solved { t.Fatalf("vampire.Prove(%q) = not solved",k) }
       })
     }
   }

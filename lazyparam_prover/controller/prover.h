@@ -77,7 +77,7 @@ public:
   }
 
   INL features::StateVec state_features() const { return p->state_features(*actions_alloc,features_space_size); }
-  INL features::ActionVec action_features(size_t i) const {
+  INL features::ActionVec action_features(size_t i) const { FRAME("action_features");
     PROF_CYCLES("Prover::action_features");
     DEBUG if(i>=actions.size()) error("there are % actions",i,actions.size());
     return actions_at(i).features;

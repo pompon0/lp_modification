@@ -71,4 +71,10 @@ problems {
     "fof(a0, conjecture,  (p(y) => (x=c | d=y))).\n"
     "fof(a1, axiom,       (p(y) => (x=c | d=y))).\n"
 }
-
+problems: {
+  # Associativity under congruence.
+  name: "t83_enumset1"
+  tptp:
+    "cnf(i_4, axiom, z(z(V3, V4), V5) = z(V3, z(V4, V5))).\n"
+    "cnf(conjecture, negated_conjecture, ~ z(z(s(x1, x2, x3), k(x4, x5, x6, x7)), t(x8, x9)) = z(s(x1, x2, x3), z(k(x4, x5, x6, x7), t(x8, x9)))).\n"
+}

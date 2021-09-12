@@ -11,17 +11,15 @@ struct FullSearch {
   Result::Stats stats;
 
   bool dfs(Ctx::Ptr ctx, size_t depth, controller::Prover &p) {
-    if(p.done()) {
-      return 1;
-    }
-    if(depth==0) return 0;
+    if(p.done()) return 1;
     auto s = p.save();
     for(size_t i=p.action_count(); i--;) {
-      stats.inferences++;
       if(ctx->done()) return 0;
       p.restore(s);
+      if(p.action_features(i).path_length>depth) continue;
+      stats.inferences++;
       p.apply_action(i);
-      if(dfs(ctx,depth-1,p)) {
+      if(dfs(ctx,depth,p)) {
         path.push_back(i);
         return 1;
       }
@@ -29,7 +27,8 @@ struct FullSearch {
     return 0;
   }
 
-  Result run(Ctx::Ptr ctx, Tree::Ptr t, controller::Prover &p) {
+  // This is an iterative_deepening strategy bounded by PROOF DEPTH, not MCTS TREE DEPTH.
+  Result run(Ctx::Ptr ctx, Tree::Ptr t, controller::Prover &p) { FRAME("FullSearch::run");
     auto s = p.save();
     for(size_t depth=1;; depth++) {
       p.restore(s);

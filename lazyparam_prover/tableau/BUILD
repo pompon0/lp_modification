@@ -24,10 +24,10 @@ go_test(
     srcs = ["tableau_test.go"],
     embed = [":go_default_library"],
     deps = [
-        "//eprover:go_default_library",
         "//lazyparam_prover:prover_go_proto",
         "//problems/sample:go_default_library",
         "//tool:go_default_library",
         "//tptp_parser/proto:solutions_go_proto",
+        "//vampire:go_default_library",
     ],
 )

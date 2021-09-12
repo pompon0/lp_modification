@@ -12,7 +12,7 @@ func TestProve(t *testing.T) {
   for name,tptp := range sample.SampleProblems() {
     // leancop doesn't understand the trivial example 
     if name == "trivial" { continue }
-    // case not covered due to incompleteness
+    // cases not covered due to incompleteness
     if name == "l40_tex_2_reduced" { continue }
     if out,err := Prove(ctx,tptp); err!=nil || !out.Solved {
       t.Fatalf("Prove(%q): %v,%v",name,out,err)

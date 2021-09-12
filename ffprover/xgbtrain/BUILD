@@ -18,7 +18,6 @@ go_test(
         "//ffprover:mcts_go_proto",
         "//problems/sample:go_default_library",
         "//tool:go_default_library",
-        "//utils:go_default_library",
         "@org_golang_google_protobuf//types/known/durationpb:go_default_library",
     ],
 )
@@ -26,16 +25,11 @@ go_test(
 go_library(
     name = "go_default_library",
     srcs = ["xgbtrain.go"],
+    data = [":xgb-train"],
     importpath = "github.com/pompon0/tptp_benchmark_go/ffprover/xgbtrain",
     visibility = ["//visibility:public"],
-    data = [":xgb-train"],
     deps = [
-        "//eprover:go_default_library",
-        "//ffprover:go_default_library",
         "//ffprover:mcts_go_proto",
-        "//problems/sample:go_default_library",
-        "//tool:go_default_library",
         "//utils:go_default_library",
-        "@org_golang_google_protobuf//types/known/durationpb:go_default_library",
     ],
 )

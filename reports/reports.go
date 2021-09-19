@@ -228,11 +228,11 @@ func print_(ctx context.Context) error {
     if c.Name == *caseName {
       tptp,err := tool.ProtoToTptp(ctx,c.CnfProblem)
       if err!=nil { return fmt.Errorf("ProtoToTptp(%q): %v",c.Name,err) }
-      fmt.Printf("%s\n\n",string(tptp))
+      fmt.Printf("%s\n\n",string(tptp.Raw))
       if c.Output!=nil {
         tptpProof,err := tool.ProofToTptp(ctx,c.Output.Proof)
         if err!=nil { return fmt.Errorf("ProtoToTptp(%q[proof]): %v",c.Name,err) }
-        fmt.Printf("%s\n\n",string(tptpProof))
+        fmt.Printf("%s\n\n",string(tptpProof.Raw))
       }
     }
   }

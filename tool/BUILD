@@ -25,8 +25,8 @@ go_library(
 go_test(
     name = "go_default_test",
     srcs = ["tool_test.go"],
-    embed = [":go_default_library"],
     deps = [
+        ":go_default_library",
         "//eprover:go_default_library",
         "//problems/sample:go_default_library",
         "//tptp_parser/proto:solutions_go_proto",

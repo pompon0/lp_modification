@@ -224,19 +224,19 @@ func run(ctx context.Context) error {
     // convert to CNF or skip
     eproverCtx,cancel := context.WithTimeout(ctx,eproverCNFTimeout)
     defer cancel()
-    tptpCNF,err := eprover.FOFToCNF(eproverCtx,tptpFOF)
+    cnf,err := eprover.FOFToCNF(eproverCtx,&tool.TPTP{relPath,tptpFOF})
     if err==context.DeadlineExceeded {
       log.Printf("Skipping %q; eprover.FOFToCNF(): %v",relPath,err)
       return nil
     } else if err!=nil {
       return fmt.Errorf("eprover.FOFToCNF(%q): %v",relPath,err)
     }
-    log.Printf("len(tptpCNF) = %v",len(tptpCNF))
+    log.Printf("len(tptpCNF) = %v",len(cnf.Raw))
 
     // convert to proto or die
     toProtoCtx,cancel := context.WithTimeout(ctx,toProtoTimeout)
     defer cancel()
-    tptpProto,err := tool.TptpToProto(toProtoCtx,tool.CNF,tptpCNF)
+    tptpProto,err := cnf.ToProto(toProtoCtx,tool.CNF)
     if err!=nil {
       return fmt.Errorf("tool.TptpToProto(%q): %v",relPath,err)
     }

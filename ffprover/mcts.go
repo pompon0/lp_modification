@@ -52,10 +52,10 @@ func MCTS(ctx context.Context, input *mpb.Input) (*mpb.Output,error) {
   return output,nil
 }
 
-func Prove(ctx context.Context, tptpFOF []byte) (*spb.ProverOutput,error) {
-  tptpCNF,err := eprover.FOFToCNF(ctx,tptpFOF)
+func Prove(ctx context.Context, fof *tool.TPTP) (*spb.ProverOutput,error) {
+  cnfTPTP,err := eprover.FOFToCNF(ctx,fof)
   if err!=nil { return nil,fmt.Errorf("eprover.FOFToCNF(): %w",err) }
-  cnf,err := tool.TptpToProto(ctx,tool.CNF,tptpCNF)
+  cnf,err := cnfTPTP.ToProto(ctx,tool.CNF)
   if err!=nil { return nil,fmt.Errorf("tool.TptpToProto(): %w",err) }
 
   timeout := time.Hour

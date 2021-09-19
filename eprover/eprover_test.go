@@ -20,11 +20,11 @@ func TestProve(t *testing.T) {
 func TestFOFToCNF(t *testing.T) {
   ctx := context.Background()
   for name,tptp := range sample.SampleProblems() {
-    tptpCNF,err := FOFToCNF(ctx,tptp)
+    cnf,err := FOFToCNF(ctx,tptp)
     if err!=nil {
       t.Fatalf("Prover(%q): %v",name,err)
     }
-    if _,err := tool.TptpToProto(ctx,tool.CNF,tptpCNF); err!=nil {
+    if _,err := cnf.ToProto(ctx,tool.CNF); err!=nil {
       t.Fatalf("TptpToProto(%q): %v",name,err)
     }
   }

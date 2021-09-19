@@ -26,22 +26,22 @@ const statusCounterSatisfiable = "CounterSatisfiable"
 const statusSatisfiable = "Satisfiable"
 const refutationNotFound = "% Refutation not found"
 
-func Prove(ctx context.Context, tptpFOFProblem []byte) (*spb.ProverOutput,error) {
-  return Run(ctx,tptpFOFProblem)
+func Prove(ctx context.Context, fofProblem *tool.TPTP) (*spb.ProverOutput,error) {
+  return Run(ctx,fofProblem)
 }
 
-func ProveNoEq(ctx context.Context, tptpFOFProblem []byte) (*spb.ProverOutput,error) {
-  fof,err := tool.TptpToProto(ctx,tool.FOF,tptpFOFProblem)
+func ProveNoEq(ctx context.Context, fofProblem *tool.TPTP) (*spb.ProverOutput,error) {
+  fof,err := fofProblem.ToProto(ctx,tool.FOF)
   if err!=nil { return nil,fmt.Errorf("tool.TptpToProto(): %v",err) }
-  tptpFOFProblem,err = tool.ProtoToTptp(ctx,tool.ReplaceEquality(fof))
+  fofProblem,err = tool.ProtoToTptp(ctx,tool.ReplaceEquality(fof))
   if err!=nil { return nil,fmt.Errorf("tool.ProtoToTptp(): %v",err) }
-  return Run(ctx,tptpFOFProblem)
+  return Run(ctx,fofProblem)
 }
 
-func Run(ctx context.Context, tptpFOFProblem []byte) (*spb.ProverOutput,error) {
+func Run(ctx context.Context, fofProblem *tool.TPTP) (*spb.ProverOutput,error) {
   const memLimitBytes = 2000000000 // 2GB
   var inBuf,outBuf bytes.Buffer
-  if _,err := inBuf.Write(tptpFOFProblem); err!=nil {
+  if _,err := inBuf.Write(fofProblem.Raw); err!=nil {
     return nil,fmt.Errorf("inBuf.Write(): %v",err)
   }
   args := []string{

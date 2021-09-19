@@ -26,7 +26,7 @@ func TestXGBTrain(t *testing.T) {
   tptpCNF,err := eprover.FOFToCNF(ctx,tptpFOF)
   if err!=nil { t.Fatalf("eprover.FOFToCNF(): %v",err) }
 
-  cnf,err := tool.TptpToProto(ctx,tool.CNF,tptpCNF)
+  cnf,err := tptpCNF.ToProto(ctx,tool.CNF)
   if err!=nil { t.Fatalf("tool.TptpToProto(): %v",err) }
 
   input := &mpb.Input{

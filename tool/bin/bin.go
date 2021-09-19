@@ -27,7 +27,7 @@ func run(ctx context.Context) error {
   if req := req.GetProtoToTptp(); req!=nil {
     tptp,err := tool.ProtoToTptp(ctx,req.GetFile())
     if err!=nil { return fmt.Errorf("tool.ProtoToTptp(): %w",err) }
-    resp.ProtoToTptp = &tpb.ProtoToTptpResp{ Tptp: string(tptp) }
+    resp.ProtoToTptp = &tpb.ProtoToTptpResp{ Tptp: string(tptp.Raw) }
   }
   // TptpToProto
   if req := req.GetTptpToProto(); req!=nil {
@@ -37,15 +37,16 @@ func run(ctx context.Context) error {
     case xpb.Input_CNF: lang = tool.CNF
     default: return fmt.Errorf("unknown language: %v",req.GetLang())
     }
-    f,err := tool.TptpToProto(ctx,lang,[]byte(req.GetTptp()))
+    f,err := (&tool.TPTP{Raw:[]byte(req.GetTptp())}).ToProto(ctx,lang)
     if err!=nil { return fmt.Errorf("tool.TptpToProto(): %w",err) }
     resp.TptpToProto = &tpb.TptpToProtoResp{ File: f }
   }
   // FOFToCNF
   if req := req.GetFofToCnf(); req!=nil {
-    cnf,err := eprover.FOFToCNF(ctx,[]byte(req.GetTptpFof()))
+    fof := &tool.TPTP{Raw:[]byte(req.GetTptpFof())}
+    cnf,err := eprover.FOFToCNF(ctx,fof)
     if err!=nil { return fmt.Errorf("eprover.FOFToCNF(): %w",err) }
-    resp.FofToCnf = &tpb.FofToCnfResp{ TptpCnf: string(cnf) }
+    resp.FofToCnf = &tpb.FofToCnfResp{ TptpCnf: string(cnf.Raw) }
   }
 
   rawResp,err := proto.Marshal(resp)

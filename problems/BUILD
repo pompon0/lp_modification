@@ -14,6 +14,7 @@ go_library(
     importpath = "github.com/pompon0/tptp_benchmark_go/problems",
     visibility = ["//visibility:public"],
     deps = [
+        "//tool:go_default_library",
         "//tptp_parser/proto:solutions_go_proto",
         "//utils:go_default_library",
         "@com_github_golang_protobuf//proto:go_default_library",

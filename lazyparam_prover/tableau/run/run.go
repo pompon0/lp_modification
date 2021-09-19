@@ -62,7 +62,7 @@ func tptpProofString(p *spb.Proof) string {
   return b.String()
 }
 
-func prove(ctx context.Context, tptp []byte, funOrd *spb.FunOrd) error {
+func prove(ctx context.Context, tptp *tool.TPTP, funOrd *spb.FunOrd) error {
   ctxProve,cancel := context.WithTimeout(ctx,*timeout)
   defer cancel()
   out,err := tableau.Prove(ctxProve,tptp,funOrd,*method,*deepening,*trans,*transOnly)
@@ -103,7 +103,7 @@ func prove(ctx context.Context, tptp []byte, funOrd *spb.FunOrd) error {
   return nil
 }
 
-func find() ([]byte,error) {
+func find() (*tool.TPTP,error) {
   mp,cancel,err := problems.MizarProblems()
   if err!=nil { return nil,fmt.Errorf("problems.MizarProblems(): %v",err) }
   defer cancel()
@@ -127,13 +127,8 @@ func find() ([]byte,error) {
     if tptp,err = ioutil.ReadAll(os.Stdin); err!=nil {
       return nil,fmt.Errorf("ioutil.ReadAll(): %v",err)
     }
-    return tptp,nil
+    return &tool.TPTP{"<unknown>",tptp},nil
   }
-}
-
-type prob struct {
-  name string
-  tptp []byte
 }
 
 func run(ctx context.Context) error {
@@ -155,17 +150,17 @@ func run(ctx context.Context) error {
     mp,cancel,err := problems.MizarProblems()
     if err!=nil { return fmt.Errorf("problems.MizarProblems(): %v",err) }
     defer cancel()
-    var ps []prob
+    var ps []*tool.TPTP
     for n,p := range mp {
       tptp,err := p.Get()
       if err!=nil { return fmt.Errorf("mizar[%q].Get(): %w",n,err) }
-      ps = append(ps,prob{n,tptp})
+      ps = append(ps,tptp)
     }
-    sort.Slice(ps,func(i,j int) bool { return len(ps[i].tptp)<len(ps[j].tptp) })
+    sort.Slice(ps,func(i,j int) bool { return len(ps[i].Raw)<len(ps[j].Raw) })
     for _,p := range ps {
-      log.Printf("== %q ==",p.name)
-      if err:=prove(ctx,p.tptp,nil); err!=nil {
-        return fmt.Errorf("prove(%q): %w",p.name,err)
+      log.Printf("== %q ==",p.Name)
+      if err:=prove(ctx,p,nil); err!=nil {
+        return fmt.Errorf("prove(%q): %w",p.Name,err)
       }
     }
   }

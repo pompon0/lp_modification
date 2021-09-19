@@ -1,17 +1,16 @@
-package tool
+package tool_test
 
 import (
   "context"
   "testing"
   "log"
-  "bytes"
 
   "github.com/pompon0/tptp_benchmark_go/eprover"
+  "github.com/pompon0/tptp_benchmark_go/tool"
   "github.com/pompon0/tptp_benchmark_go/problems/sample"
   "github.com/google/go-cmp/cmp"
   tpb "github.com/pompon0/tptp_benchmark_go/tptp_parser/proto/tptp_go_proto"
   spb "github.com/pompon0/tptp_benchmark_go/tptp_parser/proto/solutions_go_proto"
-
 )
 
 const num845_2 = `
@@ -32,10 +31,13 @@ fof('ass(cond(33, 0), 0)',axiom,( ! [Vd46] : ! [Vd47] : ! [Vd48] : vplus(vplus(V
 fof('qu(cond(conseq(axiom(3)), 3), and(holds(definiens(29), 45, 0), holds(definiens(29), 44, 0)))',axiom,( ! [Vd42] : ! [Vd43] : ( vplus(Vd42,vsucc(Vd43)) = vsucc(vplus(Vd42,Vd43)) & vplus(Vd42,v1) = vsucc(Vd42) ) )).
 `
 
-func parsingTestCases() map[string][]byte {
-  r := map[string][]byte{}
+func parsingTestCases() map[string]*tool.TPTP {
+  r := map[string]*tool.TPTP{}
   for k,v := range sample.SampleProblems() { r[k] = v }
-  r["NUM845+2.p"] = []byte(num845_2)
+  r["NUM845+2.p"] = &tool.TPTP{
+    Name: "NUM845+2.p",
+    Raw: []byte(num845_2),
+  }
   return r
 }
 
@@ -44,9 +46,9 @@ func TestClearUnknownNames(t *testing.T) {
   fof := sample.SampleProblems()["barber"]
   cnf,err := eprover.FOFToCNF(ctx,fof)
   if err!=nil { t.Fatalf("FOFToCNF(): %v",err) }
-  fofProto,err := TptpToProto(ctx,FOF,fof)
+  fofProto,err := fof.ToProto(ctx,tool.FOF)
   if err!=nil { t.Fatalf("TptpToProto(FOF): %v",err) }
-  cnfProto,err := TptpToProto(ctx,CNF,cnf)
+  cnfProto,err := cnf.ToProto(ctx,tool.CNF)
   if err!=nil { t.Fatalf("TptpToProto(CNF): %v",err) }
 
   getNames := func(f *tpb.File) map[string]bool {
@@ -62,7 +64,7 @@ func TestClearUnknownNames(t *testing.T) {
   fofNames := getNames(fofProto)
   cnfNames := getNames(cnfProto)
   // Function under test:
-  ClearUnknownNames(cnfProto,fofProto.GetNodes())
+  tool.ClearUnknownNames(cnfProto,fofProto.GetNodes())
   cnfNames2 := getNames(cnfProto)
 
   for k,_ := range fofNames {
@@ -82,17 +84,17 @@ func TestClearUnknownNames(t *testing.T) {
 func TestReplaceEquality(t *testing.T) {
   ctx := context.Background()
   for k,v := range sample.SampleProblems() {
-    fof,err := TptpToProto(ctx,FOF,v)
+    fof,err := v.ToProto(ctx,tool.FOF)
     if err!=nil { t.Fatalf("TptpToProto(%q): %v",k,err) }
     // under test
-    fofNoEq := ReplaceEquality(fof)
+    fofNoEq := tool.ReplaceEquality(fof)
 
-    tptpNoEq,err := ProtoToTptp(ctx,fofNoEq)
+    tptpNoEq,err := tool.ProtoToTptp(ctx,fofNoEq)
     if err!=nil { t.Fatalf("ProtoToTptp(%q): %v",k,err) }
 
-    before,err := TptpHasEquality(ctx,v)
+    before,err := v.HasEquality(ctx)
     if err!=nil { t.Fatalf("TptpHasEquality(%q): %v",k,err) }
-    after,err := TptpHasEquality(ctx,tptpNoEq)
+    after,err := tptpNoEq.HasEquality(ctx)
     if err!=nil { t.Fatalf("TptpHasEquality(%q): %v",k,err) }
 
     if after {
@@ -100,9 +102,9 @@ func TestReplaceEquality(t *testing.T) {
     }
 
     if !before {
-      tptp,err := ProtoToTptp(ctx,fof)
+      tptp,err := tool.ProtoToTptp(ctx,fof)
       if err!=nil { t.Fatalf("ProtoToTptp(%q): %v",k,err) }
-      if !bytes.Equal(tptpNoEq,tptp) {
+      if !tptpNoEq.Equal(tptp) {
         t.Errorf("tptpNoEq[%q] = %q, want %q",k,tptpNoEq,tptp)
       }
     }
@@ -111,8 +113,9 @@ func TestReplaceEquality(t *testing.T) {
 
 func TestTptpToProto(t *testing.T) {
   for k,v := range parsingTestCases() {
-    _,err := TptpToProto(context.Background(),FOF,v)
-    if err!=nil { t.Errorf("TptpToProto(%q): %v",k,err) }
+    if _,err := v.ToProto(context.Background(),tool.FOF); err!=nil {
+      t.Errorf("TptpToProto(%q): %v",k,err)
+    }
   }
 }
 
@@ -120,16 +123,16 @@ func TestTptpToProto(t *testing.T) {
 func TestProtoToTptp(t *testing.T) {
   ctx := context.Background()
   for k,v := range sample.SampleProblems() {
-    fof,err := TptpToProto(ctx,FOF,v)
+    fof,err := v.ToProto(ctx,tool.FOF)
     if err!=nil { t.Fatalf("TptpToProto(%q[1]): %v",k,err) }
-    tptp,err := ProtoToTptp(ctx,fof)
+    tptp,err := tool.ProtoToTptp(ctx,fof)
     if err!=nil { t.Fatalf("ProtoToTptp(%q[1]): %v",k,err) }
-    fof2,err := TptpToProto(ctx,FOF,tptp)
+    fof2,err := tptp.ToProto(ctx,tool.FOF)
     if err!=nil { t.Fatalf("TptpToProto(%q[2]): %v",k,err) }
-    tptp2,err := ProtoToTptp(ctx,fof2)
+    tptp2,err := tool.ProtoToTptp(ctx,fof2)
     if err!=nil { t.Fatalf("ProtoToTptp(%q[2]): %v",k,err) }
-    if !bytes.Equal(tptp,tptp2) {
-      t.Errorf("(TptpToProto;ProtoToTptp)^2(%q) = %v, want %v, initial %v",k,string(tptp2),string(tptp),string(v))
+    if !tptp.Equal(tptp2) {
+      t.Errorf("(TptpToProto;ProtoToTptp)^2(%q) = %v, want %v, initial %v",k,string(tptp2.Raw),string(tptp.Raw),string(v.Raw))
     }
   }
 }
@@ -151,7 +154,7 @@ func TestProofToTptp(t *testing.T) {
     }},
     Nodes: []*tpb.Node{{Id: 0, Type: tpb.Type_FORM_OR}},
   }
-  if _,err := ProofToTptp(context.Background(),proof); err!=nil {
+  if _,err := tool.ProofToTptp(context.Background(),proof); err!=nil {
     t.Errorf("ProofToTptp(): %v",err)
   }
 }
@@ -162,8 +165,8 @@ func TestTPTPFOFToCNF(t *testing.T) {
     log.Printf("%s",k)
     cnf,err := eprover.FOFToCNF(ctx,v)
     if err!=nil { t.Fatalf("FOFToCNF(%q): %v",k,err) }
-    log.Printf("cnf = %s",string(cnf))
-    cnfProto,err := TptpToProto(ctx,CNF,cnf)
+    log.Printf("cnf = %s",string(cnf.Raw))
+    cnfProto,err := cnf.ToProto(ctx,tool.CNF)
     if err!=nil { t.Fatalf("TptpToProto(%q): %v",k,err) }
     for _,i := range cnfProto.Input {
       if got,want := i.Language,tpb.Input_CNF; got!=want {
@@ -172,7 +175,7 @@ func TestTPTPFOFToCNF(t *testing.T) {
     }
     log.Printf("cnfProto = %v",cnfProto)
     // Test if we can convert cnf back to TPTP and to proto again
-    cnf2,err := ProtoToTptp(ctx,cnfProto)
+    cnf2,err := tool.ProtoToTptp(ctx,cnfProto)
     if err!=nil { t.Fatalf("ProtoToTPTP(%q): %v",k,err) }
     _,err = eprover.FOFToCNF(ctx,cnf2)
     if err!=nil { t.Fatalf("FOFToCNF(%q): %v",k,err) }
@@ -194,7 +197,7 @@ func TestTptpHasEquality(t *testing.T) {
   } {
     tptp,ok := problemSet[c.name]
     if !ok { t.Error("%q not in sample.SampleProblems()",c.name) }
-    got,err := TptpHasEquality(ctx,tptp)
+    got,err := tptp.HasEquality(ctx)
     if err!=nil {
       t.Errorf("TptpHasEquality(%q): %v",c.name,err)
     } else if got!=c.want {
@@ -284,7 +287,7 @@ func TestValidateProofOK(t *testing.T) {
     Clauses: []*spb.Derivation{{Sources:sources}},
     Nodes: idx.nodes,
   }
-  if _,err := ValidateProof(context.Background(),&spb.CNF{Problem:cnfProblem,Proof:cnfProof}); err!=nil {
+  if _,err := tool.ValidateProof(context.Background(),&spb.CNF{Problem:cnfProblem,Proof:cnfProof}); err!=nil {
     t.Errorf("ValidateProof(): %v",err)
   }
 }
@@ -305,7 +308,7 @@ func TestValidateProofFail(t *testing.T) {
   cnfProof := &spb.Proof {
     Nodes: idx.nodes,
   }
-  if stats,err := ValidateProof(context.Background(),&spb.CNF{Problem:cnfProblem,Proof:cnfProof}); err==nil {
+  if stats,err := tool.ValidateProof(context.Background(),&spb.CNF{Problem:cnfProblem,Proof:cnfProof}); err==nil {
     t.Errorf("ValidateProof() = %v, want error",stats)
   }
 }

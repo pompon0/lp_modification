@@ -7,6 +7,7 @@ import (
   "strings"
 
   "github.com/pompon0/tptp_benchmark_go/utils"
+  "github.com/pompon0/tptp_benchmark_go/tool"
 )
 
 const tptpProblemsPath = "tptp_problems/file/downloaded"
@@ -27,13 +28,15 @@ type Problem struct {
   file *zip.File
 }
 
-func (p *Problem) Get() ([]byte,error) {
+func (p *Problem) Name() string { return p.file.Name }
+
+func (p *Problem) Get() (*tool.TPTP,error) {
   r,err := p.file.Open()
   if err!=nil { return nil,fmt.Errorf("p.file.Open(): %v",err) }
   defer r.Close()
   data,err := ioutil.ReadAll(r)
   if err!=nil { return nil,fmt.Errorf("ioutil.ReadAll(): %v",err) }
-  return data,nil
+  return &tool.TPTP{p.file.Name,data},nil
 }
 
 // zip format is preferred over tar.gz, because it provides random access to files.

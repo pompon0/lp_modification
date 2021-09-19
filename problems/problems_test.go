@@ -22,9 +22,9 @@ func TestTptpProblems(t *testing.T) {
       tptp,err := p.Get()
       if err!=nil { t.Fatalf("ps[%q].Get(): %v",n,err) }
       defer log.Printf("%q DONE",n)
-      tptpCNF,err := eprover.FOFToCNF(ctx,tptp)
+      cnf,err := eprover.FOFToCNF(ctx,tptp)
       if err!=nil { t.Fatalf("eprover.FOFToCNF(%q): %v",n,err) }
-      _,err = tool.TptpToProto(ctx,tool.CNF,tptpCNF)
+      _,err = cnf.ToProto(ctx,tool.CNF)
       if err!=nil { t.Fatalf("tool.TptpToProto(%q): %v",n,err) }
     })
   }

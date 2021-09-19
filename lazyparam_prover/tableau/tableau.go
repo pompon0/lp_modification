@@ -21,31 +21,31 @@ import (
 
 const tableau_bin_path = "__main__/lazyparam_prover/main"
 
-func ProveAxiomaticEq(ctx context.Context, tptpFOFProblem []byte) (*spb.ProverOutput,error) {
-  return Prove(ctx,tptpFOFProblem,nil,ppb.Method_CONNECTION_TABLEAU,ppb.Deepening_BALANCED_SCHEDULE,ppb.Transformation_AXIOMATIC_EQ,false)
+func ProveAxiomaticEq(ctx context.Context, fofProblem *tool.TPTP) (*spb.ProverOutput,error) {
+  return Prove(ctx,fofProblem,nil,ppb.Method_CONNECTION_TABLEAU,ppb.Deepening_BALANCED_SCHEDULE,ppb.Transformation_AXIOMATIC_EQ,false)
 }
 
-func ProveLPModification(ctx context.Context, tptpFOFProblem []byte) (*spb.ProverOutput,error) {
-  return Prove(ctx,tptpFOFProblem,nil,ppb.Method_CONNECTION_TABLEAU,ppb.Deepening_BALANCED_SCHEDULE,ppb.Transformation_LP_MODIFICATION,false)
+func ProveLPModification(ctx context.Context, fofProblem *tool.TPTP) (*spb.ProverOutput,error) {
+  return Prove(ctx,fofProblem,nil,ppb.Method_CONNECTION_TABLEAU,ppb.Deepening_BALANCED_SCHEDULE,ppb.Transformation_LP_MODIFICATION,false)
 }
 
-func ProveLPModificationDepth(ctx context.Context, tptpFOFProblem []byte) (*spb.ProverOutput,error) {
-  return Prove(ctx,tptpFOFProblem,nil,ppb.Method_CONNECTION_TABLEAU,ppb.Deepening_DEPTH,ppb.Transformation_LP_MODIFICATION,false)
+func ProveLPModificationDepth(ctx context.Context, fofProblem *tool.TPTP) (*spb.ProverOutput,error) {
+  return Prove(ctx,fofProblem,nil,ppb.Method_CONNECTION_TABLEAU,ppb.Deepening_DEPTH,ppb.Transformation_LP_MODIFICATION,false)
 }
 
-func ProveLazyParamodulation(ctx context.Context, tptpFOFProblem []byte) (*spb.ProverOutput,error) {
-  return Prove(ctx,tptpFOFProblem,nil,ppb.Method_LAZY_PARAMODULATION,ppb.Deepening_BALANCED_SCHEDULE,ppb.Transformation_SKIP,false);
+func ProveLazyParamodulation(ctx context.Context, fofProblem *tool.TPTP) (*spb.ProverOutput,error) {
+  return Prove(ctx,fofProblem,nil,ppb.Method_LAZY_PARAMODULATION,ppb.Deepening_BALANCED_SCHEDULE,ppb.Transformation_SKIP,false);
 }
 
-func ProveNoEq(ctx context.Context, tptpFOFProblem []byte) (*spb.ProverOutput,error) {
-  return Prove(ctx,tptpFOFProblem,nil,ppb.Method_CONNECTION_TABLEAU,ppb.Deepening_BALANCED_SCHEDULE,ppb.Transformation_SKIP,false);
+func ProveNoEq(ctx context.Context, fofProblem *tool.TPTP) (*spb.ProverOutput,error) {
+  return Prove(ctx,fofProblem,nil,ppb.Method_CONNECTION_TABLEAU,ppb.Deepening_BALANCED_SCHEDULE,ppb.Transformation_SKIP,false);
 }
 
-func Prove(ctx context.Context, tptpFOFProblem []byte, funOrd *spb.FunOrd, method ppb.Method, deepening ppb.Deepening, trans ppb.Transformation, transOnly bool) (*spb.ProverOutput,error) {
-  tptpCNF,err := eprover.FOFToCNF(ctx,tptpFOFProblem)
+func Prove(ctx context.Context, fofProblem *tool.TPTP, funOrd *spb.FunOrd, method ppb.Method, deepening ppb.Deepening, trans ppb.Transformation, transOnly bool) (*spb.ProverOutput,error) {
+  tptpCNF,err := eprover.FOFToCNF(ctx,fofProblem)
   if err!=nil { return nil,fmt.Errorf("eprover.FOFToCNF(): %v",err) }
   //log.Printf("tptpCNF = %v",string(tptpCNF))
-  cnf,err := tool.TptpToProto(ctx,tool.CNF,tptpCNF)
+  cnf,err := tptpCNF.ToProto(ctx,tool.CNF)
   if err!=nil { return nil,fmt.Errorf("tool.TptpToProto(): %v",err) }
   //log.Printf("cnf = %v",cnf)
   out,err := Tableau(ctx,cnf,funOrd,true,method,deepening,trans,transOnly)

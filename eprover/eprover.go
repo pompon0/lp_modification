@@ -9,6 +9,7 @@ import (
   "os/exec"
   "strings"
 
+  "github.com/pompon0/tptp_benchmark_go/tool"
   "github.com/pompon0/tptp_benchmark_go/utils"
   spb "github.com/pompon0/tptp_benchmark_go/tptp_parser/proto/solutions_go_proto"
 )
@@ -24,10 +25,10 @@ const statusCounterSatisfiable = "CounterSatisfiable"
 // OOM
 const statusOOM = "ResourceOut"
 
-func Prove(ctx context.Context, tptpFOFProblem []byte) (*spb.ProverOutput,error) {
+func Prove(ctx context.Context, fofProblem *tool.TPTP) (*spb.ProverOutput,error) {
   const memLimitBytes = 2000000000 // 2GB
   var inBuf,outBuf bytes.Buffer
-  if _,err := inBuf.Write(tptpFOFProblem); err!=nil {
+  if _,err := inBuf.Write(fofProblem.Raw); err!=nil {
     return nil,fmt.Errorf("inBuf.Write(): %v",err)
   }
 
@@ -64,9 +65,9 @@ func Prove(ctx context.Context, tptpFOFProblem []byte) (*spb.ProverOutput,error)
   return nil,fmt.Errorf("status line not found")
 }
 
-func FOFToCNF(ctx context.Context, tptpFOF []byte) ([]byte,error) {
+func FOFToCNF(ctx context.Context, fof *tool.TPTP) (*tool.TPTP,error) {
   var inBuf,outBuf bytes.Buffer
-  if _,err := inBuf.Write(tptpFOF); err!=nil {
+  if _,err := inBuf.Write(fof.Raw); err!=nil {
     return nil,fmt.Errorf("inBuf(): %v",err)
   }
   cmd := exec.CommandContext(ctx,utils.Runfile(eproverBinPath),"--cnf","-s")
@@ -86,5 +87,5 @@ func FOFToCNF(ctx context.Context, tptpFOF []byte) ([]byte,error) {
       buf.WriteByte('\n')
     }
   }
-  return buf.Bytes(),nil
+  return &tool.TPTP{fof.Name,buf.Bytes()},nil
 }

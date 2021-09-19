@@ -35,16 +35,16 @@ func makeCmd(ctx context.Context, strategy string, inputPath string) *exec.Cmd {
   return exec.CommandContext(ctx,swiplBinPath,swiplArgs...)
 }
 
-func PrologProve(ctx context.Context, tptpFOFProblem []byte) (*spb.ProverOutput,error) {
-  return prologProveWithSchedule(ctx,tptpFOFProblem,schedule)
+func PrologProve(ctx context.Context, fofProblem *tool.TPTP) (*spb.ProverOutput,error) {
+  return prologProveWithSchedule(ctx,fofProblem,schedule)
 }
 
-func PrologProveCutComp7(ctx context.Context, tptpFOFProblem []byte) (*spb.ProverOutput,error) {
-  return prologProveWithSchedule(ctx,tptpFOFProblem,cutComp7)
+func PrologProveCutComp7(ctx context.Context, fofProblem *tool.TPTP) (*spb.ProverOutput,error) {
+  return prologProveWithSchedule(ctx,fofProblem,cutComp7)
 }
 
-func prologProveWithSchedule(ctx context.Context, tptpFOFProblem []byte, schedule []Strategy) (*spb.ProverOutput,error) {
-  tmp,cleanup,err := tool.WriteTmp(tptpFOFProblem)
+func prologProveWithSchedule(ctx context.Context, fofProblem *tool.TPTP, schedule []Strategy) (*spb.ProverOutput,error) {
+  tmp,cleanup,err := tool.WriteTmp(fofProblem.Raw)
   if err!=nil { return nil,fmt.Errorf("WriteTmp(): %v",err) }
   defer cleanup()
   totalSchedule := 0.

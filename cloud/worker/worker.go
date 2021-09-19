@@ -54,31 +54,32 @@ func (s *server) Prove(ctx context.Context, req *pb.Req) (*pb.Resp,error) {
   c := &spb.Case{}
   t0 := time.Now()
   var err error
+  tptpProblem := &tool.TPTP{Raw:req.TptpProblem}
   switch req.Prover {
     case pb.Prover_VAMPIRE:
-      c.Output,err = vampire.Prove(proverCtx,req.TptpProblem)
+      c.Output,err = vampire.Prove(proverCtx,tptpProblem)
     case pb.Prover_VAMPIRE_NO_EQ:
-      c.Output,err = vampire.ProveNoEq(proverCtx,req.TptpProblem)
+      c.Output,err = vampire.ProveNoEq(proverCtx,tptpProblem)
     case pb.Prover_EPROVER:
-      c.Output,err = eprover.Prove(proverCtx,req.TptpProblem)
+      c.Output,err = eprover.Prove(proverCtx,tptpProblem)
     case pb.Prover_LEANCOP_BMTP:
-      c.Output,err = leancop.Prove(proverCtx,req.TptpProblem)
+      c.Output,err = leancop.Prove(proverCtx,tptpProblem)
     case pb.Prover_LEANCOP_PROLOG:
-      c.Output,err = leancop.PrologProve(proverCtx,req.TptpProblem)
+      c.Output,err = leancop.PrologProve(proverCtx,tptpProblem)
     case pb.Prover_LEANCOP_PROLOG_CUT_COMP_7:
-      c.Output,err = leancop.PrologProveCutComp7(proverCtx,req.TptpProblem)
+      c.Output,err = leancop.PrologProveCutComp7(proverCtx,tptpProblem)
     case pb.Prover_GPRUSAK_AXIOMATIC_EQ:
-      c.Output,err = tableau.ProveAxiomaticEq(proverCtx,req.TptpProblem)
+      c.Output,err = tableau.ProveAxiomaticEq(proverCtx,tptpProblem)
     case pb.Prover_GPRUSAK_LP_MODIFICATION:
-      c.Output,err = tableau.ProveLPModification(proverCtx,req.TptpProblem)
+      c.Output,err = tableau.ProveLPModification(proverCtx,tptpProblem)
     case pb.Prover_GPRUSAK_LP_MODIFICATION_DEPTH:
-      c.Output,err = tableau.ProveLPModificationDepth(proverCtx,req.TptpProblem)
+      c.Output,err = tableau.ProveLPModificationDepth(proverCtx,tptpProblem)
     case pb.Prover_GPRUSAK_LAZY_PARAMODULATION:
-      c.Output,err = tableau.ProveLazyParamodulation(proverCtx,req.TptpProblem)
+      c.Output,err = tableau.ProveLazyParamodulation(proverCtx,tptpProblem)
     case pb.Prover_GPRUSAK_NO_EQ:
-      c.Output,err = tableau.ProveNoEq(proverCtx,req.TptpProblem)
+      c.Output,err = tableau.ProveNoEq(proverCtx,tptpProblem)
     case pb.Prover_GPRUSAK_MCTS_FULL_SEARCH:
-      c.Output,err = mcts.Prove(proverCtx,req.TptpProblem)
+      c.Output,err = mcts.Prove(proverCtx,tptpProblem)
     default:
       return nil,status.New(codes.InvalidArgument,"unknown prover").Err()
   }

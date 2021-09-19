@@ -20,6 +20,19 @@ const hs_tool_bin_path = "__main__/tptp_parser/src/tool"
 const cc_tool_bin_path = "__main__/tool/tool"
 const tmp_prefix = "tptp_benchmark_go_"
 
+// TPTP is local to the tool package (rather than a proto),
+// so that the incentive is to rather pass around a parsed TPTP instead.
+// NOTE: it actually is duplicated in problems/sample/sample.proto
+// TODO: consider moving Language inside TptpProblem.
+type TPTP struct {
+  Name string
+  Raw []byte // TODO: in fact this should be a string since it is human readable
+}
+
+func (a *TPTP) Equal(b *TPTP) bool {
+  return a.Name==b.Name && bytes.Equal(a.Raw,b.Raw)
+}
+
 type Language string
 const FOF Language = "fof"
 const CNF Language = "cnf"
@@ -51,7 +64,7 @@ func ClearUnknownNames(f *tpb.File, known []*tpb.Node) {
   }
 }
 
-func ProtoToTptp(ctx context.Context, f *tpb.File) ([]byte,error) {
+func ProtoToTptp(ctx context.Context, f *tpb.File) (*TPTP,error) {
   if err:=processSem.Acquire(ctx,1); err!=nil {
     return nil,fmt.Errorf("processSem.Acquire(): %v",err)
   }
@@ -68,10 +81,12 @@ func ProtoToTptp(ctx context.Context, f *tpb.File) ([]byte,error) {
   cmd.Stdout = &outBuf
   cmd.Stderr = os.Stderr
   if err = cmd.Run(); err!=nil { return nil,fmt.Errorf("cmd.Run(): %v",err) }
-  return outBuf.Bytes(),nil
+  return &TPTP{f.GetName(),outBuf.Bytes()},nil
 }
 
-func ProofToTptp(ctx context.Context, proof *spb.Proof) ([]byte,error) {
+// Resulting TPTP proof is unnamed.
+// TODO: consider changing it.
+func ProofToTptp(ctx context.Context, proof *spb.Proof) (*TPTP,error) {
   f := &tpb.File{Nodes:proof.Nodes}
   for _,d := range proof.Clauses {
     f.Input = append(f.Input,d.Derived)
@@ -82,14 +97,14 @@ func ProofToTptp(ctx context.Context, proof *spb.Proof) ([]byte,error) {
   return ProtoToTptp(ctx,f)
 }
 
-func TptpToProto(ctx context.Context, lang Language, tptp []byte) (*tpb.File,error) {
+func (p *TPTP) ToProto(ctx context.Context, lang Language) (*tpb.File,error) {
   if err:=processSem.Acquire(ctx,1); err!=nil {
     return nil,fmt.Errorf("processSem.Acquire(): %v",err)
   }
   processSem.Release(1)
 
   var inBuf,outBuf bytes.Buffer
-  if _,err := inBuf.Write(tptp); err!=nil {
+  if _,err := inBuf.Write(p.Raw); err!=nil {
     return nil,fmt.Errorf("inbuf.Write(): %v",err)
   }
   cmd := exec.CommandContext(ctx,utils.Runfile(cc_tool_bin_path))
@@ -104,17 +119,18 @@ func TptpToProto(ctx context.Context, lang Language, tptp []byte) (*tpb.File,err
   if err:=proto.Unmarshal(outBuf.Bytes(),out); err!=nil {
     return nil,fmt.Errorf("proto.Unmarshal(): %v",err)
   }
+  out.File.Name = p.Name
   return out.File,nil
 }
 
-func TptpHasEquality(ctx context.Context, tptp []byte) (bool,error) {
+func (p *TPTP) HasEquality(ctx context.Context) (bool,error) {
   if err:=processSem.Acquire(ctx,1); err!=nil {
     return false,fmt.Errorf("processSem.Acquire(): %v",err)
   }
   processSem.Release(1)
 
   var inBuf,outBuf bytes.Buffer
-  if _,err := inBuf.Write(tptp); err!=nil {
+  if _,err := inBuf.Write(p.Raw); err!=nil {
     return false,fmt.Errorf("inbuf.Write(): %v",err)
   }
   cmd := exec.CommandContext(ctx,utils.Runfile(cc_tool_bin_path))

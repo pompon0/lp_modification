@@ -32,26 +32,24 @@ var solvedInReportPath = flag.String("solved_in_report_path","","")
 var fullSearch = flag.Bool("full_search",false,"")
 var featuresSpaceSize = flag.Int("features_space_size",1<<15,"")
 
-type namedProblem struct { name string; p *problems.Problem }
-
-func process(ctx context.Context, p namedProblem) error {
+func process(ctx context.Context, p *problems.Problem) error {
   outDir,err:=NewDir(*outputDir,"")
   if err!=nil { return fmt.Errorf("NewDir(): %w",err) }
 
-  tptpFOF,err := p.p.Get()
+  tptpFOF,err := p.Get()
   if err!=nil {
     return fmt.Errorf("p.Get(): %w",err)
   }
-  if has,err := tool.TptpHasEquality(ctx,tptpFOF); err!=nil {
+  if has,err := tptpFOF.HasEquality(ctx); err!=nil {
     return fmt.Errorf("tool.TptpHasEquality(): %w",err)
   } else if !has {
     return nil
   }
-  log.Printf("solving %q",p.name)
+  log.Printf("solving %q",p.Name())
 
   tptpCNF,err := eprover.FOFToCNF(ctx,tptpFOF)
   if err!=nil { return fmt.Errorf("eprover.FOFToCNF(): %w",err) }
-  cnf,err := tool.TptpToProto(ctx,tool.CNF,tptpCNF)
+  cnf,err := tptpCNF.ToProto(ctx,tool.CNF)
   if err!=nil { return fmt.Errorf("tool.TptpToProto(): %w",err) }
 
   input := &mpb.Input{
@@ -89,7 +87,7 @@ func process(ctx context.Context, p namedProblem) error {
   for _,e := range prof { log.Printf("%v",e) }
 
   // Save output data.
-  problemName := strings.ReplaceAll(p.name,"/","_")
+  problemName := strings.ReplaceAll(p.Name(),"/","_")
 
   outputRaw,err := proto.Marshal(output)
   if err!=nil {
@@ -134,8 +132,8 @@ func run(ctx context.Context) error {
   if *outputDir=="" {
     return fmt.Errorf("output_dir is required")
   }
-  filter := func(p namedProblem) bool {
-    if !strings.HasPrefix(p.name,*caseNamePrefix) { return false }
+  filter := func(p *problems.Problem) bool {
+    if !strings.HasPrefix(p.Name(),*caseNamePrefix) { return false }
     // if problems.SolvedByVampireWithoutEquality[p.name] { return false }
     return true
   }
@@ -149,7 +147,7 @@ func run(ctx context.Context) error {
       m[c.Name] = c.GetOutput().GetSolved()
     }
     f := filter
-    filter = func(p namedProblem) bool { return m[p.name] && f(p) }
+    filter = func(p *problems.Problem) bool { return m[p.Name()] && f(p) }
   }
 
   mp,cancel,err := problems.MizarProblems()
@@ -160,15 +158,15 @@ func run(ctx context.Context) error {
   if err!=nil { return fmt.Errorf("problems.TptpProblems(): %w",err) }
   defer cancel()*/
 
-  var ps []namedProblem
-  for name,p := range mp {
-    ps = append(ps,namedProblem{name,p})
+  var ps []*problems.Problem
+  for _,p := range mp {
+    ps = append(ps,p)
   }
   /*for name,p := range tp {
     ps = append(ps,namedProblem{name,p})
   }*/
   // Fix the order for determinism.
-  sort.Slice(ps,func(i,j int)bool{ return ps[i].name<ps[j].name })
+  sort.Slice(ps,func(i,j int)bool{ return ps[i].Name()<ps[j].Name() })
 
   id,ok := sgeTaskID()
   total := 0
@@ -176,7 +174,7 @@ func run(ctx context.Context) error {
     if !filter(p) { continue }
     if ok && total==id {
       if err:=process(ctx,p); err!=nil {
-        return fmt.Errorf("process(%q): %w",p.name,err)
+        return fmt.Errorf("process(%q): %w",p.Name(),err)
       }
     }
     total++

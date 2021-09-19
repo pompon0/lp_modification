@@ -33,7 +33,7 @@ func TestTransformations(t *testing.T) {
         if err!=nil { t.Fatalf("Tableau(%q): %v",k,err) }
         tptpTransformed,err := tool.ProtoToTptp(ctx,out.TransformedProblem)
         if err!=nil { t.Fatalf("tool.ProtoToTptp(%q): %v",k,err) }
-        t.Logf("out =\n%v",string(tptpTransformed))
+        t.Logf("out =\n%v",string(tptpTransformed.Raw))
 
         proveCtx,cancel := context.WithTimeout(ctx,10*time.Second)
         defer cancel()

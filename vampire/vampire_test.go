@@ -4,7 +4,6 @@ import (
   "context"
   "testing"
 
-  "github.com/pompon0/tptp_benchmark_go/tool"
   "github.com/pompon0/tptp_benchmark_go/problems/sample"
 )
 
@@ -20,7 +19,7 @@ func TestProve(t *testing.T) {
 func TestProveNoEq(t *testing.T) {
   ctx := context.Background()
   for name,tptp := range sample.SampleProblems() {
-    hasEq,err := tool.TptpHasEquality(ctx,tptp)
+    hasEq,err := tptp.HasEquality(ctx)
     if err!=nil {
       t.Fatalf("tool.TptpHasEquality(%q): %v",name,err)
     }

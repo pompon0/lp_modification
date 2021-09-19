@@ -21,8 +21,8 @@ const resultNoConjecture = "%No conjecture or negated conjecture"
 
 const oom = "Fatal error: out of memory."
 
-func Prove(ctx context.Context, tptpFOFProblem []byte) (*spb.ProverOutput,error) {
-  tmp,cleanup,err := tool.WriteTmp(tptpFOFProblem)
+func Prove(ctx context.Context, fofProblem *tool.TPTP) (*spb.ProverOutput,error) {
+  tmp,cleanup,err := tool.WriteTmp(fofProblem.Raw)
   if err!=nil { return nil,fmt.Errorf("WriteTmp(): %v",err) }
   defer cleanup()
 

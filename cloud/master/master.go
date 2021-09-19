@@ -160,9 +160,9 @@ func run(ctx context.Context) error {
   timeoutProto := ptypes.DurationProto(*timeout)
   inFlightSem := semaphore.NewWeighted(int64(*maxInFlight))
 
-  has_equality := func(name string, tptp []byte) bool {
+  has_equality := func(name string, tptp *tool.TPTP) bool {
     for {
-      if has,err := tool.TptpHasEquality(gCtx,tptp); err!=nil {
+      if has,err := tptp.HasEquality(gCtx); err!=nil {
         log.Printf("tool.TptpHasEquality(%q): %v",name,err)
       } else {
         return has
@@ -209,7 +209,7 @@ func run(ctx context.Context) error {
         resp,err = c.Prove(gCtx,&pb.Req{
           Commit: *commit,
           Prover: *prover,
-          TptpProblem: tptp,
+          TptpProblem: tptp.Raw,
           Timeout: timeoutProto,
           ValidateProof: *validateProof,
         })

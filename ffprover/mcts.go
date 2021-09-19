@@ -46,6 +46,9 @@ func MCTS(ctx context.Context, input *mpb.Input) (*mpb.Output,error) {
   if err:=proto.Unmarshal(outBuf.Bytes(),output); err!=nil {
     return nil,fmt.Errorf("proto.Unmarshal(): %w",err)
   }
+  //TODO: consider populating the output.Problem by the cc binary
+  // and here just validating that it doesn't change.
+  output.Problem = input.Problem
   return output,nil
 }
 

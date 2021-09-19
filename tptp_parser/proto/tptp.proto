@@ -2,6 +2,14 @@ syntax = "proto3";
 package tptp;
 
 message File {
+  // (Non-unique) name of the problem.
+  // Use it as a way of labelling the problem for human reader.
+  // Do not treat as unique identifier:
+  // - problem names may collide between independent sources
+  // - transforming a problem doesn't change its name
+  // - problems can by anonymous
+  // TODO: make tooling populate it.
+  string name = 3;
   repeated Input input = 1;
   repeated Node nodes = 2;
 }

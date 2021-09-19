@@ -6,9 +6,11 @@ go_library(
     importpath = "github.com/pompon0/tptp_benchmark_go/ffprover/xgbtrain/run",
     visibility = ["//visibility:private"],
     deps = [
+        "//ffprover:go_default_library",
         "//ffprover:mcts_go_proto",
         "//ffprover/xgbtrain:go_default_library",
         "@com_github_golang_protobuf//proto:go_default_library",
+        "@org_golang_google_protobuf//types/known/durationpb:go_default_library",
     ],
 )
 

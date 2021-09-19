@@ -65,6 +65,10 @@ enum Status {
 }
 
 message Output {
+  // equal to Input.problem.
+  // Allows to rerun MCTS and compare the results.
+  tptp.File problem = 7;
+  
   Status status = 1;
   solutions.Proof proof = 6;
 

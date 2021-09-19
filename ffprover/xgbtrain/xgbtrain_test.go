@@ -8,6 +8,7 @@ import (
 
   "google.golang.org/protobuf/types/known/durationpb"
 
+  "github.com/golang/protobuf/proto"
   "github.com/pompon0/tptp_benchmark_go/tool"
   "github.com/pompon0/tptp_benchmark_go/eprover"
   "github.com/pompon0/tptp_benchmark_go/problems/sample"
@@ -41,6 +42,10 @@ func TestXGBTrain(t *testing.T) {
   if err!=nil { t.Fatalf("MCTS(): %v",err) }
   fmt.Printf("out = %v",out)
 
+  if got,want := out.GetStatus(),mpb.Status_THEOREM; got!=want {
+    t.Fatalf("MCTS(%q)[no model] = %v, want %v",name,got,want)
+  }
+
   data := NewData()
   data.Append(out.GetPath())
 
@@ -52,6 +57,37 @@ func TestXGBTrain(t *testing.T) {
   if err!=nil { t.Fatalf("XGBTrain(): %v",err) }
 
   // with model
-  _,err = mcts.MCTS(ctx,input)
+  input.Problem = out.Problem // problem should be preserved by MCTS.
+  input.PlayoutsPerBigstep = 0 // model should be overfitted
+  outWithModel,err := mcts.MCTS(ctx,input)
   if err!=nil { t.Fatalf("MCTS(): %v",err) }
+
+  if got,want := outWithModel.GetStatus(),mpb.Status_THEOREM; got!=want {
+    t.Fatalf("MCTS(%q)[with model] = %v, want %v",name,got,want)
+  }
+
+  normalizePath := func(p *mpb.Path) *mpb.Path {
+    p2 := &mpb.Path{Won: p.GetWon()}
+    for _,node := range p.GetNodes() {
+      p2.Nodes = append(p2.Nodes,&mpb.Path_Node{
+        Actions: make([]*mpb.Path_Instance,len(node.GetActions())),
+        ChosenAction: node.GetChosenAction(),
+      })
+    }
+    return p2
+  }
+
+  // TODO: upgrade this test so that the result is not trivial.
+  /* trivialPath := true
+  for _,node := range out.GetPath().GetNodes() {
+    trivialPath = trivialPath && (node.GetChosenAction()==0)
+  }
+  if trivialPath {
+    t.Errorf("result path is trivial, model test is useless")
+  }*/
+  p1 := normalizePath(out.GetPath())
+  p2 := normalizePath(outWithModel.GetPath())
+  if !proto.Equal(p1,p2) {
+    t.Errorf("outWithModel.path = %v, want %v",p2,p1)
+  }
 }
